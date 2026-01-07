@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { Plus, Filter, Grid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import AddProjectDialog, { Project } from "@/components/Projects/AddProjectDialog";
+import ProjectCard from "@/components/Projects/ProjectCard";
+import { toast } from "sonner";
 
 const Projects = () => {
-  const projects = [
+  const [projects, setProjects] = useState<Project[]>([
     {
       id: "1",
       name: "Shopping Center Norte - CFTV",
@@ -53,13 +55,33 @@ const Projects = () => {
       manager: "Ana Paula",
       value: "R$ 450.000",
     },
-  ];
+  ]);
 
-  const statusConfig = {
-    planning: { label: "Planejamento", color: "bg-primary/10 text-primary" },
-    execution: { label: "Em Execução", color: "bg-accent/10 text-accent" },
-    completed: { label: "Concluído", color: "bg-success/10 text-success" },
-    onhold: { label: "Em Espera", color: "bg-warning/10 text-warning" },
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  const handleAddOrUpdateProject = (project: Project) => {
+    if (editingProject) {
+      setProjects(projects.map((p) => (p.id === project.id ? project : p)));
+    } else {
+      setProjects([...projects, project]);
+    }
+    setEditingProject(null);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(projects.filter((p) => p.id !== projectId));
+    toast.success("Projeto excluído com sucesso!");
+  };
+
+  const handleNewProject = () => {
+    setEditingProject(null);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -70,7 +92,10 @@ const Projects = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Projetos</h1>
           <p className="text-muted-foreground">Gerencie todos os seus projetos</p>
         </div>
-        <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+        <Button 
+          onClick={handleNewProject}
+          className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Novo Projeto
         </Button>
@@ -96,53 +121,22 @@ const Projects = () => {
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => {
-          const statusInfo = statusConfig[project.status as keyof typeof statusConfig];
-          
-          return (
-            <Card key={project.id} className="p-6 hover:shadow-elegant transition-all duration-300 cursor-pointer group">
-              <div className="flex items-start justify-between mb-4">
-                <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
-                <span className="text-sm font-semibold text-success">{project.value}</span>
-              </div>
-
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                {project.name}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">{project.client}</p>
-
-              <div className="space-y-3 mb-4">
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-muted-foreground">Progresso</span>
-                    <span className="font-semibold">{project.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-primary transition-all duration-500"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Gerente:</span>
-                  <span className="font-medium">{project.manager}</span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Prazo:</span>
-                  <span className="font-medium">{project.startDate} - {project.endDate}</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-border">
-                <Badge variant="secondary">{project.type}</Badge>
-              </div>
-            </Card>
-          );
-        })}
+        {projects.map((project) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            onEdit={handleEditProject}
+            onDelete={handleDeleteProject}
+          />
+        ))}
       </div>
+
+      <AddProjectDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onAddProject={handleAddOrUpdateProject}
+        editingProject={editingProject}
+      />
     </div>
   );
 };
