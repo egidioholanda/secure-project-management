@@ -1,6 +1,12 @@
-import { MoreVertical, Clock, DollarSign, User } from "lucide-react";
+import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface OpportunityCardProps {
   id: string;
@@ -11,6 +17,8 @@ interface OpportunityCardProps {
   responsible: string;
   createdAt: string;
   status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha" | "perdida";
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -23,13 +31,16 @@ const statusConfig = {
 };
 
 export const OpportunityCard = ({ 
+  id,
   title, 
   client, 
   value, 
   type, 
   responsible, 
   createdAt,
-  status 
+  status,
+  onEdit,
+  onDelete,
 }: OpportunityCardProps) => {
   const statusInfo = statusConfig[status];
 
@@ -42,9 +53,26 @@ export const OpportunityCard = ({
           </h3>
           <p className="text-sm text-muted-foreground">{client}</p>
         </div>
-        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreVertical className="w-4 h-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit?.(id)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onDelete?.(id)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="space-y-2 mb-3">

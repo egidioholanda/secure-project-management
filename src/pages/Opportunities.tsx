@@ -62,6 +62,7 @@ const initialOpportunities: Opportunity[] = [
 const Opportunities = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+  const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
   const handleAddOpportunity = (newOpp: Omit<Opportunity, "id" | "createdAt">) => {
     const opportunity: Opportunity = {
@@ -70,6 +71,25 @@ const Opportunities = () => {
       createdAt: "Agora",
     };
     setOpportunities((prev) => [...prev, opportunity]);
+  };
+
+  const handleEditOpportunity = (updated: Opportunity) => {
+    setOpportunities((prev) =>
+      prev.map((opp) => (opp.id === updated.id ? updated : opp))
+    );
+    setEditingOpportunity(null);
+  };
+
+  const handleDeleteOpportunity = (id: string) => {
+    setOpportunities((prev) => prev.filter((opp) => opp.id !== id));
+  };
+
+  const openEditDialog = (id: string) => {
+    const opp = opportunities.find((o) => o.id === id);
+    if (opp) {
+      setEditingOpportunity(opp);
+      setIsAddDialogOpen(true);
+    }
   };
 
   const statuses = [
@@ -123,7 +143,12 @@ const Opportunities = () => {
               
               <div className="space-y-3">
                 {statusOpps.map((opp) => (
-                  <OpportunityCard key={opp.id} {...opp} />
+                  <OpportunityCard 
+                    key={opp.id} 
+                    {...opp} 
+                    onEdit={openEditDialog}
+                    onDelete={handleDeleteOpportunity}
+                  />
                 ))}
               </div>
             </div>
@@ -133,8 +158,13 @@ const Opportunities = () => {
 
       <AddOpportunityDialog
         open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) setEditingOpportunity(null);
+        }}
         onAdd={handleAddOpportunity}
+        onEdit={handleEditOpportunity}
+        editingOpportunity={editingOpportunity}
       />
     </div>
   );
