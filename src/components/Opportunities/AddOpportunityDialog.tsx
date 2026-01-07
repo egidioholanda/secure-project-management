@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,50 +19,59 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
+interface Opportunity {
+  id: string;
+  title: string;
+  client: string;
+  value: string;
+  type: string;
+  responsible: string;
+  createdAt: string;
+  status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha";
+  description?: string;
+}
+
 interface AddOpportunityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (opportunity: {
-    title: string;
-    client: string;
-    value: string;
-    type: string;
-    responsible: string;
-    status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha";
-    description?: string;
-  }) => void;
+  onAdd: (opportunity: Omit<Opportunity, "id" | "createdAt">) => void;
+  onEdit?: (opportunity: Opportunity) => void;
+  editingOpportunity?: Opportunity | null;
 }
 
 export function AddOpportunityDialog({
   open,
   onOpenChange,
   onAdd,
+  onEdit,
+  editingOpportunity,
 }: AddOpportunityDialogProps) {
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
   const [value, setValue] = useState("");
   const [type, setType] = useState("");
   const [responsible, setResponsible] = useState("");
-  const [status, setStatus] = useState<"prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha">("prospeccao");
+  const [status, setStatus] = useState<Opportunity["status"]>("prospeccao");
   const [description, setDescription] = useState("");
 
-  const handleSubmit = () => {
-    if (!title || !client || !value || !type || !responsible) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
+  const isEditing = !!editingOpportunity;
+
+  useEffect(() => {
+    if (editingOpportunity) {
+      setTitle(editingOpportunity.title);
+      setClient(editingOpportunity.client);
+      // Remove "R$ " prefix for editing
+      setValue(editingOpportunity.value.replace("R$ ", ""));
+      setType(editingOpportunity.type);
+      setResponsible(editingOpportunity.responsible);
+      setStatus(editingOpportunity.status);
+      setDescription(editingOpportunity.description || "");
+    } else {
+      resetForm();
     }
+  }, [editingOpportunity, open]);
 
-    onAdd({
-      title,
-      client,
-      value: `R$ ${value}`,
-      type,
-      responsible,
-      status,
-      description,
-    });
-
-    // Reset form
+  const resetForm = () => {
     setTitle("");
     setClient("");
     setValue("");
@@ -70,18 +79,54 @@ export function AddOpportunityDialog({
     setResponsible("");
     setStatus("prospeccao");
     setDescription("");
-    
+  };
+
+  const handleSubmit = () => {
+    if (!title || !client || !value || !type || !responsible) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    if (isEditing && onEdit && editingOpportunity) {
+      onEdit({
+        ...editingOpportunity,
+        title,
+        client,
+        value: value.startsWith("R$") ? value : `R$ ${value}`,
+        type,
+        responsible,
+        status,
+        description,
+      });
+      toast.success("Oportunidade atualizada com sucesso!");
+    } else {
+      onAdd({
+        title,
+        client,
+        value: `R$ ${value}`,
+        type,
+        responsible,
+        status,
+        description,
+      });
+      toast.success("Oportunidade criada com sucesso!");
+    }
+
+    resetForm();
     onOpenChange(false);
-    toast.success("Oportunidade criada com sucesso!");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nova Oportunidade</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Editar Oportunidade" : "Nova Oportunidade"}
+          </DialogTitle>
           <DialogDescription>
-            Preencha os dados para criar uma nova oportunidade de negócio.
+            {isEditing
+              ? "Atualize os dados da oportunidade."
+              : "Preencha os dados para criar uma nova oportunidade de negócio."}
           </DialogDescription>
         </DialogHeader>
 
@@ -145,8 +190,8 @@ export function AddOpportunityDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status">Status Inicial</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+            <Label htmlFor="status">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as Opportunity["status"])}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -155,6 +200,7 @@ export function AddOpportunityDialog({
                 <SelectItem value="qualificacao">Qualificação</SelectItem>
                 <SelectItem value="proposta">Proposta Enviada</SelectItem>
                 <SelectItem value="negociacao">Negociação</SelectItem>
+                <SelectItem value="ganha">Ganha</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,7 +222,7 @@ export function AddOpportunityDialog({
             Cancelar
           </Button>
           <Button onClick={handleSubmit}>
-            Criar Oportunidade
+            {isEditing ? "Salvar Alterações" : "Criar Oportunidade"}
           </Button>
         </div>
       </DialogContent>
