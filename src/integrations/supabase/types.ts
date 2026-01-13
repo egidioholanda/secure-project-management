@@ -14,7 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      device_categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      devices: {
+        Row: {
+          brand: string | null
+          category_id: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          installation_price: number
+          model: string | null
+          name: string
+          specifications: Json | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          installation_price?: number
+          model?: string | null
+          name: string
+          specifications?: Json | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          installation_price?: number
+          model?: string | null
+          name?: string
+          specifications?: Json | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "device_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      floor_plan_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          floor_plan_id: string
+          id: string
+          notes: string | null
+          rotation: number | null
+          x_position: number
+          y_position: number
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          floor_plan_id: string
+          id?: string
+          notes?: string | null
+          rotation?: number | null
+          x_position: number
+          y_position: number
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          floor_plan_id?: string
+          id?: string
+          notes?: string | null
+          rotation?: number | null
+          x_position?: number
+          y_position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "floor_plan_devices_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "floor_plan_devices_floor_plan_id_fkey"
+            columns: ["floor_plan_id"]
+            isOneToOne: false
+            referencedRelation: "project_floor_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_floor_plans: {
+        Row: {
+          created_at: string
+          file_type: string
+          file_url: string
+          height: number | null
+          id: string
+          name: string
+          project_id: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          file_type: string
+          file_url: string
+          height?: number | null
+          id?: string
+          name: string
+          project_id: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          file_type?: string
+          file_url?: string
+          height?: number | null
+          id?: string
+          name?: string
+          project_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
+      proposal_items: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          device_name: string
+          id: string
+          installation_price: number
+          proposal_id: string
+          quantity: number
+          subtotal: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          device_name: string
+          id?: string
+          installation_price?: number
+          proposal_id: string
+          quantity?: number
+          subtotal: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          device_name?: string
+          id?: string
+          installation_price?: number
+          proposal_id?: string
+          quantity?: number
+          subtotal?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_items_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_items_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          client_address: string | null
+          client_email: string | null
+          client_name: string | null
+          client_phone: string | null
+          created_at: string
+          discount_percentage: number | null
+          grand_total: number | null
+          id: string
+          introduction: string | null
+          notes: string | null
+          payment_terms: string | null
+          project_id: string
+          scope: string | null
+          status: string | null
+          title: string
+          total_devices: number | null
+          total_discount: number | null
+          total_installation: number | null
+          updated_at: string
+          validity_days: number | null
+          warranty_terms: string | null
+        }
+        Insert: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          discount_percentage?: number | null
+          grand_total?: number | null
+          id?: string
+          introduction?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          project_id: string
+          scope?: string | null
+          status?: string | null
+          title: string
+          total_devices?: number | null
+          total_discount?: number | null
+          total_installation?: number | null
+          updated_at?: string
+          validity_days?: number | null
+          warranty_terms?: string | null
+        }
+        Update: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          discount_percentage?: number | null
+          grand_total?: number | null
+          id?: string
+          introduction?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          project_id?: string
+          scope?: string | null
+          status?: string | null
+          title?: string
+          total_devices?: number | null
+          total_discount?: number | null
+          total_installation?: number | null
+          updated_at?: string
+          validity_days?: number | null
+          warranty_terms?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

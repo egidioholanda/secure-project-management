@@ -62,19 +62,6 @@ const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
       <p className="text-sm text-muted-foreground mb-4">{project.client}</p>
 
       <div className="space-y-3 mb-4">
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Progresso</span>
-            <span className="font-semibold">{project.progress}%</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-            <div
-              className="h-full bg-gradient-primary transition-all duration-500"
-              style={{ width: `${project.progress}%` }}
-            />
-          </div>
-        </div>
-
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Gerente:</span>
           <span className="font-medium">{project.manager}</span>

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Plus, Filter, Grid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AddProjectDialog, { Project } from "@/components/Projects/AddProjectDialog";
+import AddProjectDialog from "@/components/Projects/AddProjectDialog";
 import ProjectCard from "@/components/Projects/ProjectCard";
+import ProjectDetailView from "@/components/Projects/ProjectDetailView";
+import type { Project } from "@/types/project";
 import { toast } from "sonner";
 
 const Projects = () => {
@@ -13,7 +15,6 @@ const Projects = () => {
       client: "Shopping Center Norte",
       type: "CFTV",
       status: "execution",
-      progress: 75,
       startDate: "01/03/2024",
       endDate: "30/06/2024",
       manager: "João Silva",
@@ -25,7 +26,6 @@ const Projects = () => {
       client: "Condomínio Portal das Águas",
       type: "Controle de Acesso",
       status: "execution",
-      progress: 45,
       startDate: "15/03/2024",
       endDate: "15/07/2024",
       manager: "Maria Santos",
@@ -37,7 +37,6 @@ const Projects = () => {
       client: "Indústria Forte LTDA",
       type: "Alarme Perimetral",
       status: "planning",
-      progress: 20,
       startDate: "20/04/2024",
       endDate: "20/08/2024",
       manager: "Carlos Mendes",
@@ -49,7 +48,6 @@ const Projects = () => {
       client: "Hospital São Lucas",
       type: "Sistema Integrado",
       status: "completed",
-      progress: 100,
       startDate: "01/01/2024",
       endDate: "31/03/2024",
       manager: "Ana Paula",
@@ -59,6 +57,7 @@ const Projects = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const handleAddOrUpdateProject = (project: Project) => {
     if (editingProject) {
@@ -83,6 +82,23 @@ const Projects = () => {
     setEditingProject(null);
     setIsDialogOpen(true);
   };
+
+  const handleSelectProject = (project: Project) => {
+    setSelectedProject(project);
+  };
+
+  if (selectedProject) {
+    return (
+      <ProjectDetailView
+        project={selectedProject}
+        onBack={() => setSelectedProject(null)}
+        onEdit={(project) => {
+          setEditingProject(project);
+          setIsDialogOpen(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -122,12 +138,13 @@ const Projects = () => {
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            onEdit={handleEditProject}
-            onDelete={handleDeleteProject}
-          />
+          <div key={project.id} onClick={() => handleSelectProject(project)}>
+            <ProjectCard
+              project={project}
+              onEdit={handleEditProject}
+              onDelete={handleDeleteProject}
+            />
+          </div>
         ))}
       </div>
 

@@ -1,0 +1,455 @@
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Download, Save, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import type { PlacedDevice, Proposal, ProposalItem, Project } from "@/types/project";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+interface ProposalEditorProps {
+  project: Project;
+  placedDevices: PlacedDevice[];
+  onBack: () => void;
+}
+
+const ProposalEditor = ({ project, placedDevices, onBack }: ProposalEditorProps) => {
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [items, setItems] = useState<ProposalItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const proposalRef = useRef<HTMLDivElement>(null);
+
+  const [formData, setFormData] = useState({
+    title: `Proposta Comercial - ${project.name}`,
+    client_name: project.client,
+    client_email: "",
+    client_phone: "",
+    client_address: project.address || "",
+    introduction: `Prezado(a) ${project.client},\n\nApresentamos nossa proposta comercial para o projeto ${project.name}.`,
+    scope: "Esta proposta contempla o fornecimento e instalação dos equipamentos listados abaixo.",
+    validity_days: 30,
+    payment_terms: "50% na assinatura do contrato, 50% na entrega.",
+    warranty_terms: "12 meses de garantia em todos os equipamentos e serviços.",
+    notes: "",
+    discount_percentage: 0,
+  });
+
+  useEffect(() => {
+    generateProposalItems();
+  }, [placedDevices]);
+
+  const generateProposalItems = () => {
+    // Agrupar dispositivos por tipo
+    const grouped = placedDevices.reduce((acc, pd) => {
+      const deviceId = pd.device_id;
+      if (!acc[deviceId]) {
+        acc[deviceId] = {
+          device: pd.device,
+          quantity: 0,
+        };
+      }
+      acc[deviceId].quantity += 1;
+      return acc;
+    }, {} as Record<string, { device: PlacedDevice["device"]; quantity: number }>);
+
+    const newItems: ProposalItem[] = Object.values(grouped).map((item, index) => ({
+      id: `temp-${index}`,
+      proposal_id: "",
+      device_id: item.device?.id || null,
+      device_name: item.device?.name || "Dispositivo",
+      quantity: item.quantity,
+      unit_price: item.device?.unit_price || 0,
+      installation_price: item.device?.installation_price || 0,
+      subtotal: item.quantity * ((item.device?.unit_price || 0) + (item.device?.installation_price || 0)),
+    }));
+
+    setItems(newItems);
+    setLoading(false);
+  };
+
+  const calculateTotals = () => {
+    const totalDevices = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const totalInstallation = items.reduce((sum, item) => sum + item.quantity * item.installation_price, 0);
+    const subtotal = totalDevices + totalInstallation;
+    const discountAmount = subtotal * (formData.discount_percentage / 100);
+    const grandTotal = subtotal - discountAmount;
+
+    return { totalDevices, totalInstallation, discountAmount, grandTotal };
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const totals = calculateTotals();
+
+      const { data: savedProposal, error: proposalError } = await supabase
+        .from("proposals")
+        .insert({
+          project_id: project.id,
+          title: formData.title,
+          client_name: formData.client_name,
+          client_email: formData.client_email,
+          client_phone: formData.client_phone,
+          client_address: formData.client_address,
+          introduction: formData.introduction,
+          scope: formData.scope,
+          validity_days: formData.validity_days,
+          payment_terms: formData.payment_terms,
+          warranty_terms: formData.warranty_terms,
+          notes: formData.notes,
+          discount_percentage: formData.discount_percentage,
+          total_devices: totals.totalDevices,
+          total_installation: totals.totalInstallation,
+          total_discount: totals.discountAmount,
+          grand_total: totals.grandTotal,
+          status: "draft",
+        })
+        .select()
+        .single();
+
+      if (proposalError) throw proposalError;
+
+      // Salvar itens
+      const itemsToInsert = items.map((item) => ({
+        proposal_id: savedProposal.id,
+        device_id: item.device_id,
+        device_name: item.device_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        installation_price: item.installation_price,
+        subtotal: item.subtotal,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("proposal_items")
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      setProposal(savedProposal as Proposal);
+      toast.success("Proposta salva com sucesso!");
+    } catch (error) {
+      console.error("Error saving proposal:", error);
+      toast.error("Erro ao salvar proposta");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!proposalRef.current) return;
+
+    toast.info("Gerando PDF...");
+
+    try {
+      const canvas = await html2canvas(proposalRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+
+      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`${formData.title.replace(/\s+/g, "_")}.pdf`);
+
+      toast.success("PDF exportado com sucesso!");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Erro ao exportar PDF");
+    }
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+
+  const totals = calculateTotals();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+          <h2 className="text-2xl font-bold">Proposta Comercial</h2>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSave} disabled={saving}>
+            <Save className="w-4 h-4 mr-2" />
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
+          <Button onClick={handleExportPDF} className="bg-gradient-primary">
+            <Download className="w-4 h-4 mr-2" />
+            Exportar PDF
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Formulário de Edição */}
+        <Card className="p-6 space-y-4">
+          <h3 className="font-semibold text-lg">Informações da Proposta</h3>
+
+          <div>
+            <Label>Título</Label>
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Cliente</Label>
+              <Input
+                value={formData.client_name}
+                onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={formData.client_email}
+                onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Telefone</Label>
+              <Input
+                value={formData.client_phone}
+                onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Validade (dias)</Label>
+              <Input
+                type="number"
+                value={formData.validity_days}
+                onChange={(e) =>
+                  setFormData({ ...formData, validity_days: parseInt(e.target.value) || 30 })
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Endereço</Label>
+            <Input
+              value={formData.client_address}
+              onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label>Introdução</Label>
+            <Textarea
+              value={formData.introduction}
+              onChange={(e) => setFormData({ ...formData, introduction: e.target.value })}
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label>Escopo</Label>
+            <Textarea
+              value={formData.scope}
+              onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label>Condições de Pagamento</Label>
+            <Textarea
+              value={formData.payment_terms}
+              onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label>Garantia</Label>
+            <Textarea
+              value={formData.warranty_terms}
+              onChange={(e) => setFormData({ ...formData, warranty_terms: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label>Desconto (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={formData.discount_percentage}
+              onChange={(e) =>
+                setFormData({ ...formData, discount_percentage: parseFloat(e.target.value) || 0 })
+              }
+            />
+          </div>
+
+          <div>
+            <Label>Observações</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={2}
+            />
+          </div>
+        </Card>
+
+        {/* Preview da Proposta */}
+        <Card className="p-6 bg-white text-gray-900" ref={proposalRef}>
+          <div className="space-y-6">
+            {/* Cabeçalho */}
+            <div className="text-center border-b pb-4">
+              <h1 className="text-2xl font-bold text-gray-900">{formData.title}</h1>
+              <p className="text-sm text-gray-500 mt-2">
+                Data: {new Date().toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+
+            {/* Dados do Cliente */}
+            <div>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900">Cliente</h3>
+              <p className="text-gray-700">{formData.client_name}</p>
+              {formData.client_address && (
+                <p className="text-gray-600 text-sm">{formData.client_address}</p>
+              )}
+              {formData.client_email && (
+                <p className="text-gray-600 text-sm">{formData.client_email}</p>
+              )}
+              {formData.client_phone && (
+                <p className="text-gray-600 text-sm">{formData.client_phone}</p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Introdução */}
+            <div>
+              <p className="text-gray-700 whitespace-pre-wrap">{formData.introduction}</p>
+            </div>
+
+            {/* Escopo */}
+            <div>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900">Escopo do Projeto</h3>
+              <p className="text-gray-700">{formData.scope}</p>
+            </div>
+
+            {/* Tabela de Itens */}
+            <div>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900">Itens da Proposta</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-gray-900">Item</TableHead>
+                    <TableHead className="text-right text-gray-900">Qtd</TableHead>
+                    <TableHead className="text-right text-gray-900">Unit.</TableHead>
+                    <TableHead className="text-right text-gray-900">Inst.</TableHead>
+                    <TableHead className="text-right text-gray-900">Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-gray-700">{item.device_name}</TableCell>
+                      <TableCell className="text-right text-gray-700">{item.quantity}</TableCell>
+                      <TableCell className="text-right text-gray-700">
+                        {formatCurrency(item.unit_price)}
+                      </TableCell>
+                      <TableCell className="text-right text-gray-700">
+                        {formatCurrency(item.installation_price)}
+                      </TableCell>
+                      <TableCell className="text-right text-gray-700">
+                        {formatCurrency(item.subtotal)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Totais */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Equipamentos:</span>
+                <span className="text-gray-900">{formatCurrency(totals.totalDevices)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Instalação:</span>
+                <span className="text-gray-900">{formatCurrency(totals.totalInstallation)}</span>
+              </div>
+              {formData.discount_percentage > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Desconto ({formData.discount_percentage}%):</span>
+                  <span>-{formatCurrency(totals.discountAmount)}</span>
+                </div>
+              )}
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold text-lg">
+                <span className="text-gray-900">Total:</span>
+                <span className="text-gray-900">{formatCurrency(totals.grandTotal)}</span>
+              </div>
+            </div>
+
+            {/* Condições */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-900">Condições de Pagamento</h4>
+                <p className="text-sm text-gray-700">{formData.payment_terms}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Garantia</h4>
+                <p className="text-sm text-gray-700">{formData.warranty_terms}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Validade da Proposta</h4>
+                <p className="text-sm text-gray-700">{formData.validity_days} dias</p>
+              </div>
+              {formData.notes && (
+                <div>
+                  <h4 className="font-semibold text-gray-900">Observações</h4>
+                  <p className="text-sm text-gray-700">{formData.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default ProposalEditor;
