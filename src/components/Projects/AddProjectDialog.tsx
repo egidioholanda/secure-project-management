@@ -17,19 +17,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export interface Project {
-  id: string;
-  name: string;
-  client: string;
-  type: string;
-  status: string;
-  progress: number;
-  startDate: string;
-  endDate: string;
-  manager: string;
-  value: string;
-  address?: string;
-}
+import type { Project } from "@/types/project";
+export type { Project };
 
 interface AddProjectDialogProps {
   open: boolean;
@@ -49,7 +38,6 @@ const AddProjectDialog = ({
     client: "",
     type: "",
     status: "planning",
-    progress: 0,
     startDate: "",
     endDate: "",
     manager: "",
@@ -64,7 +52,6 @@ const AddProjectDialog = ({
         client: editingProject.client,
         type: editingProject.type,
         status: editingProject.status,
-        progress: editingProject.progress,
         startDate: editingProject.startDate,
         endDate: editingProject.endDate,
         manager: editingProject.manager,
@@ -77,7 +64,6 @@ const AddProjectDialog = ({
         client: "",
         type: "",
         status: "planning",
-        progress: 0,
         startDate: "",
         endDate: "",
         manager: "",
@@ -101,7 +87,6 @@ const AddProjectDialog = ({
       client: formData.client,
       type: formData.type,
       status: formData.status,
-      progress: formData.progress,
       startDate: formData.startDate,
       endDate: formData.endDate,
       manager: formData.manager,
@@ -258,23 +243,6 @@ const AddProjectDialog = ({
                   <SelectItem value="onhold">Em Espera</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="progress">Progresso (%)</Label>
-              <Input
-                id="progress"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.progress}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    progress: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
             </div>
           </div>
 
