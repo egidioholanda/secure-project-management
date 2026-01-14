@@ -28,6 +28,13 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const proposalRef = useRef<HTMLDivElement>(null);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [newItem, setNewItem] = useState({
+    name: "",
+    quantity: 1,
+    unit_price: 0,
+    installation_price: 0,
+  });
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
@@ -180,6 +187,30 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       return;
     }
     setItems(items.filter(item => item.id !== itemId));
+  };
+
+  const handleAddManualItem = () => {
+    if (!newItem.name.trim()) {
+      toast.error("Informe o nome do produto");
+      return;
+    }
+
+    const subtotal = newItem.quantity * (newItem.unit_price + newItem.installation_price);
+    const manualItem: ProposalItem = {
+      id: `manual-${Date.now()}`,
+      proposal_id: proposal?.id || "",
+      device_id: null,
+      device_name: newItem.name.trim(),
+      quantity: newItem.quantity,
+      unit_price: newItem.unit_price,
+      installation_price: newItem.installation_price,
+      subtotal,
+    };
+
+    setItems([...items, manualItem]);
+    setNewItem({ name: "", quantity: 1, unit_price: 0, installation_price: 0 });
+    setShowAddItem(false);
+    toast.success("Item adicionado à proposta!");
   };
 
   const handleSave = async () => {
@@ -523,10 +554,83 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
 
           {/* Edição de Itens */}
           <div>
-            <Label className="text-lg font-semibold">Itens da Proposta</Label>
-            <p className="text-sm text-muted-foreground mb-3">
-              Edite as quantidades ou remova itens da proposta
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <Label className="text-lg font-semibold">Itens da Proposta</Label>
+                <p className="text-sm text-muted-foreground">
+                  Edite as quantidades, remova ou adicione itens manualmente
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddItem(!showAddItem)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Adicionar Item
+              </Button>
+            </div>
+
+            {/* Formulário para adicionar item manual */}
+            {showAddItem && (
+              <div className="p-4 mb-4 border rounded-lg bg-muted/30 space-y-3">
+                <h4 className="font-medium">Novo Item (Cabeamento, Tubulação, etc.)</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label>Nome do Produto</Label>
+                    <Input
+                      placeholder="Ex: Cabo UTP Cat6 (metros)"
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Quantidade</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={newItem.quantity}
+                      onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Preço Unitário (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newItem.unit_price}
+                      onChange={(e) => setNewItem({ ...newItem, unit_price: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Preço Instalação (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newItem.installation_price}
+                      onChange={(e) => setNewItem({ ...newItem, installation_price: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <p className="text-sm text-muted-foreground">
+                      Subtotal: {formatCurrency(newItem.quantity * (newItem.unit_price + newItem.installation_price))}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleAddManualItem}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAddItem(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               {items.map((item) => (
                 <div
@@ -534,7 +638,14 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
                   className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{item.device_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{item.device_name}</p>
+                      {!item.device_id && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                          Manual
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       {formatCurrency(item.unit_price + item.installation_price)} / unid.
                     </p>
