@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Upload, ZoomIn, ZoomOut, RotateCw, Trash2, Save, FileText } from "lucide-react";
+import { Upload, ZoomIn, ZoomOut, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -7,6 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Device, FloorPlan, PlacedDevice } from "@/types/project";
 import DeviceCatalog from "./DeviceCatalog";
 import PlacedDeviceMarker from "./PlacedDeviceMarker";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface FloorPlanEditorProps {
   projectId: string;
@@ -20,8 +26,15 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [numPages, setNumPages] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     loadFloorPlan();
@@ -264,11 +277,60 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               }}
             >
               {floorPlan.file_type === "application/pdf" ? (
-                <iframe
-                  src={floorPlan.file_url}
-                  className="w-full h-full min-h-[600px]"
-                  title="Floor Plan"
-                />
+                <div className="relative">
+                  <Document
+                    file={floorPlan.file_url}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    loading={
+                      <div className="flex items-center justify-center h-[600px]">
+                        <p className="text-muted-foreground">Carregando PDF...</p>
+                      </div>
+                    }
+                    error={
+                      <div className="flex items-center justify-center h-[600px]">
+                        <p className="text-destructive">Erro ao carregar PDF</p>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      width={800}
+                    />
+                  </Document>
+                  {numPages > 1 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg border">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentPage((p) => Math.max(1, p - 1));
+                        }}
+                        disabled={currentPage <= 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm font-medium min-w-[60px] text-center">
+                        {currentPage} / {numPages}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentPage((p) => Math.min(numPages, p + 1));
+                        }}
+                        disabled={currentPage >= numPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <img
                   src={floorPlan.file_url}
