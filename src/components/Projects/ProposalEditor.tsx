@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, Upload, X, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,13 +17,16 @@ interface ProposalEditorProps {
   project: Project;
   placedDevices: PlacedDevice[];
   onBack: () => void;
+  existingProposalId?: string;
 }
 
-const ProposalEditor = ({ project, placedDevices, onBack }: ProposalEditorProps) => {
+const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: ProposalEditorProps) => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const proposalRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
@@ -42,8 +45,57 @@ const ProposalEditor = ({ project, placedDevices, onBack }: ProposalEditorProps)
   });
 
   useEffect(() => {
-    generateProposalItems();
-  }, [placedDevices]);
+    if (existingProposalId) {
+      loadExistingProposal();
+    } else {
+      generateProposalItems();
+    }
+  }, [existingProposalId, placedDevices]);
+
+  const loadExistingProposal = async () => {
+    if (!existingProposalId) return;
+    
+    try {
+      const { data: proposalData, error: proposalError } = await supabase
+        .from("proposals")
+        .select("*")
+        .eq("id", existingProposalId)
+        .single();
+
+      if (proposalError) throw proposalError;
+
+      if (proposalData) {
+        setProposal(proposalData as Proposal);
+        setFormData({
+          title: proposalData.title || "",
+          client_name: proposalData.client_name || "",
+          client_email: proposalData.client_email || "",
+          client_phone: proposalData.client_phone || "",
+          client_address: proposalData.client_address || "",
+          introduction: proposalData.introduction || "",
+          scope: proposalData.scope || "",
+          validity_days: proposalData.validity_days || 30,
+          payment_terms: proposalData.payment_terms || "",
+          warranty_terms: proposalData.warranty_terms || "",
+          notes: proposalData.notes || "",
+          discount_percentage: proposalData.discount_percentage || 0,
+        });
+
+        const { data: itemsData, error: itemsError } = await supabase
+          .from("proposal_items")
+          .select("*")
+          .eq("proposal_id", existingProposalId);
+
+        if (itemsError) throw itemsError;
+        setItems(itemsData as ProposalItem[]);
+      }
+    } catch (error) {
+      console.error("Error loading proposal:", error);
+      toast.error("Erro ao carregar proposta");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const generateProposalItems = () => {
     // Agrupar dispositivos por tipo
@@ -84,57 +136,155 @@ const ProposalEditor = ({ project, placedDevices, onBack }: ProposalEditorProps)
     return { totalDevices, totalInstallation, discountAmount, grandTotal };
   };
 
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem válida");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCompanyLogo(e.target?.result as string);
+      toast.success("Logo adicionada!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setCompanyLogo(null);
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
+    }
+  };
+
+  const handleUpdateItemQuantity = (itemId: string, delta: number) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const newQuantity = Math.max(1, item.quantity + delta);
+        return {
+          ...item,
+          quantity: newQuantity,
+          subtotal: newQuantity * (item.unit_price + item.installation_price),
+        };
+      }
+      return item;
+    }));
+  };
+
+  const handleRemoveItem = (itemId: string) => {
+    if (items.length <= 1) {
+      toast.error("A proposta deve ter pelo menos um item");
+      return;
+    }
+    setItems(items.filter(item => item.id !== itemId));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const totals = calculateTotals();
 
-      const { data: savedProposal, error: proposalError } = await supabase
-        .from("proposals")
-        .insert({
-          project_id: project.id,
-          title: formData.title,
-          client_name: formData.client_name,
-          client_email: formData.client_email,
-          client_phone: formData.client_phone,
-          client_address: formData.client_address,
-          introduction: formData.introduction,
-          scope: formData.scope,
-          validity_days: formData.validity_days,
-          payment_terms: formData.payment_terms,
-          warranty_terms: formData.warranty_terms,
-          notes: formData.notes,
-          discount_percentage: formData.discount_percentage,
-          total_devices: totals.totalDevices,
-          total_installation: totals.totalInstallation,
-          total_discount: totals.discountAmount,
-          grand_total: totals.grandTotal,
-          status: "draft",
-        })
-        .select()
-        .single();
+      if (proposal) {
+        // Atualizar proposta existente
+        const { error: proposalError } = await supabase
+          .from("proposals")
+          .update({
+            title: formData.title,
+            client_name: formData.client_name,
+            client_email: formData.client_email,
+            client_phone: formData.client_phone,
+            client_address: formData.client_address,
+            introduction: formData.introduction,
+            scope: formData.scope,
+            validity_days: formData.validity_days,
+            payment_terms: formData.payment_terms,
+            warranty_terms: formData.warranty_terms,
+            notes: formData.notes,
+            discount_percentage: formData.discount_percentage,
+            total_devices: totals.totalDevices,
+            total_installation: totals.totalInstallation,
+            total_discount: totals.discountAmount,
+            grand_total: totals.grandTotal,
+          })
+          .eq("id", proposal.id);
 
-      if (proposalError) throw proposalError;
+        if (proposalError) throw proposalError;
 
-      // Salvar itens
-      const itemsToInsert = items.map((item) => ({
-        proposal_id: savedProposal.id,
-        device_id: item.device_id,
-        device_name: item.device_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        installation_price: item.installation_price,
-        subtotal: item.subtotal,
-      }));
+        // Deletar itens antigos e inserir novos
+        await supabase
+          .from("proposal_items")
+          .delete()
+          .eq("proposal_id", proposal.id);
 
-      const { error: itemsError } = await supabase
-        .from("proposal_items")
-        .insert(itemsToInsert);
+        const itemsToInsert = items.map((item) => ({
+          proposal_id: proposal.id,
+          device_id: item.device_id,
+          device_name: item.device_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          installation_price: item.installation_price,
+          subtotal: item.subtotal,
+        }));
 
-      if (itemsError) throw itemsError;
+        const { error: itemsError } = await supabase
+          .from("proposal_items")
+          .insert(itemsToInsert);
 
-      setProposal(savedProposal as Proposal);
-      toast.success("Proposta salva com sucesso!");
+        if (itemsError) throw itemsError;
+
+        toast.success("Proposta atualizada com sucesso!");
+      } else {
+        // Criar nova proposta
+        const { data: savedProposal, error: proposalError } = await supabase
+          .from("proposals")
+          .insert({
+            project_id: project.id,
+            title: formData.title,
+            client_name: formData.client_name,
+            client_email: formData.client_email,
+            client_phone: formData.client_phone,
+            client_address: formData.client_address,
+            introduction: formData.introduction,
+            scope: formData.scope,
+            validity_days: formData.validity_days,
+            payment_terms: formData.payment_terms,
+            warranty_terms: formData.warranty_terms,
+            notes: formData.notes,
+            discount_percentage: formData.discount_percentage,
+            total_devices: totals.totalDevices,
+            total_installation: totals.totalInstallation,
+            total_discount: totals.discountAmount,
+            grand_total: totals.grandTotal,
+            status: "draft",
+          })
+          .select()
+          .single();
+
+        if (proposalError) throw proposalError;
+
+        // Salvar itens
+        const itemsToInsert = items.map((item) => ({
+          proposal_id: savedProposal.id,
+          device_id: item.device_id,
+          device_name: item.device_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          installation_price: item.installation_price,
+          subtotal: item.subtotal,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("proposal_items")
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+
+        setProposal(savedProposal as Proposal);
+        toast.success("Proposta salva com sucesso!");
+      }
     } catch (error) {
       console.error("Error saving proposal:", error);
       toast.error("Erro ao salvar proposta");
@@ -327,13 +477,116 @@ const ProposalEditor = ({ project, placedDevices, onBack }: ProposalEditorProps)
               rows={2}
             />
           </div>
+
+          <Separator />
+
+          {/* Logo da Empresa */}
+          <div>
+            <Label>Logo da Empresa</Label>
+            <div className="mt-2">
+              <input
+                type="file"
+                ref={logoInputRef}
+                onChange={handleLogoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              {companyLogo ? (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={companyLogo}
+                    alt="Logo da empresa"
+                    className="h-16 w-auto object-contain border rounded p-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveLogo}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Remover
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Adicionar Logo
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Edição de Itens */}
+          <div>
+            <Label className="text-lg font-semibold">Itens da Proposta</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Edite as quantidades ou remova itens da proposta
+            </p>
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{item.device_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(item.unit_price + item.installation_price)} / unid.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleUpdateItemQuantity(item.id, -1)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleUpdateItemQuantity(item.id, 1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveItem(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
 
         {/* Preview da Proposta */}
         <Card className="p-6 bg-white text-gray-900" ref={proposalRef}>
           <div className="space-y-6">
-            {/* Cabeçalho */}
+            {/* Cabeçalho com Logo */}
             <div className="text-center border-b pb-4">
+              {companyLogo && (
+                <div className="flex justify-center mb-4">
+                  <img
+                    src={companyLogo}
+                    alt="Logo da empresa"
+                    className="h-20 w-auto object-contain"
+                  />
+                </div>
+              )}
               <h1 className="text-2xl font-bold text-gray-900">{formData.title}</h1>
               <p className="text-sm text-gray-500 mt-2">
                 Data: {new Date().toLocaleDateString("pt-BR")}

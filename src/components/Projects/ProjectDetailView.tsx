@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Pencil, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Project, PlacedDevice } from "@/types/project";
+import type { Project, PlacedDevice, Proposal } from "@/types/project";
 import FloorPlanEditor from "./FloorPlanEditor";
 import ProposalEditor from "./ProposalEditor";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -22,11 +23,41 @@ const statusConfig = {
 const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) => {
   const [view, setView] = useState<"editor" | "proposal">("editor");
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
+  const [existingProposal, setExistingProposal] = useState<Proposal | null>(null);
+  const [loadingProposal, setLoadingProposal] = useState(true);
 
   const statusInfo = statusConfig[project.status as keyof typeof statusConfig];
 
+  useEffect(() => {
+    checkExistingProposal();
+  }, [project.id]);
+
+  const checkExistingProposal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("proposals")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      setExistingProposal(data as Proposal | null);
+    } catch (error) {
+      console.error("Error checking proposal:", error);
+    } finally {
+      setLoadingProposal(false);
+    }
+  };
+
   const handleGenerateProposal = (devices: PlacedDevice[]) => {
     setPlacedDevices(devices);
+    setView("proposal");
+  };
+
+  const handleViewExistingProposal = () => {
+    setPlacedDevices([]);
     setView("proposal");
   };
 
@@ -35,7 +66,11 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
       <ProposalEditor
         project={project}
         placedDevices={placedDevices}
-        onBack={() => setView("editor")}
+        onBack={() => {
+          setView("editor");
+          checkExistingProposal();
+        }}
+        existingProposalId={existingProposal?.id && placedDevices.length === 0 ? existingProposal.id : undefined}
       />
     );
   }
@@ -57,10 +92,22 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
             <p className="text-muted-foreground">{project.client}</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => onEdit(project)}>
-          <Pencil className="w-4 h-4 mr-2" />
-          Editar Projeto
-        </Button>
+        <div className="flex items-center gap-2">
+          {!loadingProposal && existingProposal && (
+            <Button
+              variant="outline"
+              onClick={handleViewExistingProposal}
+              className="border-primary/50 text-primary hover:bg-primary/10"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Ver Proposta
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => onEdit(project)}>
+            <Pencil className="w-4 h-4 mr-2" />
+            Editar Projeto
+          </Button>
+        </div>
       </div>
 
       {/* Informações do Projeto */}
