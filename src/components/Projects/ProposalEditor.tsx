@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, Upload, X, ImageIcon } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, Upload, X, ImageIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { PlacedDevice, Proposal, ProposalItem, Project } from "@/types/project";
+import type { PlacedDevice, Proposal, ProposalItem, Project, Device } from "@/types/project";
+import { useDevices } from "@/hooks/useDevices";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -29,12 +30,8 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const proposalRef = useRef<HTMLDivElement>(null);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({
-    name: "",
-    quantity: 1,
-    unit_price: 0,
-    installation_price: 0,
-  });
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const { devices: catalogDevices, categories, loading: loadingDevices } = useDevices();
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
@@ -189,29 +186,38 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     setItems(items.filter(item => item.id !== itemId));
   };
 
-  const handleAddManualItem = () => {
-    if (!newItem.name.trim()) {
-      toast.error("Informe o nome do produto");
-      return;
+  const handleAddCatalogItem = (device: Device) => {
+    // Verifica se o item já existe na proposta
+    const existingItem = items.find(item => item.device_id === device.id);
+    
+    if (existingItem) {
+      // Incrementa a quantidade se já existir
+      handleUpdateItemQuantity(existingItem.id, 1);
+      toast.success("Quantidade atualizada!");
+    } else {
+      // Adiciona novo item
+      const newProposalItem: ProposalItem = {
+        id: `catalog-${Date.now()}`,
+        proposal_id: proposal?.id || "",
+        device_id: device.id,
+        device_name: device.name,
+        quantity: 1,
+        unit_price: device.unit_price,
+        installation_price: device.installation_price,
+        subtotal: device.unit_price + device.installation_price,
+      };
+      setItems([...items, newProposalItem]);
+      toast.success("Item adicionado à proposta!");
     }
-
-    const subtotal = newItem.quantity * (newItem.unit_price + newItem.installation_price);
-    const manualItem: ProposalItem = {
-      id: `manual-${Date.now()}`,
-      proposal_id: proposal?.id || "",
-      device_id: null,
-      device_name: newItem.name.trim(),
-      quantity: newItem.quantity,
-      unit_price: newItem.unit_price,
-      installation_price: newItem.installation_price,
-      subtotal,
-    };
-
-    setItems([...items, manualItem]);
-    setNewItem({ name: "", quantity: 1, unit_price: 0, installation_price: 0 });
     setShowAddItem(false);
-    toast.success("Item adicionado à proposta!");
+    setCatalogSearch("");
   };
+
+  const filteredCatalogDevices = catalogDevices.filter(device =>
+    device.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+    (device.brand && device.brand.toLowerCase().includes(catalogSearch.toLowerCase())) ||
+    (device.model && device.model.toLowerCase().includes(catalogSearch.toLowerCase()))
+  );
 
   const handleSave = async () => {
     setSaving(true);
@@ -571,62 +577,75 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
               </Button>
             </div>
 
-            {/* Formulário para adicionar item manual */}
+            {/* Lista de produtos do catálogo */}
             {showAddItem && (
               <div className="p-4 mb-4 border rounded-lg bg-muted/30 space-y-3">
-                <h4 className="font-medium">Novo Item (Cabeamento, Tubulação, etc.)</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <Label>Nome do Produto</Label>
-                    <Input
-                      placeholder="Ex: Cabo UTP Cat6 (metros)"
-                      value={newItem.name}
-                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Quantidade</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Preço Unitário (R$)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newItem.unit_price}
-                      onChange={(e) => setNewItem({ ...newItem, unit_price: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Preço Instalação (R$)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newItem.installation_price}
-                      onChange={(e) => setNewItem({ ...newItem, installation_price: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <p className="text-sm text-muted-foreground">
-                      Subtotal: {formatCurrency(newItem.quantity * (newItem.unit_price + newItem.installation_price))}
-                    </p>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Selecionar do Catálogo</h4>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowAddItem(false); setCatalogSearch(""); }}>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleAddManualItem}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowAddItem(false)}>
-                    Cancelar
-                  </Button>
+                
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produto por nome, marca ou modelo..."
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {loadingDevices ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">Carregando catálogo...</p>
+                  ) : filteredCatalogDevices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {catalogSearch ? "Nenhum produto encontrado" : "Nenhum produto no catálogo"}
+                    </p>
+                  ) : (
+                    filteredCatalogDevices.map((device) => {
+                      const category = categories.find(c => c.id === device.category_id);
+                      const isAlreadyAdded = items.some(item => item.device_id === device.id);
+                      
+                      return (
+                        <div
+                          key={device.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                            isAlreadyAdded 
+                              ? "bg-primary/10 border-primary/30 hover:bg-primary/20" 
+                              : "bg-background hover:bg-muted"
+                          }`}
+                          onClick={() => handleAddCatalogItem(device)}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{device.name}</p>
+                              {isAlreadyAdded && (
+                                <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+                                  Já adicionado
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              {category && <span>{category.name}</span>}
+                              {device.brand && <span>• {device.brand}</span>}
+                              {device.model && <span>• {device.model}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-primary">
+                              {formatCurrency(device.unit_price + device.installation_price)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Equip: {formatCurrency(device.unit_price)} + Inst: {formatCurrency(device.installation_price)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
