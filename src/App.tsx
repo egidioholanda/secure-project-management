@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/Layout/Sidebar";
 import { Header } from "@/components/Layout/Header";
 import Dashboard from "./pages/Dashboard";
@@ -12,8 +13,135 @@ import Catalog from "./pages/Catalog";
 import Schedules from "./pages/Schedules";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Users from "./pages/Users";
 
 const queryClient = new QueryClient();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuthContext();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      <Sidebar />
+      <Header />
+      <main className="ml-64 pt-16 p-6">
+        <div className="max-w-7xl mx-auto">{children}</div>
+      </main>
+    </div>
+  );
+};
+
+const AppRoutes = () => {
+  const { user, isLoading } = useAuthContext();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          isLoading ? (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Login />
+          )
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Dashboard />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/oportunidades"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Opportunities />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projetos"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Projects />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/catalogo"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Catalog />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cronogramas"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Schedules />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/relatorios"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Reports />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Users />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,23 +149,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="min-h-screen bg-gradient-subtle">
-          <Sidebar />
-          <Header />
-          <main className="ml-64 pt-16 p-6">
-            <div className="max-w-7xl mx-auto">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/oportunidades" element={<Opportunities />} />
-                <Route path="/projetos" element={<Projects />} />
-                <Route path="/catalogo" element={<Catalog />} />
-                <Route path="/cronogramas" element={<Schedules />} />
-                <Route path="/relatorios" element={<Reports />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </main>
-        </div>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
