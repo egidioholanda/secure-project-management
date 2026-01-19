@@ -6,9 +6,11 @@ import {
   Package, 
   Calendar,
   FileText,
-  Settings
+  Settings,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -21,6 +23,12 @@ const navItems = [
 
 export const Sidebar = () => {
   const location = useLocation();
+  const { isAdmin, user } = useAuthContext();
+
+  const allNavItems = [
+    ...navItems,
+    ...(isAdmin ? [{ icon: Users, label: "Usuários", path: "/usuarios" }] : []),
+  ];
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
@@ -48,7 +56,7 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {allNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           
