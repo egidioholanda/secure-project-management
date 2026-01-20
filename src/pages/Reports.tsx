@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FileText, Plus, Search, Filter, Calendar } from "lucide-react";
+import { useState, useMemo } from "react";
+import { FileText, Plus, Search, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,84 +13,13 @@ import {
 import { ReportCard } from "@/components/Reports/ReportCard";
 import { CreateReportDialog } from "@/components/Reports/CreateReportDialog";
 import { ViewReportDialog } from "@/components/Reports/ViewReportDialog";
-import { Report, TaskProgress } from "@/types/report";
-import { toast } from "sonner";
-
-// Sample projects with tasks
-const sampleProjects = [
-  {
-    id: "proj-1",
-    name: "CFTV Shopping Center Norte",
-    tasks: [
-      { id: "t1", name: "Instalação de câmeras - Setor A", progress: 100, status: "completed" as const, assignee: "João Silva" },
-      { id: "t2", name: "Instalação de câmeras - Setor B", progress: 75, status: "in_progress" as const, assignee: "Maria Santos" },
-      { id: "t3", name: "Configuração do NVR", progress: 50, status: "in_progress" as const, assignee: "Pedro Costa" },
-      { id: "t4", name: "Testes de integração", progress: 0, status: "pending" as const, assignee: "Ana Oliveira" },
-    ],
-  },
-  {
-    id: "proj-2",
-    name: "Controle de Acesso Edifício Comercial",
-    tasks: [
-      { id: "t5", name: "Instalação de leitores - Térreo", progress: 100, status: "completed" as const, assignee: "Carlos Lima" },
-      { id: "t6", name: "Instalação de leitores - 1º andar", progress: 60, status: "in_progress" as const, assignee: "Roberto Alves" },
-      { id: "t7", name: "Configuração do software", progress: 30, status: "in_progress" as const, assignee: "Julia Ferreira" },
-    ],
-  },
-  {
-    id: "proj-3",
-    name: "Alarme Perimetral Condomínio",
-    tasks: [
-      { id: "t8", name: "Instalação de sensores", progress: 85, status: "in_progress" as const, assignee: "Marcos Souza" },
-      { id: "t9", name: "Configuração da central", progress: 40, status: "in_progress" as const, assignee: "Fernanda Dias" },
-    ],
-  },
-];
-
-// Sample reports
-const initialReports: Report[] = [
-  {
-    id: "rep-1",
-    projectId: "proj-1",
-    projectName: "CFTV Shopping Center Norte",
-    title: "Relatório Semanal - Semana 50",
-    createdAt: new Date(2024, 11, 15),
-    author: "João Silva",
-    status: "published",
-    period: {
-      start: new Date(2024, 11, 9),
-      end: new Date(2024, 11, 15),
-    },
-    summary: "Progresso significativo na instalação das câmeras do Setor A. Iniciamos a instalação no Setor B conforme planejado.",
-    observations: "A equipe manteve um bom ritmo de trabalho. Coordenação com a administração do shopping tem sido excelente.",
-    challenges: "Houve um pequeno atraso devido à necessidade de adaptação de alguns pontos de instalação.",
-    nextSteps: "Finalizar Setor B e iniciar configuração completa do NVR.",
-    photos: [],
-    tasks: sampleProjects[0].tasks.slice(0, 2),
-  },
-  {
-    id: "rep-2",
-    projectId: "proj-2",
-    projectName: "Controle de Acesso Edifício Comercial",
-    title: "Relatório Quinzenal - Dezembro 1ª Quinzena",
-    createdAt: new Date(2024, 11, 16),
-    author: "Carlos Lima",
-    status: "draft",
-    period: {
-      start: new Date(2024, 11, 1),
-      end: new Date(2024, 11, 15),
-    },
-    summary: "Instalação do térreo concluída com sucesso. Início das atividades no 1º andar.",
-    observations: "Sistema do térreo já está operacional e em fase de testes pelos usuários.",
-    challenges: "Necessidade de coordenar horários com os inquilinos para minimizar interrupções.",
-    nextSteps: "Concluir 1º andar e integrar com sistema existente.",
-    photos: [],
-    tasks: sampleProjects[1].tasks.slice(0, 2),
-  },
-];
+import { Report } from "@/types/report";
+import { useReports } from "@/hooks/useReports";
+import { useProjects } from "@/hooks/useProjects";
 
 const Reports = () => {
-  const [reports, setReports] = useState<Report[]>(initialReports);
+  const { reports, loading, addReport, updateReport, deleteReport } = useReports();
+  const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -98,6 +27,15 @@ const Reports = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [editReport, setEditReport] = useState<Report | null>(null);
+
+  // Transform db projects to format needed by CreateReportDialog
+  const projectsForDialog = useMemo(() => {
+    return dbProjects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      tasks: [], // Tasks would come from schedule_tasks in a real scenario
+    }));
+  }, [dbProjects]);
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -107,14 +45,8 @@ const Reports = () => {
     return matchesSearch && matchesProject && matchesStatus;
   });
 
-  const handleCreateReport = (reportData: Omit<Report, 'id' | 'createdAt'>) => {
-    const newReport: Report = {
-      ...reportData,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-    };
-    setReports(prev => [newReport, ...prev]);
-    toast.success("Relatório criado com sucesso!");
+  const handleCreateReport = async (reportData: Omit<Report, 'id' | 'createdAt'>) => {
+    await addReport(reportData);
   };
 
   const handleViewReport = (report: Report) => {
@@ -127,13 +59,20 @@ const Reports = () => {
     setCreateDialogOpen(true);
   };
 
-  const handleDeleteReport = (report: Report) => {
-    setReports(prev => prev.filter(r => r.id !== report.id));
-    toast.success("Relatório excluído com sucesso!");
+  const handleDeleteReport = async (report: Report) => {
+    await deleteReport(report.id);
   };
 
   const publishedCount = reports.filter(r => r.status === 'published').length;
   const draftCount = reports.filter(r => r.status === 'draft').length;
+
+  if (loading || projectsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -207,7 +146,7 @@ const Reports = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Projetos</SelectItem>
-              {sampleProjects.map(project => (
+              {dbProjects.map(project => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}
                 </SelectItem>
@@ -262,7 +201,7 @@ const Reports = () => {
       <CreateReportDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        projects={sampleProjects}
+        projects={projectsForDialog}
         onSave={handleCreateReport}
         editReport={editReport}
       />
