@@ -1,87 +1,33 @@
 import { useState } from "react";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OpportunityCard } from "@/components/Opportunities/OpportunityCard";
 import { Input } from "@/components/ui/input";
 import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityDialog";
-
-interface Opportunity {
-  id: string;
-  title: string;
-  client: string;
-  value: string;
-  type: string;
-  responsible: string;
-  createdAt: string;
-  status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha";
-}
-
-const initialOpportunities: Opportunity[] = [
-  {
-    id: "1",
-    title: "Banco Central - Sistema CFTV",
-    client: "Banco do Brasil",
-    value: "R$ 450.000",
-    type: "CFTV",
-    responsible: "João Silva",
-    createdAt: "2 dias atrás",
-    status: "qualificacao",
-  },
-  {
-    id: "2",
-    title: "Condomínio Vila Rica - Controle Acesso",
-    client: "Condomínio Vila Rica",
-    value: "R$ 85.000",
-    type: "Controle de Acesso",
-    responsible: "Maria Santos",
-    createdAt: "5 dias atrás",
-    status: "proposta",
-  },
-  {
-    id: "3",
-    title: "Indústria Metalúrgica - Alarme Perimetral",
-    client: "Metalúrgica Forte",
-    value: "R$ 320.000",
-    type: "Alarme Perimetral",
-    responsible: "Carlos Mendes",
-    createdAt: "1 semana atrás",
-    status: "negociacao",
-  },
-  {
-    id: "4",
-    title: "Hospital São Lucas - Sistema Integrado",
-    client: "Hospital São Lucas",
-    value: "R$ 680.000",
-    type: "Sistema Integrado",
-    responsible: "Ana Paula",
-    createdAt: "3 dias atrás",
-    status: "prospeccao",
-  },
-];
+import { useOpportunities, Opportunity } from "@/hooks/useOpportunities";
 
 const Opportunities = () => {
+  const {
+    opportunities,
+    loading,
+    addOpportunity,
+    updateOpportunity,
+    deleteOpportunity,
+  } = useOpportunities();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
-  const handleAddOpportunity = (newOpp: Omit<Opportunity, "id" | "createdAt">) => {
-    const opportunity: Opportunity = {
-      ...newOpp,
-      id: Date.now().toString(),
-      createdAt: "Agora",
-    };
-    setOpportunities((prev) => [...prev, opportunity]);
+  const handleAddOpportunity = async (newOpp: Omit<Opportunity, "id" | "createdAt">) => {
+    await addOpportunity(newOpp);
   };
 
-  const handleEditOpportunity = (updated: Opportunity) => {
-    setOpportunities((prev) =>
-      prev.map((opp) => (opp.id === updated.id ? updated : opp))
-    );
+  const handleEditOpportunity = async (updated: Opportunity) => {
+    await updateOpportunity(updated);
     setEditingOpportunity(null);
   };
 
-  const handleDeleteOpportunity = (id: string) => {
-    setOpportunities((prev) => prev.filter((opp) => opp.id !== id));
+  const handleDeleteOpportunity = async (id: string) => {
+    await deleteOpportunity(id);
   };
 
   const openEditDialog = (id: string) => {
@@ -99,6 +45,14 @@ const Opportunities = () => {
     { key: "negociacao", label: "Negociação" },
     { key: "ganha", label: "Ganha" },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

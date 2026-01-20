@@ -82,7 +82,7 @@ const AddProjectDialog = ({
     }
 
     const project: Project = {
-      id: editingProject?.id || Date.now().toString(),
+      id: editingProject?.id || "",
       name: formData.name,
       client: formData.client,
       type: formData.type,
@@ -96,11 +96,6 @@ const AddProjectDialog = ({
 
     onAddProject(project);
     onOpenChange(false);
-    toast.success(
-      editingProject
-        ? "Projeto atualizado com sucesso!"
-        : "Projeto criado com sucesso!"
-    );
   };
 
   return (

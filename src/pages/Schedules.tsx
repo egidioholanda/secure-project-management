@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { addDays, subDays, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Filter, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { addDays, subDays } from 'date-fns';
+import { ChevronLeft, ChevronRight, Filter, Download, Loader2 } from 'lucide-react';
 import { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
@@ -9,97 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-
-// Sample data - replace with actual data from your backend
-const sampleProjects = [
-  { id: 'proj-1', name: 'Shopping Center Norte', color: '#3B82F6' },
-  { id: 'proj-2', name: 'Condomínio Alphaville', color: '#10B981' },
-  { id: 'proj-3', name: 'Banco Central - Sede', color: '#F59E0B' },
-];
-
-const initialTasks: Task[] = [
-  {
-    id: 'task-1',
-    name: 'Levantamento de campo',
-    startDate: new Date(2024, 11, 16),
-    endDate: new Date(2024, 11, 20),
-    progress: 100,
-    assignee: 'Carlos Silva',
-    projectId: 'proj-1',
-    projectName: 'Shopping Center Norte',
-    color: '#3B82F6',
-  },
-  {
-    id: 'task-2',
-    name: 'Projeto executivo CFTV',
-    startDate: new Date(2024, 11, 18),
-    endDate: new Date(2024, 11, 28),
-    progress: 65,
-    assignee: 'Ana Paula',
-    projectId: 'proj-1',
-    projectName: 'Shopping Center Norte',
-    color: '#3B82F6',
-  },
-  {
-    id: 'task-3',
-    name: 'Instalação de câmeras',
-    startDate: new Date(2024, 11, 26),
-    endDate: new Date(2025, 0, 10),
-    progress: 20,
-    assignee: 'Equipe Técnica A',
-    projectId: 'proj-1',
-    projectName: 'Shopping Center Norte',
-    color: '#3B82F6',
-  },
-  {
-    id: 'task-4',
-    name: 'Análise de segurança',
-    startDate: new Date(2024, 11, 15),
-    endDate: new Date(2024, 11, 18),
-    progress: 100,
-    assignee: 'Roberto Lima',
-    projectId: 'proj-2',
-    projectName: 'Condomínio Alphaville',
-    color: '#10B981',
-  },
-  {
-    id: 'task-5',
-    name: 'Instalação controle de acesso',
-    startDate: new Date(2024, 11, 20),
-    endDate: new Date(2025, 0, 5),
-    progress: 40,
-    assignee: 'Equipe Técnica B',
-    projectId: 'proj-2',
-    projectName: 'Condomínio Alphaville',
-    color: '#10B981',
-  },
-  {
-    id: 'task-6',
-    name: 'Entrega final',
-    startDate: new Date(2025, 0, 15),
-    endDate: new Date(2025, 0, 15),
-    progress: 0,
-    assignee: 'Carlos Silva',
-    projectId: 'proj-1',
-    projectName: 'Shopping Center Norte',
-    color: '#3B82F6',
-    isMilestone: true,
-  },
-  {
-    id: 'task-7',
-    name: 'Projeto alarme perimetral',
-    startDate: new Date(2024, 11, 22),
-    endDate: new Date(2025, 0, 8),
-    progress: 30,
-    assignee: 'Marcos Oliveira',
-    projectId: 'proj-3',
-    projectName: 'Banco Central - Sede',
-    color: '#F59E0B',
-  },
-];
+import { useScheduleTasks } from '@/hooks/useScheduleTasks';
+import { useProjects } from '@/hooks/useProjects';
 
 const Schedules = () => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { tasks, loading, addTask, updateTask, deleteTask } = useScheduleTasks();
+  const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [filterProject, setFilterProject] = useState<string>('all');
@@ -110,16 +25,24 @@ const Schedules = () => {
     end: addDays(new Date(), 45),
   });
 
+  // Transform db projects to format needed by AddTaskDialog
+  const projectsList = useMemo(() => {
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+    return dbProjects.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      color: colors[idx % colors.length],
+    }));
+  }, [dbProjects]);
+
   // Filter tasks by project
   const filteredTasks = useMemo(() => {
     if (filterProject === 'all') return tasks;
     return tasks.filter((task) => task.projectId === filterProject);
   }, [tasks, filterProject]);
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
+  const handleUpdateTask = async (updatedTask: Task) => {
+    await updateTask(updatedTask);
   };
 
   const handleTaskClick = (task: Task) => {
@@ -127,23 +50,17 @@ const Schedules = () => {
     setEditDialogOpen(true);
   };
 
-  const handleSaveTask = (task: Task) => {
-    handleUpdateTask(task);
+  const handleSaveTask = async (task: Task) => {
+    await updateTask(task);
     toast.success('Tarefa atualizada com sucesso!');
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-    toast.success('Tarefa excluída com sucesso!');
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteTask(taskId);
   };
 
-  const handleAddTask = (newTask: Omit<Task, 'id'>) => {
-    const task: Task = {
-      ...newTask,
-      id: `task-${Date.now()}`,
-    };
-    setTasks((prev) => [...prev, task]);
-    toast.success('Tarefa adicionada com sucesso!');
+  const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
+    await addTask(newTask);
   };
 
   const navigateTimeline = (direction: 'prev' | 'next') => {
@@ -161,6 +78,14 @@ const Schedules = () => {
     });
   };
 
+  if (loading || projectsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 h-full flex flex-col">
       {/* Header */}
@@ -171,7 +96,7 @@ const Schedules = () => {
             Gerencie cronogramas de projetos com gráfico de Gantt interativo
           </p>
         </div>
-        <AddTaskDialog projects={sampleProjects} onAdd={handleAddTask} />
+        <AddTaskDialog projects={projectsList} onAdd={handleAddTask} />
       </div>
 
       {/* Toolbar */}
@@ -200,7 +125,7 @@ const Schedules = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os projetos</SelectItem>
-                  {sampleProjects.map((project) => (
+                  {projectsList.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
                         <div

@@ -1,69 +1,23 @@
 import { useState } from "react";
-import { Plus, Filter, Grid, List } from "lucide-react";
+import { Plus, Filter, Grid, List, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddProjectDialog from "@/components/Projects/AddProjectDialog";
 import ProjectCard from "@/components/Projects/ProjectCard";
 import ProjectDetailView from "@/components/Projects/ProjectDetailView";
+import { useProjects } from "@/hooks/useProjects";
 import type { Project } from "@/types/project";
-import { toast } from "sonner";
 
 const Projects = () => {
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "1",
-      name: "Shopping Center Norte - CFTV",
-      client: "Shopping Center Norte",
-      type: "CFTV",
-      status: "execution",
-      startDate: "01/03/2024",
-      endDate: "30/06/2024",
-      manager: "João Silva",
-      value: "R$ 180.000",
-    },
-    {
-      id: "2",
-      name: "Condomínio Residencial - Controle Acesso",
-      client: "Condomínio Portal das Águas",
-      type: "Controle de Acesso",
-      status: "execution",
-      startDate: "15/03/2024",
-      endDate: "15/07/2024",
-      manager: "Maria Santos",
-      value: "R$ 95.000",
-    },
-    {
-      id: "3",
-      name: "Fábrica Industrial - Alarme Perimetral",
-      client: "Indústria Forte LTDA",
-      type: "Alarme Perimetral",
-      status: "planning",
-      startDate: "20/04/2024",
-      endDate: "20/08/2024",
-      manager: "Carlos Mendes",
-      value: "R$ 220.000",
-    },
-    {
-      id: "4",
-      name: "Hospital São Lucas - Sistema Integrado",
-      client: "Hospital São Lucas",
-      type: "Sistema Integrado",
-      status: "completed",
-      startDate: "01/01/2024",
-      endDate: "31/03/2024",
-      manager: "Ana Paula",
-      value: "R$ 450.000",
-    },
-  ]);
-
+  const { projects, loading, addProject, updateProject, deleteProject } = useProjects();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  const handleAddOrUpdateProject = (project: Project) => {
+  const handleAddOrUpdateProject = async (project: Project) => {
     if (editingProject) {
-      setProjects(projects.map((p) => (p.id === project.id ? project : p)));
+      await updateProject(project);
     } else {
-      setProjects([...projects, project]);
+      await addProject(project);
     }
     setEditingProject(null);
   };
@@ -73,9 +27,8 @@ const Projects = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteProject = (projectId: string) => {
-    setProjects(projects.filter((p) => p.id !== projectId));
-    toast.success("Projeto excluído com sucesso!");
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject(projectId);
   };
 
   const handleNewProject = () => {
@@ -97,6 +50,14 @@ const Projects = () => {
           setIsDialogOpen(true);
         }}
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
@@ -136,17 +97,27 @@ const Projects = () => {
       </div>
 
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <div key={project.id} onClick={() => handleSelectProject(project)}>
-            <ProjectCard
-              project={project}
-              onEdit={handleEditProject}
-              onDelete={handleDeleteProject}
-            />
-          </div>
-        ))}
-      </div>
+      {projects.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">Nenhum projeto encontrado</p>
+          <Button onClick={handleNewProject}>
+            <Plus className="w-4 h-4 mr-2" />
+            Criar Primeiro Projeto
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map((project) => (
+            <div key={project.id} onClick={() => handleSelectProject(project)}>
+              <ProjectCard
+                project={project}
+                onEdit={handleEditProject}
+                onDelete={handleDeleteProject}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       <AddProjectDialog
         open={isDialogOpen}
