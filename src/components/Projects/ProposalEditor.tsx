@@ -48,13 +48,20 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     discount_percentage: 0,
   });
 
+  // Flag para controlar se já inicializou os itens
+  const [initialized, setInitialized] = useState(false);
+
   useEffect(() => {
+    // Só carrega/gera uma vez na inicialização
+    if (initialized) return;
+    
     if (existingProposalId) {
       loadExistingProposal();
-    } else {
+    } else if (placedDevices.length > 0 || items.length === 0) {
       generateProposalItems();
     }
-  }, [existingProposalId, placedDevices]);
+    setInitialized(true);
+  }, [existingProposalId]);
 
   const loadExistingProposal = async () => {
     if (!existingProposalId) return;
@@ -266,11 +273,17 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
           subtotal: item.subtotal,
         }));
 
-        const { error: itemsError } = await supabase
+        const { data: savedItems, error: itemsError } = await supabase
           .from("proposal_items")
-          .insert(itemsToInsert);
+          .insert(itemsToInsert)
+          .select();
 
         if (itemsError) throw itemsError;
+        
+        // Atualiza o estado local com os itens salvos (com IDs reais do banco)
+        if (savedItems) {
+          setItems(savedItems as ProposalItem[]);
+        }
 
         toast.success("Proposta atualizada com sucesso!");
       } else {
@@ -313,13 +326,20 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
           subtotal: item.subtotal,
         }));
 
-        const { error: itemsError } = await supabase
+        const { data: savedItems, error: itemsError } = await supabase
           .from("proposal_items")
-          .insert(itemsToInsert);
+          .insert(itemsToInsert)
+          .select();
 
         if (itemsError) throw itemsError;
 
         setProposal(savedProposal as Proposal);
+        
+        // Atualiza o estado local com os itens salvos (com IDs reais do banco)
+        if (savedItems) {
+          setItems(savedItems as ProposalItem[]);
+        }
+        
         toast.success("Proposta salva com sucesso!");
       }
     } catch (error) {
