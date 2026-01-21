@@ -17,8 +17,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import type { Device, DeviceCategory } from "@/types/project";
 
+const iconOptions = [
+  { value: "Camera", label: "Câmera", icon: Camera },
+  { value: "Radio", label: "Sensor", icon: Radio },
+  { value: "DoorOpen", label: "Porta/Acesso", icon: DoorOpen },
+  { value: "Bell", label: "Alarme", icon: Bell },
+  { value: "Zap", label: "Cerca Elétrica", icon: Zap },
+  { value: "Phone", label: "Interfone", icon: Phone },
+  { value: "Shield", label: "Escudo", icon: Shield },
+  { value: "Wifi", label: "Wi-Fi", icon: Wifi },
+  { value: "Monitor", label: "Monitor", icon: Monitor },
+  { value: "Lock", label: "Fechadura", icon: Lock },
+  { value: "Eye", label: "Olho", icon: Eye },
+  { value: "Lightbulb", label: "Iluminação", icon: Lightbulb },
+  { value: "Thermometer", label: "Temperatura", icon: Thermometer },
+  { value: "Settings", label: "Genérico", icon: Settings },
+];
 interface AddDeviceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -181,6 +198,40 @@ const AddDeviceDialog = ({
                   placeholder="0.00"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Ícone</Label>
+              <Select
+                value={deviceForm.icon}
+                onValueChange={(value) =>
+                  setDeviceForm({ ...deviceForm, icon: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um ícone">
+                    {deviceForm.icon && (
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const IconComp = iconOptions.find(i => i.value === deviceForm.icon)?.icon || Settings;
+                          return <IconComp className="w-4 h-4" />;
+                        })()}
+                        <span>{iconOptions.find(i => i.value === deviceForm.icon)?.label}</span>
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {iconOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex items-center gap-2">
+                        <opt.icon className="w-4 h-4" />
+                        <span>{opt.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
