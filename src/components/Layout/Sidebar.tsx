@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
+import logo from "@/assets/logo.png";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -35,18 +36,11 @@ export const Sidebar = () => {
       {/* Logo/Header */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow">
-            <svg 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              className="w-6 h-6 text-primary-foreground"
-            >
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </div>
+          <img 
+            src={logo} 
+            alt="SecureProject Logo" 
+            className="w-10 h-10 object-contain"
+          />
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">SecureProject</h1>
             <p className="text-xs text-sidebar-foreground/60">Gestão Inteligente</p>
