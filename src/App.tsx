@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -134,6 +135,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Users />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Settings />
             </AppLayout>
           </ProtectedRoute>
         }

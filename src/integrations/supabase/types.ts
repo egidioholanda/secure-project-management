@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_settings: {
+        Row: {
+          cnpj: string | null
+          company_name: string | null
+          contact: string | null
+          created_at: string
+          email: string | null
+          footer_logo_url: string | null
+          header_logo_url: string | null
+          id: string
+          responsible_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          company_name?: string | null
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          footer_logo_url?: string | null
+          header_logo_url?: string | null
+          id?: string
+          responsible_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          company_name?: string | null
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          footer_logo_url?: string | null
+          header_logo_url?: string | null
+          id?: string
+          responsible_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       device_categories: {
         Row: {
           created_at: string
