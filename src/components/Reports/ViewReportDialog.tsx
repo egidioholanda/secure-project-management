@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Calendar,
   User,
@@ -6,8 +6,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Upload,
-  X,
   Loader2,
 } from "lucide-react";
 import {
@@ -19,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
 import { Report } from "@/types/report";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,6 +24,7 @@ import { ReportPDFPreview } from "./ReportPDFPreview";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 interface ViewReportDialogProps {
   open: boolean;
@@ -39,7 +37,7 @@ export const ViewReportDialog = ({
   onOpenChange,
   report,
 }: ViewReportDialogProps) => {
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const { settings, isLoading: loadingSettings } = useCompanySettings();
   const [exporting, setExporting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -64,21 +62,6 @@ export const ViewReportDialog = ({
     report.tasks.length > 0
       ? Math.round((completedTasks / report.tasks.length) * 100)
       : 0;
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setCompanyLogo(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveLogo = () => {
-    setCompanyLogo(null);
-  };
 
   const handleExportPDF = async () => {
     if (!pdfRef.current) return;
@@ -166,42 +149,19 @@ export const ViewReportDialog = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Logo Upload */}
-          <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-            <Label className="text-sm font-medium mb-2 block">
-              Logo da Empresa (aparecerá no PDF)
-            </Label>
-            {companyLogo ? (
-              <div className="flex items-center gap-4">
-                <img
-                  src={companyLogo}
-                  alt="Logo da empresa"
-                  className="h-12 w-auto object-contain"
-                />
-                <Button variant="ghost" size="sm" onClick={handleRemoveLogo}>
-                  <X className="w-4 h-4 mr-1" />
-                  Remover
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  id="logo-upload"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="logo-upload"
-                  className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-border hover:border-primary/50 transition-colors text-sm text-muted-foreground hover:text-foreground"
-                >
-                  <Upload className="w-4 h-4" />
-                  Adicionar logo
-                </label>
-              </div>
-            )}
-          </div>
+          {/* Company Info from Settings */}
+          {settings?.header_logo_url && (
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <p className="text-sm text-muted-foreground mb-2">
+                Logo da empresa (das configurações)
+              </p>
+              <img
+                src={settings.header_logo_url}
+                alt="Logo da empresa"
+                className="h-12 w-auto object-contain"
+              />
+            </div>
+          )}
 
           {/* Meta info */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -372,7 +332,7 @@ export const ViewReportDialog = ({
 
         {/* Hidden PDF Preview for Export */}
         <div className="fixed left-[-9999px] top-0">
-          <ReportPDFPreview ref={pdfRef} report={report} companyLogo={companyLogo} />
+          <ReportPDFPreview ref={pdfRef} report={report} companySettings={settings} />
         </div>
       </DialogContent>
     </Dialog>
