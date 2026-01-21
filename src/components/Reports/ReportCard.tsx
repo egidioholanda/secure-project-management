@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Calendar, User, FileText, Eye, Download, MoreVertical, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { ReportPDFPreview } from "./ReportPDFPreview";
 import { exportReportToPDF } from "@/utils/exportReportPDF";
 import { toast } from "sonner";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 interface ReportCardProps {
   report: Report;
@@ -26,6 +27,7 @@ interface ReportCardProps {
 export const ReportCard = ({ report, onView, onEdit, onDelete }: ReportCardProps) => {
   const [exporting, setExporting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+  const { settings: companySettings } = useCompanySettings();
 
   const statusColors = {
     draft: "bg-amber-500/10 text-amber-500 border-amber-500/20",
@@ -161,7 +163,7 @@ export const ReportCard = ({ report, onView, onEdit, onDelete }: ReportCardProps
 
       {/* Hidden PDF Preview for Export */}
       <div className="fixed left-[-9999px] top-0">
-        <ReportPDFPreview ref={pdfRef} report={report} companyLogo={null} />
+        <ReportPDFPreview ref={pdfRef} report={report} companySettings={companySettings} />
       </div>
     </>
   );

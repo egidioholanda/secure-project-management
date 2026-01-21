@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import type { ProposalItem } from "@/types/project";
-import { Separator } from "@/components/ui/separator";
+import type { CompanySettings } from "@/hooks/useCompanySettings";
 
 interface ProposalPDFPreviewProps {
   formData: {
@@ -24,11 +24,11 @@ interface ProposalPDFPreviewProps {
     discountAmount: number;
     grandTotal: number;
   };
-  companyLogo?: string | null;
+  companySettings?: CompanySettings | null;
 }
 
 export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewProps>(
-  ({ formData, items, totals, companyLogo }, ref) => {
+  ({ formData, items, totals, companySettings }, ref) => {
     const formatCurrency = (value: number) =>
       new Intl.NumberFormat("pt-BR", {
         style: "currency",
@@ -38,15 +38,15 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
     return (
       <div
         ref={ref}
-        className="bg-white text-black p-8 w-[210mm] min-h-[297mm]"
+        className="bg-white text-black p-8 w-[210mm]"
         style={{ fontFamily: "Arial, sans-serif" }}
       >
-        {/* Header with Logo */}
+        {/* Header with Logo and Company Info */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-gray-300">
           <div className="flex items-center gap-4">
-            {companyLogo && (
+            {companySettings?.header_logo_url && (
               <img
-                src={companyLogo}
+                src={companySettings.header_logo_url}
                 alt="Logo da Empresa"
                 className="h-16 w-auto object-contain"
               />
@@ -61,6 +61,29 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
             <p>Validade: {formData.validity_days} dias</p>
           </div>
         </div>
+
+        {/* Company Info Section */}
+        {companySettings && (companySettings.company_name || companySettings.cnpj) && (
+          <div className="mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {companySettings.company_name && (
+                <p className="text-gray-700"><strong>Empresa:</strong> {companySettings.company_name}</p>
+              )}
+              {companySettings.cnpj && (
+                <p className="text-gray-700"><strong>CNPJ:</strong> {companySettings.cnpj}</p>
+              )}
+              {companySettings.responsible_name && (
+                <p className="text-gray-700"><strong>Responsável:</strong> {companySettings.responsible_name}</p>
+              )}
+              {companySettings.contact && (
+                <p className="text-gray-700"><strong>Contato:</strong> {companySettings.contact}</p>
+              )}
+              {companySettings.email && (
+                <p className="text-gray-700"><strong>E-mail:</strong> {companySettings.email}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Client Info */}
         <div className="mb-6">
@@ -207,10 +230,17 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
         )}
 
         {/* Footer */}
-        <div className="mt-auto pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
+        <div className="pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
           <p>
             Proposta válida por {formData.validity_days} dias • Gerado automaticamente pelo SecureProject
           </p>
+          {companySettings?.footer_logo_url && (
+            <img
+              src={companySettings.footer_logo_url}
+              alt="Logo rodapé"
+              className="h-8 w-auto object-contain mx-auto mt-2"
+            />
+          )}
         </div>
       </div>
     );

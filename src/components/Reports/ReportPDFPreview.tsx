@@ -2,15 +2,15 @@ import { forwardRef } from "react";
 import { Report } from "@/types/report";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import type { CompanySettings } from "@/hooks/useCompanySettings";
 
 interface ReportPDFPreviewProps {
   report: Report;
-  companyLogo?: string | null;
+  companySettings?: CompanySettings | null;
 }
 
 export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps>(
-  ({ report, companyLogo }, ref) => {
+  ({ report, companySettings }, ref) => {
     const statusLabel = {
       pending: "Pendente",
       in_progress: "Em Andamento",
@@ -26,15 +26,15 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
     return (
       <div
         ref={ref}
-        className="bg-white text-black p-8 w-[210mm] min-h-[297mm]"
+        className="bg-white text-black p-8 w-[210mm]"
         style={{ fontFamily: "Arial, sans-serif" }}
       >
-        {/* Header with Logo */}
+        {/* Header with Logo and Company Info */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-gray-300">
           <div className="flex items-center gap-4">
-            {companyLogo && (
+            {companySettings?.header_logo_url && (
               <img
-                src={companyLogo}
+                src={companySettings.header_logo_url}
                 alt="Logo da Empresa"
                 className="h-16 w-auto object-contain"
               />
@@ -55,6 +55,30 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
             </p>
           </div>
         </div>
+
+        {/* Company Info Section */}
+        {companySettings && (companySettings.company_name || companySettings.cnpj || companySettings.contact) && (
+          <div className="mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+            <h2 className="text-sm font-bold text-gray-800 mb-2">Empresa Responsável</h2>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {companySettings.company_name && (
+                <p className="text-gray-700"><strong>Empresa:</strong> {companySettings.company_name}</p>
+              )}
+              {companySettings.cnpj && (
+                <p className="text-gray-700"><strong>CNPJ:</strong> {companySettings.cnpj}</p>
+              )}
+              {companySettings.responsible_name && (
+                <p className="text-gray-700"><strong>Responsável:</strong> {companySettings.responsible_name}</p>
+              )}
+              {companySettings.contact && (
+                <p className="text-gray-700"><strong>Contato:</strong> {companySettings.contact}</p>
+              )}
+              {companySettings.email && (
+                <p className="text-gray-700"><strong>E-mail:</strong> {companySettings.email}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Summary */}
         {report.summary && (
@@ -170,10 +194,17 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
         )}
 
         {/* Footer */}
-        <div className="mt-auto pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
+        <div className="pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
           <p>
             Relatório #{report.id.slice(0, 8)} • Gerado automaticamente pelo SecureProject
           </p>
+          {companySettings?.footer_logo_url && (
+            <img
+              src={companySettings.footer_logo_url}
+              alt="Logo rodapé"
+              className="h-8 w-auto object-contain mx-auto mt-2"
+            />
+          )}
         </div>
       </div>
     );

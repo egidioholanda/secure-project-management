@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, ImageIcon, Search } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PlacedDevice, Proposal, ProposalItem, Project, Device } from "@/types/project";
 import { useDevices } from "@/hooks/useDevices";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ProposalPDFPreview } from "./ProposalPDFPreview";
@@ -26,12 +27,11 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
   const proposalRef = useRef<HTMLDivElement>(null);
   const [showAddItem, setShowAddItem] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const { devices: catalogDevices, categories, loading: loadingDevices } = useDevices();
+  const { settings: companySettings } = useCompanySettings();
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
@@ -147,29 +147,6 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     return { totalDevices, totalInstallation, discountAmount, grandTotal };
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione uma imagem válida");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setCompanyLogo(e.target?.result as string);
-      toast.success("Logo adicionada!");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveLogo = () => {
-    setCompanyLogo(null);
-    if (logoInputRef.current) {
-      logoInputRef.current.value = "";
-    }
-  };
 
   const handleUpdateItemQuantity = (itemId: string, delta: number) => {
     setItems(items.map(item => {
@@ -564,44 +541,22 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
 
           <Separator />
 
-          {/* Logo da Empresa */}
-          <div>
-            <Label>Logo da Empresa</Label>
-            <div className="mt-2">
-              <input
-                type="file"
-                ref={logoInputRef}
-                onChange={handleLogoUpload}
-                accept="image/*"
-                className="hidden"
-              />
-              {companyLogo ? (
-                <div className="flex items-center gap-4">
-                  <img
-                    src={companyLogo}
-                    alt="Logo da empresa"
-                    className="h-16 w-auto object-contain border rounded p-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveLogo}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Remover
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => logoInputRef.current?.click()}
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Adicionar Logo
-                </Button>
-              )}
+          {/* Logo da Empresa (das configurações) */}
+          {companySettings?.header_logo_url && (
+            <div>
+              <Label>Logo da Empresa (das Configurações)</Label>
+              <div className="mt-2 flex items-center gap-4">
+                <img
+                  src={companySettings.header_logo_url}
+                  alt="Logo da empresa"
+                  className="h-16 w-auto object-contain border rounded p-1"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Logo configurada nas Configurações da Empresa
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <Separator />
 
@@ -757,7 +712,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
             formData={formData}
             items={items}
             totals={totals}
-            companyLogo={companyLogo}
+            companySettings={companySettings}
           />
         </Card>
       </div>
