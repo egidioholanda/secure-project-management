@@ -70,12 +70,23 @@ export const Sidebar = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-sidebar-border">
-        <button className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-          <Settings className="w-5 h-5" />
-          <span className="font-medium">Configurações</span>
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="p-4 border-t border-sidebar-border">
+          <Link
+            to="/configuracoes"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 w-full rounded-lg transition-all duration-200",
+              "hover:bg-sidebar-accent hover:translate-x-1",
+              location.pathname === "/configuracoes"
+                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-elegant"
+                : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">Configurações</span>
+          </Link>
+        </div>
+      )}
     </aside>
   );
 };
