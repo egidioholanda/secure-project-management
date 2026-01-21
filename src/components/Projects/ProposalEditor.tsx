@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, Upload, X, ImageIcon, Search } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, ImageIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PlacedDevice, Proposal, ProposalItem, Project, Device } from "@/types/project";
 import { useDevices } from "@/hooks/useDevices";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { ProposalPDFPreview } from "./ProposalPDFPreview";
 
 interface ProposalEditorProps {
   project: Project;
@@ -356,10 +356,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     toast.info("Gerando PDF...");
 
     try {
-      const canvas = await html2canvas(proposalRef.current, {
+      const element = proposalRef.current;
+      
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: "#ffffff",
+        width: element.scrollWidth,
+        height: element.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -373,11 +378,33 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 10;
+      
+      // Calculate ratio to fit width perfectly
+      const ratio = pdfWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
+      
+      // Handle multi-page if content is too long
+      let position = 0;
+      let remainingHeight = scaledHeight;
+      
+      while (remainingHeight > 0) {
+        if (position > 0) {
+          pdf.addPage();
+        }
+        
+        pdf.addImage(
+          imgData,
+          "PNG",
+          0,
+          position > 0 ? -(position / ratio) * ratio : 0,
+          pdfWidth,
+          scaledHeight
+        );
+        
+        remainingHeight -= pdfHeight;
+        position += pdfHeight;
+      }
 
-      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
       pdf.save(`${formData.title.replace(/\s+/g, "_")}.pdf`);
 
       toast.success("PDF exportado com sucesso!");
@@ -723,132 +750,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
           </div>
         </Card>
 
-        {/* Preview da Proposta */}
-        <Card className="p-6 bg-white text-gray-900" ref={proposalRef}>
-          <div className="space-y-6">
-            {/* Cabeçalho com Logo */}
-            <div className="text-center border-b pb-4">
-              {companyLogo && (
-                <div className="flex justify-center mb-4">
-                  <img
-                    src={companyLogo}
-                    alt="Logo da empresa"
-                    className="h-20 w-auto object-contain"
-                  />
-                </div>
-              )}
-              <h1 className="text-2xl font-bold text-gray-900">{formData.title}</h1>
-              <p className="text-sm text-gray-500 mt-2">
-                Data: {new Date().toLocaleDateString("pt-BR")}
-              </p>
-            </div>
-
-            {/* Dados do Cliente */}
-            <div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Cliente</h3>
-              <p className="text-gray-700">{formData.client_name}</p>
-              {formData.client_address && (
-                <p className="text-gray-600 text-sm">{formData.client_address}</p>
-              )}
-              {formData.client_email && (
-                <p className="text-gray-600 text-sm">{formData.client_email}</p>
-              )}
-              {formData.client_phone && (
-                <p className="text-gray-600 text-sm">{formData.client_phone}</p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Introdução */}
-            <div>
-              <p className="text-gray-700 whitespace-pre-wrap">{formData.introduction}</p>
-            </div>
-
-            {/* Escopo */}
-            <div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Escopo do Projeto</h3>
-              <p className="text-gray-700">{formData.scope}</p>
-            </div>
-
-            {/* Tabela de Itens */}
-            <div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Itens da Proposta</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-gray-900">Item</TableHead>
-                    <TableHead className="text-right text-gray-900">Qtd</TableHead>
-                    <TableHead className="text-right text-gray-900">Unit.</TableHead>
-                    <TableHead className="text-right text-gray-900">Inst.</TableHead>
-                    <TableHead className="text-right text-gray-900">Subtotal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="text-gray-700">{item.device_name}</TableCell>
-                      <TableCell className="text-right text-gray-700">{item.quantity}</TableCell>
-                      <TableCell className="text-right text-gray-700">
-                        {formatCurrency(item.unit_price)}
-                      </TableCell>
-                      <TableCell className="text-right text-gray-700">
-                        {formatCurrency(item.installation_price)}
-                      </TableCell>
-                      <TableCell className="text-right text-gray-700">
-                        {formatCurrency(item.subtotal)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Totais */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Equipamentos:</span>
-                <span className="text-gray-900">{formatCurrency(totals.totalDevices)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Instalação:</span>
-                <span className="text-gray-900">{formatCurrency(totals.totalInstallation)}</span>
-              </div>
-              {formData.discount_percentage > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Desconto ({formData.discount_percentage}%):</span>
-                  <span>-{formatCurrency(totals.discountAmount)}</span>
-                </div>
-              )}
-              <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-lg">
-                <span className="text-gray-900">Total:</span>
-                <span className="text-gray-900">{formatCurrency(totals.grandTotal)}</span>
-              </div>
-            </div>
-
-            {/* Condições */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900">Condições de Pagamento</h4>
-                <p className="text-sm text-gray-700">{formData.payment_terms}</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-900">Garantia</h4>
-                <p className="text-sm text-gray-700">{formData.warranty_terms}</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-900">Validade da Proposta</h4>
-                <p className="text-sm text-gray-700">{formData.validity_days} dias</p>
-              </div>
-              {formData.notes && (
-                <div>
-                  <h4 className="font-semibold text-gray-900">Observações</h4>
-                  <p className="text-sm text-gray-700">{formData.notes}</p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Preview da Proposta para PDF */}
+        <Card className="p-0 overflow-hidden">
+          <ProposalPDFPreview
+            ref={proposalRef}
+            formData={formData}
+            items={items}
+            totals={totals}
+            companyLogo={companyLogo}
+          />
         </Card>
       </div>
     </div>
