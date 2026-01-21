@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Upload, X, Plus, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -43,23 +43,46 @@ export const CreateReportDialog = ({
   onSave,
   editReport,
 }: CreateReportDialogProps) => {
-  const [selectedProject, setSelectedProject] = useState(editReport?.projectId || "");
-  const [title, setTitle] = useState(editReport?.title || "");
-  const [periodStart, setPeriodStart] = useState(
-    editReport ? format(editReport.period.start, "yyyy-MM-dd") : ""
-  );
-  const [periodEnd, setPeriodEnd] = useState(
-    editReport ? format(editReport.period.end, "yyyy-MM-dd") : ""
-  );
-  const [summary, setSummary] = useState(editReport?.summary || "");
-  const [observations, setObservations] = useState(editReport?.observations || "");
-  const [challenges, setChallenges] = useState(editReport?.challenges || "");
-  const [nextSteps, setNextSteps] = useState(editReport?.nextSteps || "");
-  const [photos, setPhotos] = useState<ReportPhoto[]>(editReport?.photos || []);
-  const [selectedTasks, setSelectedTasks] = useState<string[]>(
-    editReport?.tasks.map(t => t.id) || []
-  );
-  const [status, setStatus] = useState<'draft' | 'published'>(editReport?.status || 'draft');
+  const [selectedProject, setSelectedProject] = useState("");
+  const [title, setTitle] = useState("");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [summary, setSummary] = useState("");
+  const [observations, setObservations] = useState("");
+  const [challenges, setChallenges] = useState("");
+  const [nextSteps, setNextSteps] = useState("");
+  const [photos, setPhotos] = useState<ReportPhoto[]>([]);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [status, setStatus] = useState<'draft' | 'published'>('draft');
+
+  // Reset/populate form when dialog opens or editReport changes
+  useEffect(() => {
+    if (open && editReport) {
+      setSelectedProject(editReport.projectId);
+      setTitle(editReport.title);
+      setPeriodStart(format(editReport.period.start, "yyyy-MM-dd"));
+      setPeriodEnd(format(editReport.period.end, "yyyy-MM-dd"));
+      setSummary(editReport.summary);
+      setObservations(editReport.observations);
+      setChallenges(editReport.challenges);
+      setNextSteps(editReport.nextSteps);
+      setPhotos(editReport.photos);
+      setSelectedTasks(editReport.tasks.map(t => t.id));
+      setStatus(editReport.status);
+    } else if (open && !editReport) {
+      setSelectedProject("");
+      setTitle("");
+      setPeriodStart("");
+      setPeriodEnd("");
+      setSummary("");
+      setObservations("");
+      setChallenges("");
+      setNextSteps("");
+      setPhotos([]);
+      setSelectedTasks([]);
+      setStatus('draft');
+    }
+  }, [open, editReport]);
 
   const selectedProjectData = projects.find(p => p.id === selectedProject);
 

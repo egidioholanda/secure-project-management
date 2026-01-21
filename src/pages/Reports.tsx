@@ -13,40 +13,63 @@ import {
 import { ReportCard } from "@/components/Reports/ReportCard";
 import { CreateReportDialog } from "@/components/Reports/CreateReportDialog";
 import { ViewReportDialog } from "@/components/Reports/ViewReportDialog";
+import { DeleteReportDialog } from "@/components/Reports/DeleteReportDialog";
 import { Report } from "@/types/report";
 import { useReports } from "@/hooks/useReports";
 import { useProjects } from "@/hooks/useProjects";
+import { useScheduleTasks } from "@/hooks/useScheduleTasks";
 
 const Reports = () => {
   const { reports, loading, addReport, updateReport, deleteReport } = useReports();
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
+  const { tasks: scheduleTasks, loading: tasksLoading } = useScheduleTasks();
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [editReport, setEditReport] = useState<Report | null>(null);
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
-  // Transform db projects to format needed by CreateReportDialog
+  // Transform db projects to format needed by CreateReportDialog with tasks
   const projectsForDialog = useMemo(() => {
     return dbProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      tasks: [], // Tasks would come from schedule_tasks in a real scenario
+      tasks: scheduleTasks
+        .filter((t) => t.projectId === p.id)
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          progress: t.progress,
+          status: t.progress === 100 ? "completed" as const : t.progress > 0 ? "in_progress" as const : "pending" as const,
+          assignee: t.assignee || "",
+        })),
     }));
-  }, [dbProjects]);
+  }, [dbProjects, scheduleTasks]);
 
-  const filteredReports = reports.filter(report => {
-    const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredReports = reports.filter((report) => {
+    const matchesSearch =
+      report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.projectName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesProject = projectFilter === "all" || report.projectId === projectFilter;
-    const matchesStatus = statusFilter === "all" || report.status === statusFilter;
+    const matchesProject =
+      projectFilter === "all" || report.projectId === projectFilter;
+    const matchesStatus =
+      statusFilter === "all" || report.status === statusFilter;
     return matchesSearch && matchesProject && matchesStatus;
   });
 
-  const handleCreateReport = async (reportData: Omit<Report, 'id' | 'createdAt'>) => {
-    await addReport(reportData);
+  const handleCreateReport = async (
+    reportData: Omit<Report, "id" | "createdAt">
+  ) => {
+    if (editReport) {
+      await updateReport({ ...reportData, id: editReport.id, createdAt: editReport.createdAt });
+    } else {
+      await addReport(reportData);
+    }
+    setEditReport(null);
   };
 
   const handleViewReport = (report: Report) => {
@@ -59,14 +82,23 @@ const Reports = () => {
     setCreateDialogOpen(true);
   };
 
-  const handleDeleteReport = async (report: Report) => {
-    await deleteReport(report.id);
+  const handleDeleteClick = (report: Report) => {
+    setReportToDelete(report);
+    setDeleteDialogOpen(true);
   };
 
-  const publishedCount = reports.filter(r => r.status === 'published').length;
-  const draftCount = reports.filter(r => r.status === 'draft').length;
+  const handleConfirmDelete = async () => {
+    if (reportToDelete) {
+      await deleteReport(reportToDelete.id);
+      setDeleteDialogOpen(false);
+      setReportToDelete(null);
+    }
+  };
 
-  if (loading || projectsLoading) {
+  const publishedCount = reports.filter((r) => r.status === "published").length;
+  const draftCount = reports.filter((r) => r.status === "draft").length;
+
+  if (loading || projectsLoading || tasksLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -80,12 +112,16 @@ const Reports = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Relatórios</h1>
-          <p className="text-muted-foreground">Gere relatórios de progresso para clientes</p>
+          <p className="text-muted-foreground">
+            Gere relatórios de progresso para clientes
+          </p>
         </div>
-        <Button onClick={() => {
-          setEditReport(null);
-          setCreateDialogOpen(true);
-        }}>
+        <Button
+          onClick={() => {
+            setEditReport(null);
+            setCreateDialogOpen(true);
+          }}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Novo Relatório
         </Button>
@@ -99,7 +135,9 @@ const Reports = () => {
               <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{reports.length}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {reports.length}
+              </p>
               <p className="text-sm text-muted-foreground">Total de Relatórios</p>
             </div>
           </div>
@@ -110,7 +148,9 @@ const Reports = () => {
               <FileText className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{publishedCount}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {publishedCount}
+              </p>
               <p className="text-sm text-muted-foreground">Publicados</p>
             </div>
           </div>
@@ -146,7 +186,7 @@ const Reports = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Projetos</SelectItem>
-              {dbProjects.map(project => (
+              {dbProjects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}
                 </SelectItem>
@@ -170,7 +210,9 @@ const Reports = () => {
       {filteredReports.length === 0 ? (
         <Card className="p-12 text-center bg-card/50 backdrop-blur-sm border-border/50">
           <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-semibold mb-2">Nenhum relatório encontrado</h3>
+          <h3 className="text-xl font-semibold mb-2">
+            Nenhum relatório encontrado
+          </h3>
           <p className="text-muted-foreground max-w-md mx-auto mb-4">
             {searchTerm || projectFilter !== "all" || statusFilter !== "all"
               ? "Tente ajustar os filtros para encontrar o que procura."
@@ -185,13 +227,13 @@ const Reports = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredReports.map(report => (
+          {filteredReports.map((report) => (
             <ReportCard
               key={report.id}
               report={report}
               onView={handleViewReport}
               onEdit={handleEditReport}
-              onDelete={handleDeleteReport}
+              onDelete={handleDeleteClick}
             />
           ))}
         </div>
@@ -200,7 +242,10 @@ const Reports = () => {
       {/* Dialogs */}
       <CreateReportDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) setEditReport(null);
+        }}
         projects={projectsForDialog}
         onSave={handleCreateReport}
         editReport={editReport}
@@ -210,6 +255,13 @@ const Reports = () => {
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         report={selectedReport}
+      />
+
+      <DeleteReportDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        report={reportToDelete}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
