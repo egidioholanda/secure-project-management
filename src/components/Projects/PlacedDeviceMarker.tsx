@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Trash2, RotateCw } from "lucide-react";
+import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Trash2, RotateCw, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { PlacedDevice } from "@/types/project";
@@ -13,6 +13,14 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Zap: Zap,
   Phone: Phone,
   Fingerprint: DoorOpen,
+  Shield: Shield,
+  Wifi: Wifi,
+  Monitor: Monitor,
+  Lock: Lock,
+  Eye: Eye,
+  Lightbulb: Lightbulb,
+  Thermometer: Thermometer,
+  Settings: Settings,
 };
 
 interface PlacedDeviceMarkerProps {

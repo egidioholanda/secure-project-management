@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Search } from "lucide-react";
+import { Plus, Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Search, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,14 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Zap: Zap,
   Phone: Phone,
   Fingerprint: DoorOpen,
+  Shield: Shield,
+  Wifi: Wifi,
+  Monitor: Monitor,
+  Lock: Lock,
+  Eye: Eye,
+  Lightbulb: Lightbulb,
+  Thermometer: Thermometer,
+  Settings: Settings,
 };
 
 interface DeviceCatalogProps {
