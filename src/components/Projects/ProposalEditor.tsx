@@ -340,8 +340,6 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        width: element.scrollWidth,
-        height: element.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -356,30 +354,27 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       
-      // Calculate ratio to fit width perfectly
-      const ratio = pdfWidth / imgWidth;
+      // Calculate ratio to fit width (same logic as reports)
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      
+      // Calculate total pages needed
       const scaledHeight = imgHeight * ratio;
+      const totalPages = Math.ceil(scaledHeight / pdfHeight);
       
-      // Handle multi-page if content is too long
-      let position = 0;
-      let remainingHeight = scaledHeight;
-      
-      while (remainingHeight > 0) {
-        if (position > 0) {
+      // Generate pages
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) {
           pdf.addPage();
         }
-        
         pdf.addImage(
           imgData,
           "PNG",
-          0,
-          position > 0 ? -(position / ratio) * ratio : 0,
-          pdfWidth,
-          scaledHeight
+          imgX,
+          -i * pdfHeight,
+          imgWidth * ratio,
+          imgHeight * ratio
         );
-        
-        remainingHeight -= pdfHeight;
-        position += pdfHeight;
       }
 
       pdf.save(`${formData.title.replace(/\s+/g, "_")}.pdf`);
