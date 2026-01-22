@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Upload, ZoomIn, ZoomOut, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, ZoomIn, ZoomOut, FileText, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -10,6 +10,17 @@ import PlacedDeviceMarker from "./PlacedDeviceMarker";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -110,6 +121,39 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
     } catch (error) {
       console.error("Error uploading floor plan:", error);
       toast.error("Erro ao importar planta baixa");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFloorPlan = async () => {
+    if (!floorPlan) return;
+
+    setLoading(true);
+    try {
+      // Extract file path from URL to delete from storage
+      const urlParts = floorPlan.file_url.split("/floor-plans/");
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        await supabase.storage.from("floor-plans").remove([filePath]);
+      }
+
+      // Delete floor plan record (devices will cascade delete)
+      const { error } = await supabase
+        .from("project_floor_plans")
+        .delete()
+        .eq("id", floorPlan.id);
+
+      if (error) throw error;
+
+      setFloorPlan(null);
+      setPlacedDevices([]);
+      setCurrentPage(1);
+      setNumPages(1);
+      toast.success("Planta baixa excluída com sucesso!");
+    } catch (error) {
+      console.error("Error deleting floor plan:", error);
+      toast.error("Erro ao excluir planta baixa");
     } finally {
       setLoading(false);
     }
@@ -233,6 +277,37 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               <Upload className="w-4 h-4 mr-2" />
               {loading ? "Importando..." : "Importar Planta"}
             </Button>
+            {floorPlan && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={loading}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir Planta
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir planta baixa?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. A planta baixa e todos os {placedDevices.length} dispositivos posicionados serão removidos permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteFloorPlan}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button
               variant="outline"
               size="icon"
