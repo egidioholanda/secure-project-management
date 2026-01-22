@@ -82,6 +82,7 @@ export type Database = {
           description: string | null
           icon: string | null
           id: string
+          image_url: string | null
           installation_price: number
           model: string | null
           name: string
@@ -96,6 +97,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           installation_price?: number
           model?: string | null
           name: string
@@ -110,6 +112,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           installation_price?: number
           model?: string | null
           name?: string

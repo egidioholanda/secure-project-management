@@ -41,6 +41,7 @@ export const useDevices = () => {
           unit_price: device.unit_price,
           installation_price: device.installation_price,
           icon: device.icon,
+          image_url: device.image_url,
         })
         .select()
         .single();
@@ -58,13 +59,15 @@ export const useDevices = () => {
 
   const updateDevice = async (id: string, updates: Partial<Omit<Device, "id" | "specifications">>) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("devices")
         .update(updates)
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
 
       if (error) throw error;
-      setDevices(devices.map((d) => (d.id === id ? { ...d, ...updates } : d)));
+      setDevices(devices.map((d) => (d.id === id ? (data as Device) : d)));
       toast.success("Dispositivo atualizado!");
     } catch (error) {
       console.error("Error updating device:", error);

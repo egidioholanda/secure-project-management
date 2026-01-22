@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import type { Device, DeviceCategory } from "@/types/project";
+import { DeviceImageUpload } from "@/components/Catalog/DeviceImageUpload";
 
 const iconOptions = [
   { value: "Camera", label: "Câmera", icon: Camera },
@@ -61,6 +62,7 @@ const AddDeviceDialog = ({
     unit_price: "",
     installation_price: "",
     icon: "Settings",
+    image_url: null as string | null,
   });
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -80,6 +82,7 @@ const AddDeviceDialog = ({
       installation_price: parseFloat(deviceForm.installation_price) || 0,
       icon: deviceForm.icon || null,
       specifications: null,
+      image_url: deviceForm.image_url,
     });
 
     setDeviceForm({
@@ -91,6 +94,7 @@ const AddDeviceDialog = ({
       unit_price: "",
       installation_price: "",
       icon: "Settings",
+      image_url: null,
     });
     onOpenChange(false);
   };
@@ -116,7 +120,17 @@ const AddDeviceDialog = ({
             <TabsTrigger value="category">Categoria</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="device" className="space-y-4 mt-4">
+          <TabsContent value="device" className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div>
+              <Label>Imagem do Dispositivo</Label>
+              <DeviceImageUpload
+                imageUrl={deviceForm.image_url}
+                onImageChange={(url) =>
+                  setDeviceForm({ ...deviceForm, image_url: url })
+                }
+              />
+            </div>
+
             <div>
               <Label>Nome *</Label>
               <Input

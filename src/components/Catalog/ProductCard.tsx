@@ -27,7 +27,15 @@ export const ProductCard = ({
   return (
     <Card className="overflow-hidden hover:shadow-elegant transition-all duration-300 group">
       <div className="aspect-video overflow-hidden bg-muted flex items-center justify-center">
-        <Camera className="w-12 h-12 text-muted-foreground/30" />
+        {device.image_url ? (
+          <img
+            src={device.image_url}
+            alt={device.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <Camera className="w-12 h-12 text-muted-foreground/30" />
+        )}
       </div>
       <div className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">

@@ -29,6 +29,7 @@ export interface Device {
   installation_price: number;
   icon: string | null;
   specifications: Record<string, unknown> | null;
+  image_url: string | null;
 }
 
 export interface FloorPlan {
