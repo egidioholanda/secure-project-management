@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays, isPast, isToday } from "date-fns";
+
+const NOTIFICATIONS_SEEN_KEY = "notifications_last_seen";
 
 export interface TaskNotification {
   id: string;
@@ -22,6 +24,7 @@ interface DbTask {
 
 export const useTaskNotifications = () => {
   const [tasks, setTasks] = useState<DbTask[]>([]);
+  const [hasBeenSeen, setHasBeenSeen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = async () => {
@@ -41,13 +44,34 @@ export const useTaskNotifications = () => {
     }
   };
 
+  // Check if notifications were already seen
+  const checkIfSeen = useCallback(() => {
+    const lastSeen = localStorage.getItem(NOTIFICATIONS_SEEN_KEY);
+    if (lastSeen) {
+      const lastSeenDate = new Date(lastSeen);
+      const today = new Date();
+      // Reset "seen" status at the start of each day
+      if (lastSeenDate.toDateString() === today.toDateString()) {
+        setHasBeenSeen(true);
+      } else {
+        setHasBeenSeen(false);
+      }
+    }
+  }, []);
+
+  const markAsSeen = useCallback(() => {
+    localStorage.setItem(NOTIFICATIONS_SEEN_KEY, new Date().toISOString());
+    setHasBeenSeen(true);
+  }, []);
+
   useEffect(() => {
     fetchTasks();
+    checkIfSeen();
 
     // Refresh every 5 minutes
     const interval = setInterval(fetchTasks, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [checkIfSeen]);
 
   const notifications = useMemo<TaskNotification[]>(() => {
     const today = new Date();
@@ -101,6 +125,8 @@ export const useTaskNotifications = () => {
     todayCount,
     upcomingCount,
     totalCount: notifications.length,
+    hasBeenSeen,
+    markAsSeen,
     refetch: fetchTasks,
   };
 };
