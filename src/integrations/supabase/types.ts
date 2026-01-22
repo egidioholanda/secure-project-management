@@ -286,6 +286,7 @@ export type Database = {
           id: string
           manager: string | null
           name: string
+          opportunity_id: string | null
           start_date: string | null
           status: string
           type: string
@@ -300,6 +301,7 @@ export type Database = {
           id?: string
           manager?: string | null
           name: string
+          opportunity_id?: string | null
           start_date?: string | null
           status?: string
           type: string
@@ -314,13 +316,22 @@ export type Database = {
           id?: string
           manager?: string | null
           name?: string
+          opportunity_id?: string | null
           start_date?: string | null
           status?: string
           type?: string
           updated_at?: string
           value?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposal_items: {
         Row: {

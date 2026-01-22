@@ -14,6 +14,7 @@ interface DbProject {
   manager: string | null;
   value: string | null;
   description: string | null;
+  opportunity_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +51,7 @@ const mapDbToProject = (db: DbProject): Project => ({
   manager: db.manager || "",
   value: db.value || "",
   address: db.description || "",
+  opportunityId: db.opportunity_id || undefined,
 });
 
 export const useProjects = () => {
@@ -73,7 +75,7 @@ export const useProjects = () => {
     }
   };
 
-  const addProject = async (project: Omit<Project, "id"> & { id?: string }) => {
+  const addProject = async (project: Omit<Project, "id"> & { id?: string; opportunityId?: string }) => {
     try {
       const { data, error } = await supabase
         .from("projects")
@@ -87,6 +89,7 @@ export const useProjects = () => {
           manager: project.manager || null,
           value: project.value || null,
           description: project.address || null,
+          opportunity_id: project.opportunityId || null,
         })
         .select()
         .single();

@@ -9,6 +9,7 @@ export interface Project {
   manager: string;
   value: string;
   address?: string;
+  opportunityId?: string;
 }
 
 export interface DeviceCategory {

@@ -20,11 +20,21 @@ import { toast } from "sonner";
 import type { Project } from "@/types/project";
 export type { Project };
 
+export interface ProjectFormData {
+  name: string;
+  client: string;
+  type: string;
+  value: string;
+  responsible?: string;
+  opportunityId?: string;
+}
+
 interface AddProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddProject: (project: Project) => void;
   editingProject?: Project | null;
+  initialData?: ProjectFormData | null;
 }
 
 const AddProjectDialog = ({
@@ -32,6 +42,7 @@ const AddProjectDialog = ({
   onOpenChange,
   onAddProject,
   editingProject,
+  initialData,
 }: AddProjectDialogProps) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -43,6 +54,7 @@ const AddProjectDialog = ({
     manager: "",
     value: "",
     address: "",
+    opportunityId: "",
   });
 
   useEffect(() => {
@@ -57,6 +69,20 @@ const AddProjectDialog = ({
         manager: editingProject.manager,
         value: editingProject.value,
         address: editingProject.address || "",
+        opportunityId: "",
+      });
+    } else if (initialData) {
+      setFormData({
+        name: initialData.name,
+        client: initialData.client,
+        type: initialData.type,
+        status: "planning",
+        startDate: "",
+        endDate: "",
+        manager: initialData.responsible || "",
+        value: initialData.value,
+        address: "",
+        opportunityId: initialData.opportunityId || "",
       });
     } else {
       setFormData({
@@ -69,9 +95,10 @@ const AddProjectDialog = ({
         manager: "",
         value: "",
         address: "",
+        opportunityId: "",
       });
     }
-  }, [editingProject, open]);
+  }, [editingProject, initialData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +119,7 @@ const AddProjectDialog = ({
       manager: formData.manager,
       value: formData.value,
       address: formData.address,
+      opportunityId: formData.opportunityId || undefined,
     };
 
     onAddProject(project);

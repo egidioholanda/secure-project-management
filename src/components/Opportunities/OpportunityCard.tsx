@@ -1,10 +1,11 @@
-import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -19,6 +20,7 @@ interface OpportunityCardProps {
   status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha" | "perdida";
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onConvertToProject?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -41,6 +43,7 @@ export const OpportunityCard = ({
   status,
   onEdit,
   onDelete,
+  onConvertToProject,
 }: OpportunityCardProps) => {
   const statusInfo = statusConfig[status];
 
@@ -64,6 +67,11 @@ export const OpportunityCard = ({
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onConvertToProject?.(id)}>
+              <FolderKanban className="w-4 h-4 mr-2" />
+              Converter em Projeto
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={() => onDelete?.(id)}
               className="text-destructive focus:text-destructive"
