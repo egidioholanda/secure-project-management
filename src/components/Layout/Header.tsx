@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut, Users } from "lucide-react";
+import { Search, User, LogOut, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 export const Header = () => {
   const { user, profile, isAdmin, signOut, isLoading } = useAuthContext();
@@ -51,10 +52,7 @@ export const Header = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-          </Button>
+          <NotificationsDropdown />
           
           <div className="h-8 w-px bg-border" />
           
