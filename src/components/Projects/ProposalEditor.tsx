@@ -15,6 +15,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ProposalPDFPreview } from "./ProposalPDFPreview";
+import { FloorPlanPDFPreview } from "./FloorPlanPDFPreview";
 
 interface ProposalEditorProps {
   project: Project;
@@ -37,6 +38,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
   const [includeFloorPlan, setIncludeFloorPlan] = useState(false);
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [floorPlanDevices, setFloorPlanDevices] = useState<PlacedDevice[]>([]);
+  const [floorPlanReady, setFloorPlanReady] = useState(false);
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
@@ -417,6 +419,18 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
 
       // Add floor plan if selected
       if (includeFloorPlan && floorPlanRef.current) {
+        // Wait for PDF to render - increased time for better rendering
+        if (floorPlan?.file_type === "application/pdf") {
+          // Wait until PDF is loaded or timeout after 3 seconds
+          let waitTime = 0;
+          while (!floorPlanReady && waitTime < 3000) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitTime += 100;
+          }
+          // Additional wait for rendering
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
         pdf.addPage();
 
         const floorPlanCanvas = await html2canvas(floorPlanRef.current, {
@@ -424,6 +438,8 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
+          allowTaint: true,
+          imageTimeout: 0,
         });
 
         const floorPlanImgData = floorPlanCanvas.toDataURL("image/png");
@@ -806,118 +822,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
 
       {/* Hidden floor plan preview for PDF export */}
       {includeFloorPlan && floorPlan && (
-        <div
-          ref={floorPlanRef}
-          className="fixed left-[-9999px] top-0 bg-white text-black p-8 w-[210mm]"
-          style={{ fontFamily: "Arial, sans-serif" }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-300">
-            <div className="flex items-center gap-4">
-              {companySettings?.header_logo_url && (
-                <img
-                  src={companySettings.header_logo_url}
-                  alt="Logo da Empresa"
-                  className="h-12 w-auto object-contain"
-                />
-              )}
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">Planta Baixa - {project.name}</h1>
-                <p className="text-gray-600 text-sm">Layout dos Dispositivos</p>
-              </div>
-            </div>
-            <div className="text-right text-sm text-gray-600">
-              <p>Cliente: {project.client}</p>
-              <p>Data: {new Date().toLocaleDateString("pt-BR")}</p>
-            </div>
-          </div>
-
-          {/* Floor Plan Image with Devices */}
-          <div className="relative border border-gray-300 rounded overflow-hidden mb-6">
-            {floorPlan.file_type === "application/pdf" ? (
-              <div className="flex items-center justify-center h-96 bg-gray-100">
-                <p className="text-gray-500">Planta em PDF - visualize no sistema</p>
-              </div>
-            ) : (
-              <div className="relative">
-                <img
-                  src={floorPlan.file_url}
-                  alt="Planta Baixa"
-                  className="w-full h-auto max-h-[500px] object-contain"
-                  crossOrigin="anonymous"
-                />
-                {/* Device markers */}
-                {floorPlanDevices.map((device) => (
-                  <div
-                    key={device.id}
-                    className="absolute w-6 h-6 bg-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center"
-                    style={{
-                      left: `${(device.x_position / 800) * 100}%`,
-                      top: `${(device.y_position / 600) * 100}%`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    <span className="text-white text-xs font-bold">
-                      {floorPlanDevices.indexOf(device) + 1}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Device Legend */}
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-3 border-b border-gray-200 pb-1">
-              Legenda dos Dispositivos
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {floorPlanDevices.map((device, index) => (
-                <div key={device.id} className="flex items-center gap-2 text-sm">
-                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {index + 1}
-                  </div>
-                  <span className="text-gray-700">{device.device?.name || "Dispositivo"}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div className="p-4 bg-gray-50 rounded border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-2">Resumo</h3>
-            <p className="text-sm text-gray-700">
-              Total de dispositivos posicionados: <strong>{floorPlanDevices.length}</strong>
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(
-                floorPlanDevices.reduce((acc, d) => {
-                  const name = d.device?.name || "Dispositivo";
-                  acc[name] = (acc[name] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>)
-              ).map(([name, count]) => (
-                <span
-                  key={name}
-                  className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs"
-                >
-                  {count}x {name}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="pt-4 mt-6 border-t border-gray-300 text-xs text-gray-500 text-center">
-            <p>Gerado automaticamente pelo SecureProject</p>
-            {companySettings?.footer_logo_url && (
-              <img
-                src={companySettings.footer_logo_url}
-                alt="Logo rodapé"
-                className="h-6 w-auto object-contain mx-auto mt-2"
-              />
-            )}
-          </div>
+        <div className="fixed left-[-9999px] top-0">
+          <FloorPlanPDFPreview
+            ref={floorPlanRef}
+            floorPlan={floorPlan}
+            floorPlanDevices={floorPlanDevices}
+            project={project}
+            companySettings={companySettings}
+            onPdfLoaded={() => setFloorPlanReady(true)}
+          />
         </div>
       )}
     </div>
