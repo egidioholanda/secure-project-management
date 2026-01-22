@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import type { Device, DeviceCategory } from "@/types/project";
+import { DeviceImageUpload } from "./DeviceImageUpload";
 
 const iconOptions = [
   { value: "Camera", label: "Câmera", icon: Camera },
@@ -61,6 +62,7 @@ export const EditDeviceDialog = ({
     unit_price: "",
     installation_price: "",
     icon: "",
+    image_url: null as string | null,
   });
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +77,7 @@ export const EditDeviceDialog = ({
         unit_price: device.unit_price?.toString() || "0",
         installation_price: device.installation_price?.toString() || "0",
         icon: device.icon || "Settings",
+        image_url: device.image_url || null,
       });
     }
   }, [device]);
@@ -93,6 +96,7 @@ export const EditDeviceDialog = ({
         unit_price: parseFloat(form.unit_price) || 0,
         installation_price: parseFloat(form.installation_price) || 0,
         icon: form.icon || null,
+        image_url: form.image_url,
       });
       onOpenChange(false);
     } finally {
@@ -107,7 +111,16 @@ export const EditDeviceDialog = ({
           <DialogTitle>Editar Produto</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          <div>
+            <Label>Imagem do Produto</Label>
+            <DeviceImageUpload
+              imageUrl={form.image_url}
+              onImageChange={(url) => setForm({ ...form, image_url: url })}
+              deviceId={device?.id}
+            />
+          </div>
+
           <div>
             <Label>Nome *</Label>
             <Input

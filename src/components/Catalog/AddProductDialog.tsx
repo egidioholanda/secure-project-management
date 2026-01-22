@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Device, DeviceCategory } from "@/types/project";
+import { DeviceImageUpload } from "./DeviceImageUpload";
 import {
   Camera,
   Video,
@@ -72,6 +73,7 @@ export const AddProductDialog = ({
     unit_price: "",
     installation_price: "",
     icon: "Settings",
+    image_url: null as string | null,
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -94,6 +96,7 @@ export const AddProductDialog = ({
         installation_price: parseFloat(deviceForm.installation_price) || 0,
         icon: deviceForm.icon || null,
         specifications: null,
+        image_url: deviceForm.image_url,
       });
 
       setDeviceForm({
@@ -105,6 +108,7 @@ export const AddProductDialog = ({
         unit_price: "",
         installation_price: "",
         icon: "Settings",
+        image_url: null,
       });
       onOpenChange(false);
     } finally {
@@ -138,7 +142,17 @@ export const AddProductDialog = ({
             <TabsTrigger value="category">Categoria</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="device" className="space-y-4 mt-4">
+          <TabsContent value="device" className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div>
+              <Label>Imagem do Produto</Label>
+              <DeviceImageUpload
+                imageUrl={deviceForm.image_url}
+                onImageChange={(url) =>
+                  setDeviceForm({ ...deviceForm, image_url: url })
+                }
+              />
+            </div>
+
             <div>
               <Label>Nome *</Label>
               <Input
