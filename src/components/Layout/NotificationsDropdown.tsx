@@ -78,18 +78,35 @@ const NotificationItem = ({
 
 export const NotificationsDropdown = () => {
   const navigate = useNavigate();
-  const { notifications, loading, overdueCount, todayCount, totalCount } = useTaskNotifications();
+  const { 
+    notifications, 
+    loading, 
+    overdueCount, 
+    todayCount, 
+    totalCount,
+    hasBeenSeen,
+    markAsSeen 
+  } = useTaskNotifications();
+
+  const handleOpenChange = (open: boolean) => {
+    if (open && totalCount > 0) {
+      markAsSeen();
+    }
+  };
 
   const handleNavigate = () => {
     navigate("/cronogramas");
   };
 
+  // Show badge only if there are notifications AND they haven't been seen today
+  const showBadge = totalCount > 0 && !hasBeenSeen;
+
   return (
-    <Popover>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
-          {totalCount > 0 && (
+          {showBadge && (
             <span 
               className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full px-1 ${
                 overdueCount > 0 
