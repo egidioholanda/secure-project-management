@@ -1,17 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Plus, Filter, Grid, List, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AddProjectDialog from "@/components/Projects/AddProjectDialog";
+import AddProjectDialog, { ProjectFormData } from "@/components/Projects/AddProjectDialog";
 import ProjectCard from "@/components/Projects/ProjectCard";
 import ProjectDetailView from "@/components/Projects/ProjectDetailView";
 import { useProjects } from "@/hooks/useProjects";
 import type { Project } from "@/types/project";
 
 const Projects = () => {
+  const location = useLocation();
   const { projects, loading, addProject, updateProject, deleteProject } = useProjects();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [initialFormData, setInitialFormData] = useState<ProjectFormData | null>(null);
+
+  // Check if navigating from opportunity conversion
+  useEffect(() => {
+    if (location.state?.fromOpportunity) {
+      setInitialFormData(location.state.fromOpportunity);
+      setIsDialogOpen(true);
+      // Clear the state to avoid reopening on subsequent renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleAddOrUpdateProject = async (project: Project) => {
     if (editingProject) {
@@ -33,7 +46,16 @@ const Projects = () => {
 
   const handleNewProject = () => {
     setEditingProject(null);
+    setInitialFormData(null);
     setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setInitialFormData(null);
+      setEditingProject(null);
+    }
   };
 
   const handleSelectProject = (project: Project) => {
@@ -121,9 +143,10 @@ const Projects = () => {
 
       <AddProjectDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogClose}
         onAddProject={handleAddOrUpdateProject}
         editingProject={editingProject}
+        initialData={initialFormData}
       />
     </div>
   );

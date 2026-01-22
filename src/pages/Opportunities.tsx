@@ -5,8 +5,10 @@ import { OpportunityCard } from "@/components/Opportunities/OpportunityCard";
 import { Input } from "@/components/ui/input";
 import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityDialog";
 import { useOpportunities, Opportunity } from "@/hooks/useOpportunities";
+import { useNavigate } from "react-router-dom";
 
 const Opportunities = () => {
+  const navigate = useNavigate();
   const {
     opportunities,
     loading,
@@ -35,6 +37,22 @@ const Opportunities = () => {
     if (opp) {
       setEditingOpportunity(opp);
       setIsAddDialogOpen(true);
+    }
+  };
+
+  const handleConvertToProject = (id: string) => {
+    const opp = opportunities.find((o) => o.id === id);
+    if (opp) {
+      // Navigate to projects page with opportunity data
+      const projectData = {
+        name: opp.title,
+        client: opp.client,
+        type: opp.type,
+        value: opp.value,
+        responsible: opp.responsible,
+        opportunityId: opp.id,
+      };
+      navigate("/projetos", { state: { fromOpportunity: projectData } });
     }
   };
 
@@ -102,6 +120,7 @@ const Opportunities = () => {
                     {...opp} 
                     onEdit={openEditDialog}
                     onDelete={handleDeleteOpportunity}
+                    onConvertToProject={handleConvertToProject}
                   />
                 ))}
               </div>
