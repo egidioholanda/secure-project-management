@@ -249,6 +249,25 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
     }
   };
 
+  const handleScaleDevice = async (deviceId: string, scale: number) => {
+    try {
+      const { error } = await supabase
+        .from("floor_plan_devices")
+        .update({ scale })
+        .eq("id", deviceId);
+
+      if (error) throw error;
+
+      setPlacedDevices(
+        placedDevices.map((d) =>
+          d.id === deviceId ? { ...d, scale } : d
+        )
+      );
+    } catch (error) {
+      console.error("Error scaling device:", error);
+    }
+  };
+
   return (
     <div className="flex gap-4 h-[calc(100vh-200px)]">
       {/* Catálogo de Dispositivos */}
@@ -423,6 +442,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
                   onDelete={() => handleDeleteDevice(placed.id)}
                   onRotate={() => handleRotateDevice(placed.id)}
                   onDrag={(x, y) => handleDragDevice(placed.id, x, y)}
+                  onScaleChange={(scale) => handleScaleDevice(placed.id, scale)}
                   zoom={zoom}
                 />
               ))}

@@ -138,6 +138,7 @@ export type Database = {
           id: string
           notes: string | null
           rotation: number | null
+          scale: number | null
           x_position: number
           y_position: number
         }
@@ -148,6 +149,7 @@ export type Database = {
           id?: string
           notes?: string | null
           rotation?: number | null
+          scale?: number | null
           x_position: number
           y_position: number
         }
@@ -158,6 +160,7 @@ export type Database = {
           id?: string
           notes?: string | null
           rotation?: number | null
+          scale?: number | null
           x_position?: number
           y_position?: number
         }
