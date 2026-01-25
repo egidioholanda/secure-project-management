@@ -1,13 +1,14 @@
 import { useState, useRef } from "react";
-import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Trash2, RotateCw, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer, Plus, Minus } from "lucide-react";
+import { Radio, DoorOpen, Bell, Zap, Phone, Settings, Trash2, RotateCw, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import type { PlacedDevice } from "@/types/project";
 import { cn } from "@/lib/utils";
+import BulletCameraIcon from "./BulletCameraIcon";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Camera: Camera,
+  Camera: BulletCameraIcon,
   Radio: Radio,
   DoorOpen: DoorOpen,
   Bell: Bell,
