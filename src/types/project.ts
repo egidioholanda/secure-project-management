@@ -50,6 +50,7 @@ export interface PlacedDevice {
   y_position: number;
   rotation: number;
   notes: string | null;
+  scale: number;
   device?: Device;
 }
 
