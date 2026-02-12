@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Plus, Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Search, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
+import { Plus, Radio, DoorOpen, Bell, Zap, Phone, Settings, Search, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
+import BulletCameraIcon from "./BulletCameraIcon";
+import DomeCameraIcon from "./DomeCameraIcon";
+import PTZCameraIcon from "./PTZCameraIcon";
+import SpeedDomeCameraIcon from "./SpeedDomeCameraIcon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +15,10 @@ import AddDeviceDialog from "./AddDeviceDialog";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Camera: Camera,
+  Camera: BulletCameraIcon,
+  DomeCamera: DomeCameraIcon,
+  PTZCamera: PTZCameraIcon,
+  SpeedDome: SpeedDomeCameraIcon,
   Radio: Radio,
   DoorOpen: DoorOpen,
   Bell: Bell,

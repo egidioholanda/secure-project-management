@@ -17,12 +17,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Radio, DoorOpen, Bell, Zap, Phone, Settings, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
+import { Radio, DoorOpen, Bell, Zap, Phone, Settings, Shield, Wifi, Monitor, Lock, Eye, Lightbulb, Thermometer } from "lucide-react";
 import type { Device, DeviceCategory } from "@/types/project";
 import { DeviceImageUpload } from "@/components/Catalog/DeviceImageUpload";
+import BulletCameraIcon from "./BulletCameraIcon";
+import DomeCameraIcon from "./DomeCameraIcon";
+import PTZCameraIcon from "./PTZCameraIcon";
+import SpeedDomeCameraIcon from "./SpeedDomeCameraIcon";
 
 const iconOptions = [
-  { value: "Camera", label: "Câmera", icon: Camera },
+  { value: "Camera", label: "Câmera Bullet", icon: BulletCameraIcon },
+  { value: "DomeCamera", label: "Câmera Dome", icon: DomeCameraIcon },
+  { value: "PTZCamera", label: "Câmera PTZ", icon: PTZCameraIcon },
+  { value: "SpeedDome", label: "Speed Dome", icon: SpeedDomeCameraIcon },
   { value: "Radio", label: "Sensor", icon: Radio },
   { value: "DoorOpen", label: "Porta/Acesso", icon: DoorOpen },
   { value: "Bell", label: "Alarme", icon: Bell },
