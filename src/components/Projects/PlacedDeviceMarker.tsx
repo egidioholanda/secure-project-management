@@ -6,9 +6,15 @@ import { Slider } from "@/components/ui/slider";
 import type { PlacedDevice } from "@/types/project";
 import { cn } from "@/lib/utils";
 import BulletCameraIcon from "./BulletCameraIcon";
+import DomeCameraIcon from "./DomeCameraIcon";
+import PTZCameraIcon from "./PTZCameraIcon";
+import SpeedDomeCameraIcon from "./SpeedDomeCameraIcon";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Camera: BulletCameraIcon,
+  DomeCamera: DomeCameraIcon,
+  PTZCamera: PTZCameraIcon,
+  SpeedDome: SpeedDomeCameraIcon,
   Radio: Radio,
   DoorOpen: DoorOpen,
   Bell: Bell,
@@ -26,7 +32,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 // Icons that should display FOV cone (cameras, sensors with directional coverage)
-const FOV_ICONS = ["Camera", "Eye"];
+const FOV_ICONS = ["Camera", "DomeCamera", "PTZCamera", "SpeedDome", "Eye"];
 
 interface PlacedDeviceMarkerProps {
   placedDevice: PlacedDevice;
