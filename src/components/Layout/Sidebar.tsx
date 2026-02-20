@@ -7,7 +7,8 @@ import {
   Calendar,
   FileText,
   Settings,
-  Users
+  Users,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -20,6 +21,7 @@ const navItems = [
   { icon: Package, label: "Catálogo", path: "/catalogo" },
   { icon: Calendar, label: "Cronogramas", path: "/cronogramas" },
   { icon: FileText, label: "Relatórios", path: "/relatorios" },
+  { icon: Building2, label: "Clientes", path: "/clientes" },
 ];
 
 export const Sidebar = () => {
