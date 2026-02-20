@@ -161,7 +161,7 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
           {/* Month header */}
           <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
             {/* Sidebar label */}
-            <div style={{ width: '140px', flexShrink: 0, padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', color: '#475569', borderRight: '1px solid #e2e8f0' }}>
+            <div style={{ width: '180px', flexShrink: 0, padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', color: '#475569', borderRight: '1px solid #e2e8f0' }}>
               Tarefa
             </div>
             {/* Timeline with month markers */}
@@ -191,7 +191,7 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
             </div>
           </div>
 
-          {/* Tasks grouped by project */}
+        {/* Tasks grouped by project */}
           {Object.entries(groupedTasks).map(([projectId, group]) => (
             <div key={projectId}>
               {/* Project header */}
@@ -204,7 +204,7 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
               >
                 <div
                   style={{
-                    width: '140px',
+                    width: '180px',
                     flexShrink: 0,
                     padding: '4px 8px',
                     fontSize: '9px',
@@ -212,7 +212,7 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
                     color: '#1e40af',
                     borderRight: '1px solid #e2e8f0',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '4px',
                   }}
                 >
@@ -223,9 +223,10 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
                       borderRadius: '50%',
                       backgroundColor: group.projectColor,
                       flexShrink: 0,
+                      marginTop: '1px',
                     }}
                   />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>
                     {group.projectName}
                   </span>
                 </div>
@@ -253,24 +254,23 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
                   style={{
                     display: 'flex',
                     borderBottom: '1px solid #f1f5f9',
-                    minHeight: '22px',
+                    minHeight: '24px',
                   }}
                 >
                   {/* Task name */}
                   <div
                     style={{
-                      width: '140px',
+                      width: '180px',
                       flexShrink: 0,
-                      padding: '3px 8px 3px 16px',
+                      padding: '4px 8px 4px 20px',
                       fontSize: '9px',
                       color: '#334155',
                       borderRight: '1px solid #e2e8f0',
                       display: 'flex',
                       alignItems: 'center',
-                      overflow: 'hidden',
                     }}
                   >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>
                       {task.name}
                     </span>
                   </div>
