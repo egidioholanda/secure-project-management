@@ -1,20 +1,26 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight, Filter, Download, Loader2 } from 'lucide-react';
 import { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
 import { AddTaskDialog } from '@/components/Schedules/AddTaskDialog';
+import { SchedulePDFPreview } from '@/components/Schedules/SchedulePDFPreview';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useScheduleTasks } from '@/hooks/useScheduleTasks';
 import { useProjects } from '@/hooks/useProjects';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 
 const Schedules = () => {
   const { tasks, loading, addTask, updateTask, deleteTask } = useScheduleTasks();
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
+  const { settings: companySettings } = useCompanySettings();
+  const pdfRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [filterProject, setFilterProject] = useState<string>('all');
@@ -61,6 +67,25 @@ const Schedules = () => {
 
   const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
     await addTask(newTask);
+  };
+
+  const filterLabel = useMemo(() => {
+    if (filterProject === 'all') return 'Todos os projetos';
+    return projectsList.find(p => p.id === filterProject)?.name || 'Todos os projetos';
+  }, [filterProject, projectsList]);
+
+  const handleExportPDF = async () => {
+    if (!pdfRef.current) return;
+    setExporting(true);
+    try {
+      await exportScheduleToPDF(pdfRef.current, 'cronograma');
+      toast.success('Cronograma exportado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error('Erro ao exportar o cronograma. Tente novamente.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const navigateTimeline = (direction: 'prev' | 'next') => {
@@ -140,9 +165,9 @@ const Schedules = () => {
               </Select>
             </div>
 
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Exportar
+            <Button variant="outline" className="gap-2" onClick={handleExportPDF} disabled={exporting}>
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Exportar PDF
             </Button>
           </div>
         </div>
@@ -167,6 +192,18 @@ const Schedules = () => {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
       />
+
+      {/* Hidden PDF Preview for export */}
+      <div className="fixed left-[-9999px] top-0 pointer-events-none">
+        <SchedulePDFPreview
+          ref={pdfRef}
+          tasks={filteredTasks}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          companySettings={companySettings}
+          filterLabel={filterLabel}
+        />
+      </div>
     </div>
   );
 };
