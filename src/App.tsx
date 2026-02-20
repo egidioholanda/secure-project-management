@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Clients from "./pages/Clients";
 
 const queryClient = new QueryClient();
 
@@ -145,6 +146,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Settings />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clientes"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Clients />
             </AppLayout>
           </ProtectedRoute>
         }

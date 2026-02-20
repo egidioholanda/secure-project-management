@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          address: string | null
+          cnpj: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           cnpj: string | null
@@ -177,6 +227,160 @@ export type Database = {
             columns: ["floor_plan_id"]
             isOneToOne: false
             referencedRelation: "project_floor_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_contracts: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          periodicity: string | null
+          start_date: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          periodicity?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          periodicity?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_orders: {
+        Row: {
+          client_id: string
+          completed_date: string | null
+          contract_id: string | null
+          created_at: string
+          description: string | null
+          equipment_attended: string[] | null
+          id: string
+          observations: string | null
+          scheduled_date: string | null
+          signature_url: string | null
+          status: string
+          technician: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          completed_date?: string | null
+          contract_id?: string | null
+          created_at?: string
+          description?: string | null
+          equipment_attended?: string[] | null
+          id?: string
+          observations?: string | null
+          scheduled_date?: string | null
+          signature_url?: string | null
+          status?: string
+          technician?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          completed_date?: string | null
+          contract_id?: string | null
+          created_at?: string
+          description?: string | null
+          equipment_attended?: string[] | null
+          id?: string
+          observations?: string | null
+          scheduled_date?: string | null
+          signature_url?: string | null
+          status?: string
+          technician?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_orders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          order_id: string
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_orders"
             referencedColumns: ["id"]
           },
         ]
