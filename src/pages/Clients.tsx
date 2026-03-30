@@ -184,10 +184,14 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                         </div>
                         {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive shrink-0" onClick={() => setDeleteContractId(c.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => setEditContract(c)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteContractId(c.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                   </CardContent>
                 </Card>
               ))}
