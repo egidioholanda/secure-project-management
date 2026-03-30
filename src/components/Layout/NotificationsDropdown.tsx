@@ -127,7 +127,7 @@ export const NotificationsDropdown = () => {
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold">Notificações</h3>
           <p className="text-sm text-muted-foreground">
-            Tarefas que precisam de atenção
+            Tarefas e manutenções que precisam de atenção
           </p>
         </div>
 
