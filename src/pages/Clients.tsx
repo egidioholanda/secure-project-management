@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client } from "@/hooks/useClients";
+import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
+import { AddScheduleDialog } from "@/components/Clients/AddScheduleDialog";
 import { MaintenanceOrderDialog } from "@/components/Clients/MaintenanceOrderDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
