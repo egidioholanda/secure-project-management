@@ -162,7 +162,7 @@ export const useTaskNotifications = () => {
           category: "maintenance" as const,
         };
       })
-      .filter((n): n is TaskNotification => n !== null);
+      .filter(Boolean) as TaskNotification[];
 
     return [...taskNotifs, ...maintenanceNotifs].sort((a, b) => {
       const priority = { overdue: 0, today: 1, upcoming: 2 };
