@@ -519,6 +519,14 @@ export default function Clients() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setEditClientInList(client); }}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="w-6 h-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => { e.stopPropagation(); setDeleteClientId(client.id); }}
                     >
