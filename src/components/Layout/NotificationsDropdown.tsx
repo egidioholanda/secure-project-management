@@ -163,13 +163,13 @@ export const NotificationsDropdown = () => {
 
             <ScrollArea className="max-h-[300px]">
               <div className="p-2 space-y-2">
-                {notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onNavigate={handleNavigate}
-                  />
-                ))}
+                  {notifications.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onNavigate={() => handleNavigate(notification)}
+                    />
+                  ))}
               </div>
             </ScrollArea>
 
