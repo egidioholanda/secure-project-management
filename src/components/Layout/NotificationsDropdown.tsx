@@ -94,8 +94,12 @@ export const NotificationsDropdown = () => {
     }
   };
 
-  const handleNavigate = () => {
-    navigate("/cronogramas");
+  const handleNavigate = (notification?: TaskNotification) => {
+    if (notification?.category === "maintenance") {
+      navigate("/clientes");
+    } else {
+      navigate("/cronogramas");
+    }
   };
 
   // Show badge only if there are notifications AND they haven't been seen today
