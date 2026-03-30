@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useProjects } from "@/hooks/useProjects";
-import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client } from "@/hooks/useClients";
+import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, MaintenanceOrder } from "@/hooks/useClients";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
 import { AddScheduleDialog } from "@/components/Clients/AddScheduleDialog";
 import { MaintenanceOrderDialog } from "@/components/Clients/MaintenanceOrderDialog";
+import { MaintenanceOrderPDFPreview } from "@/components/Clients/MaintenanceOrderPDFPreview";
+import { exportMaintenanceOrderToPDF } from "@/utils/exportMaintenanceOrderPDF";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -58,6 +61,7 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
   const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
+  const { settings: companySettings } = useCompanySettings();
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
@@ -65,6 +69,18 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
+  const [exportingOrderId, setExportingOrderId] = useState<string | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPDF = async (order: MaintenanceOrder) => {
+    setExportingOrderId(order.id);
+    // Wait for render
+    await new Promise((r) => setTimeout(r, 500));
+    if (pdfRef.current) {
+      await exportMaintenanceOrderToPDF(pdfRef.current, order.title);
+    }
+    setExportingOrderId(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -227,6 +243,9 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                           )}
                         </div>
                         <div className="flex gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" title="Exportar PDF" disabled={exportingOrderId === o.id} onClick={() => handleExportPDF(o)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => setEditOrder(o)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
@@ -308,6 +327,14 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
       <AddContractDialog open={addContract} onOpenChange={setAddContract} clientId={client.id} />
       <AddScheduleDialog open={addSchedule} onOpenChange={setAddSchedule} clientId={client.id} />
       <MaintenanceOrderDialog open={addOrder || !!editOrder} onOpenChange={(v) => { setAddOrder(false); if (!v) setEditOrder(null); }} clientId={client.id} order={editOrder} />
+
+      {/* Hidden PDF preview for export */}
+      {exportingOrderId && (() => {
+        const orderForPdf = orders.find((o) => o.id === exportingOrderId);
+        return orderForPdf ? (
+          <MaintenanceOrderPDFPreview ref={pdfRef} order={orderForPdf} client={client} companySettings={companySettings} />
+        ) : null;
+      })()}
 
       <AlertDialog open={!!deleteOrderId} onOpenChange={() => setDeleteOrderId(null)}>
         <AlertDialogContent>
