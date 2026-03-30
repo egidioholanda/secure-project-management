@@ -178,7 +178,7 @@ export const NotificationsDropdown = () => {
                 variant="outline" 
                 size="sm" 
                 className="w-full"
-                onClick={handleNavigate}
+                onClick={() => handleNavigate()}
               >
                 Ver cronogramas
               </Button>
