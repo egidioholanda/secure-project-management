@@ -541,6 +541,7 @@ export default function Clients() {
       )}
 
       <AddClientDialog open={addClient} onOpenChange={setAddClient} />
+      {editClientInList && <EditClientDialog open={!!editClientInList} onOpenChange={(v) => { if (!v) setEditClientInList(null); }} client={editClientInList} />}
 
       <AlertDialog open={!!deleteClientId} onOpenChange={() => setDeleteClientId(null)}>
         <AlertDialogContent>
