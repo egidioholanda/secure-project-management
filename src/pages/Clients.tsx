@@ -241,6 +241,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
               })}
             </div>
           )}
+        </TabsContent>
+
         <TabsContent value="schedules" className="space-y-4 mt-4">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setAddSchedule(true)} className="gap-2">
