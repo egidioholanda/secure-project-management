@@ -4,7 +4,9 @@ import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, Main
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
+import { EditClientDialog } from "@/components/Clients/EditClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
+import { EditContractDialog } from "@/components/Clients/EditContractDialog";
 import { AddScheduleDialog } from "@/components/Clients/AddScheduleDialog";
 import { MaintenanceOrderDialog } from "@/components/Clients/MaintenanceOrderDialog";
 import { MaintenanceOrderPDFPreview } from "@/components/Clients/MaintenanceOrderPDFPreview";
@@ -66,6 +68,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
   const [editOrder, setEditOrder] = useState<any>(null);
+  const [editClient, setEditClient] = useState(false);
+  const [editContract, setEditContract] = useState<any>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
@@ -85,12 +89,17 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
-          <ChevronRight className="w-4 h-4 rotate-180" /> Clientes
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+            <ChevronRight className="w-4 h-4 rotate-180" /> Clientes
+          </Button>
+          <span className="text-muted-foreground">/</span>
+          <h2 className="text-xl font-bold text-foreground">{client.name}</h2>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setEditClient(true)} className="gap-2">
+          <Pencil className="w-4 h-4" /> Editar Cliente
         </Button>
-        <span className="text-muted-foreground">/</span>
-        <h2 className="text-xl font-bold text-foreground">{client.name}</h2>
       </div>
 
       {/* Dados do cliente */}
@@ -175,9 +184,14 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                         </div>
                         {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive shrink-0" onClick={() => setDeleteContractId(c.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => setEditContract(c)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteContractId(c.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -325,6 +339,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
       </Tabs>
 
       <AddContractDialog open={addContract} onOpenChange={setAddContract} clientId={client.id} />
+      <EditClientDialog open={editClient} onOpenChange={setEditClient} client={client} />
+      {editContract && <EditContractDialog open={!!editContract} onOpenChange={(v) => { if (!v) setEditContract(null); }} clientId={client.id} contract={editContract} />}
       <AddScheduleDialog open={addSchedule} onOpenChange={setAddSchedule} clientId={client.id} />
       <MaintenanceOrderDialog open={addOrder || !!editOrder} onOpenChange={(v) => { setAddOrder(false); if (!v) setEditOrder(null); }} clientId={client.id} order={editOrder} />
 
@@ -382,6 +398,7 @@ export default function Clients() {
   const { clients, isLoading, deleteClient } = useClients();
   const [addClient, setAddClient] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [editClientInList, setEditClientInList] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
 
@@ -502,6 +519,14 @@ export default function Clients() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setEditClientInList(client); }}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="w-6 h-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => { e.stopPropagation(); setDeleteClientId(client.id); }}
                     >
@@ -516,6 +541,7 @@ export default function Clients() {
       )}
 
       <AddClientDialog open={addClient} onOpenChange={setAddClient} />
+      {editClientInList && <EditClientDialog open={!!editClientInList} onOpenChange={(v) => { if (!v) setEditClientInList(null); }} client={editClientInList} />}
 
       <AlertDialog open={!!deleteClientId} onOpenChange={() => setDeleteClientId(null)}>
         <AlertDialogContent>
