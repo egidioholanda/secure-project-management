@@ -339,6 +339,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
       </Tabs>
 
       <AddContractDialog open={addContract} onOpenChange={setAddContract} clientId={client.id} />
+      <EditClientDialog open={editClient} onOpenChange={setEditClient} client={client} />
+      {editContract && <EditContractDialog open={!!editContract} onOpenChange={(v) => { if (!v) setEditContract(null); }} clientId={client.id} contract={editContract} />}
       <AddScheduleDialog open={addSchedule} onOpenChange={setAddSchedule} clientId={client.id} />
       <MaintenanceOrderDialog open={addOrder || !!editOrder} onOpenChange={(v) => { setAddOrder(false); if (!v) setEditOrder(null); }} clientId={client.id} order={editOrder} />
 
