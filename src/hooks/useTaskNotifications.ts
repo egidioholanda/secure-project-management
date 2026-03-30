@@ -126,7 +126,7 @@ export const useTaskNotifications = () => {
       })
       .filter(Boolean) as TaskNotification[];
 
-    const maintenanceNotifs: TaskNotification[] = (schedules
+    const maintenanceNotifs: TaskNotification[] = schedules
       .map((schedule) => {
         const nextDate = new Date(schedule.next_date + "T00:00:00");
         nextDate.setHours(23, 59, 59, 999);
