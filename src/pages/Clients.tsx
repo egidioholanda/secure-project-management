@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client } from "@/hooks/useClients";
+import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
+import { AddScheduleDialog } from "@/components/Clients/AddScheduleDialog";
 import { MaintenanceOrderDialog } from "@/components/Clients/MaintenanceOrderDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,11 +57,14 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { deleteClient } = useClients();
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
+  const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
+  const [addSchedule, setAddSchedule] = useState(false);
   const [editOrder, setEditOrder] = useState<any>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
+  const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -113,6 +118,9 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           </TabsTrigger>
           <TabsTrigger value="orders" className="gap-2">
             <ClipboardList className="w-4 h-4" /> Ordens de Serviço ({orders.length})
+          </TabsTrigger>
+          <TabsTrigger value="schedules" className="gap-2">
+            <CalendarClock className="w-4 h-4" /> Agendamentos ({schedules.length})
           </TabsTrigger>
         </TabsList>
 
@@ -234,9 +242,71 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="schedules" className="space-y-4 mt-4">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAddSchedule(true)} className="gap-2">
+              <Plus className="w-4 h-4" /> Novo Agendamento
+            </Button>
+          </div>
+          {schedules.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <CalendarClock className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>Nenhum agendamento recorrente cadastrado</p>
+              <p className="text-sm mt-1">Crie agendamentos para manutenções preventivas automáticas</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {schedules.map((s) => (
+                <Card key={s.id}>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{s.title}</span>
+                          <Badge className={cn("text-xs", contractTypeBadge[s.type]?.className)}>
+                            {contractTypeBadge[s.type]?.label || s.type}
+                          </Badge>
+                          <Badge className={cn("text-xs", s.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600")}>
+                            {s.is_active ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1"><RotateCcw className="w-3 h-3" />{periodicityLabel[s.periodicity] || s.periodicity}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Próxima: {format(new Date(s.next_date + "T00:00"), "dd/MM/yyyy")}</span>
+                          {s.technician && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{s.technician}</span>}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {s.notify_7_days && <span>🔔 7 dias antes</span>}
+                          {s.notify_3_days && <span>🔔 3 dias antes</span>}
+                          {s.notify_email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{s.notify_email}</span>}
+                        </div>
+                        {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={s.is_active ? "Desativar" : "Ativar"}
+                          onClick={() => updateSchedule.mutate({ id: s.id, is_active: !s.is_active })}
+                        >
+                          {s.is_active ? <PowerOff className="w-4 h-4 text-muted-foreground" /> : <Power className="w-4 h-4 text-green-600" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteScheduleId(s.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       <AddContractDialog open={addContract} onOpenChange={setAddContract} clientId={client.id} />
+      <AddScheduleDialog open={addSchedule} onOpenChange={setAddSchedule} clientId={client.id} />
       <MaintenanceOrderDialog open={addOrder || !!editOrder} onOpenChange={(v) => { setAddOrder(false); if (!v) setEditOrder(null); }} clientId={client.id} order={editOrder} />
 
       <AlertDialog open={!!deleteOrderId} onOpenChange={() => setDeleteOrderId(null)}>
@@ -261,6 +331,19 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive" onClick={() => { deleteContract.mutate(deleteContractId!); setDeleteContractId(null); }}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteScheduleId} onOpenChange={() => setDeleteScheduleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive" onClick={() => { deleteSchedule.mutate(deleteScheduleId!); setDeleteScheduleId(null); }}>Remover</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

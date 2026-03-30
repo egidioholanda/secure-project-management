@@ -94,8 +94,12 @@ export const NotificationsDropdown = () => {
     }
   };
 
-  const handleNavigate = () => {
-    navigate("/cronogramas");
+  const handleNavigate = (notification?: TaskNotification) => {
+    if (notification?.category === "maintenance") {
+      navigate("/clientes");
+    } else {
+      navigate("/cronogramas");
+    }
   };
 
   // Show badge only if there are notifications AND they haven't been seen today
@@ -123,7 +127,7 @@ export const NotificationsDropdown = () => {
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold">Notificações</h3>
           <p className="text-sm text-muted-foreground">
-            Tarefas que precisam de atenção
+            Tarefas e manutenções que precisam de atenção
           </p>
         </div>
 
@@ -159,13 +163,13 @@ export const NotificationsDropdown = () => {
 
             <ScrollArea className="max-h-[300px]">
               <div className="p-2 space-y-2">
-                {notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onNavigate={handleNavigate}
-                  />
-                ))}
+                  {notifications.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onNavigate={() => handleNavigate(notification)}
+                    />
+                  ))}
               </div>
             </ScrollArea>
 
@@ -174,7 +178,7 @@ export const NotificationsDropdown = () => {
                 variant="outline" 
                 size="sm" 
                 className="w-full"
-                onClick={handleNavigate}
+                onClick={() => handleNavigate()}
               >
                 Ver cronogramas
               </Button>

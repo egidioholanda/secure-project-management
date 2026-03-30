@@ -385,6 +385,75 @@ export type Database = {
           },
         ]
       }
+      maintenance_schedules: {
+        Row: {
+          client_id: string
+          contract_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          next_date: string
+          notify_3_days: boolean
+          notify_7_days: boolean
+          notify_email: string | null
+          periodicity: string
+          technician: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          contract_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          next_date: string
+          notify_3_days?: boolean
+          notify_7_days?: boolean
+          notify_email?: string | null
+          periodicity?: string
+          technician?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          contract_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          next_date?: string
+          notify_3_days?: boolean
+          notify_7_days?: boolean
+          notify_email?: string | null
+          periodicity?: string
+          technician?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           client: string
