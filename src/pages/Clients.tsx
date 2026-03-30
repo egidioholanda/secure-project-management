@@ -398,6 +398,7 @@ export default function Clients() {
   const { clients, isLoading, deleteClient } = useClients();
   const [addClient, setAddClient] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [editClientInList, setEditClientInList] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
 
