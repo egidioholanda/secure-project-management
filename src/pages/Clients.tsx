@@ -119,6 +119,9 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="orders" className="gap-2">
             <ClipboardList className="w-4 h-4" /> Ordens de Serviço ({orders.length})
           </TabsTrigger>
+          <TabsTrigger value="schedules" className="gap-2">
+            <CalendarClock className="w-4 h-4" /> Agendamentos ({schedules.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="contracts" className="space-y-4 mt-4">
