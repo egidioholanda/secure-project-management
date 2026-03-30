@@ -89,12 +89,17 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
-          <ChevronRight className="w-4 h-4 rotate-180" /> Clientes
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
+            <ChevronRight className="w-4 h-4 rotate-180" /> Clientes
+          </Button>
+          <span className="text-muted-foreground">/</span>
+          <h2 className="text-xl font-bold text-foreground">{client.name}</h2>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setEditClient(true)} className="gap-2">
+          <Pencil className="w-4 h-4" /> Editar Cliente
         </Button>
-        <span className="text-muted-foreground">/</span>
-        <h2 className="text-xl font-bold text-foreground">{client.name}</h2>
       </div>
 
       {/* Dados do cliente */}
