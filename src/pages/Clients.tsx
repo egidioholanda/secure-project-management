@@ -61,6 +61,7 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
   const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
+  const { settings: companySettings } = useCompanySettings();
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
@@ -68,6 +69,18 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
+  const [exportingOrderId, setExportingOrderId] = useState<string | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPDF = async (order: MaintenanceOrder) => {
+    setExportingOrderId(order.id);
+    // Wait for render
+    await new Promise((r) => setTimeout(r, 500));
+    if (pdfRef.current) {
+      await exportMaintenanceOrderToPDF(pdfRef.current, order.title);
+    }
+    setExportingOrderId(null);
+  };
 
   return (
     <div className="space-y-6">
