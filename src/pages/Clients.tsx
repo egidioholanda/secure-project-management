@@ -328,6 +328,14 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
       <AddScheduleDialog open={addSchedule} onOpenChange={setAddSchedule} clientId={client.id} />
       <MaintenanceOrderDialog open={addOrder || !!editOrder} onOpenChange={(v) => { setAddOrder(false); if (!v) setEditOrder(null); }} clientId={client.id} order={editOrder} />
 
+      {/* Hidden PDF preview for export */}
+      {exportingOrderId && (() => {
+        const orderForPdf = orders.find((o) => o.id === exportingOrderId);
+        return orderForPdf ? (
+          <MaintenanceOrderPDFPreview ref={pdfRef} order={orderForPdf} client={client} companySettings={companySettings} />
+        ) : null;
+      })()}
+
       <AlertDialog open={!!deleteOrderId} onOpenChange={() => setDeleteOrderId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
