@@ -243,6 +243,9 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                           )}
                         </div>
                         <div className="flex gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" title="Exportar PDF" disabled={exportingOrderId === o.id} onClick={() => handleExportPDF(o)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => setEditOrder(o)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
