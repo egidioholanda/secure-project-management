@@ -4,7 +4,9 @@ import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, Main
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
+import { EditClientDialog } from "@/components/Clients/EditClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
+import { EditContractDialog } from "@/components/Clients/EditContractDialog";
 import { AddScheduleDialog } from "@/components/Clients/AddScheduleDialog";
 import { MaintenanceOrderDialog } from "@/components/Clients/MaintenanceOrderDialog";
 import { MaintenanceOrderPDFPreview } from "@/components/Clients/MaintenanceOrderPDFPreview";
