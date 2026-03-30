@@ -68,6 +68,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
   const [editOrder, setEditOrder] = useState<any>(null);
+  const [editClient, setEditClient] = useState(false);
+  const [editContract, setEditContract] = useState<any>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
