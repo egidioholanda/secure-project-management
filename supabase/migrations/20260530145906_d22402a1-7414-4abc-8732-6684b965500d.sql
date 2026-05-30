@@ -1,0 +1,1 @@
+UPDATE public.devices SET icon = 'DomeCamera' WHERE name ILIKE '%dome%' AND icon = 'Camera';
