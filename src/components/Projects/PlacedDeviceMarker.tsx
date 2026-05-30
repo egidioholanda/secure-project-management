@@ -165,14 +165,14 @@ const PlacedDeviceMarker = ({
           {/* Device Icon */}
           <div
             className={cn(
-              "flex items-center justify-center w-10 h-10 -ml-5 -mt-5 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110",
+              "flex items-center justify-center w-7 h-7 -ml-3.5 -mt-3.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110",
               isDragging && "scale-110"
             )}
             style={{
               transform: `rotate(${placedDevice.rotation}deg)`,
             }}
           >
-            <IconComponent className="w-5 h-5" />
+            <IconComponent className="w-4 h-4" />
           </div>
         </div>
       </PopoverTrigger>
