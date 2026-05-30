@@ -5,12 +5,14 @@ interface DomeCameraIconProps {
 const DomeCameraIcon = ({ className = "w-5 h-5" }: DomeCameraIconProps) => {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      {/* Dome top */}
-      <path d="M4 14 A8 8 0 0 1 20 14" />
-      {/* Base plate */}
-      <rect x="3" y="14" width="18" height="3" rx="1" />
-      {/* Lens dot */}
-      <circle cx="12" cy="11" r="2" fill="currentColor" opacity="0.5" />
+      {/* Outer dome hemisphere */}
+      <path d="M2 14 A10 10 0 0 1 22 14 Z" />
+      {/* Inner dome cutout for depth */}
+      <path d="M6 14 A6 6 0 0 1 18 14 Z" opacity="0.4" />
+      {/* Base ring */}
+      <rect x="1" y="13" width="22" height="3" rx="1.5" />
+      {/* Central lens dot */}
+      <circle cx="12" cy="9" r="2.5" fill="currentColor" opacity="0.7" />
     </svg>
   );
 };
