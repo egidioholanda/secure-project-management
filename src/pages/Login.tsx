@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Lock, Mail, User } from 'lucide-react';
+import { LogoIcon } from '@/components/Layout/LogoIcon';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -71,12 +72,12 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center mb-4">
-            <Lock className="w-6 h-6 text-primary-foreground" />
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <LogoIcon className="w-14 h-14 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Sistema de Projetos</CardTitle>
+          <CardTitle className="text-2xl">SecureProject</CardTitle>
           <CardDescription>
-            Entre com sua conta ou crie uma nova
+            Gestão Inteligente
           </CardDescription>
         </CardHeader>
         <CardContent>
