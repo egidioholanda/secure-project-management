@@ -39,7 +39,9 @@ export const useAuth = () => {
     roles: [],
     isLoading: true,
     isAdmin: false,
+    isSupTecnico: false,
   });
+
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
