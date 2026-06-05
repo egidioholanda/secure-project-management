@@ -99,6 +99,13 @@ export const UsersTab = () => {
             Gerente
           </Badge>
         );
+      case 'sup_tecnico':
+        return (
+          <Badge variant="outline">
+            <UserCheck className="w-3 h-3 mr-1" />
+            Suporte Técnico
+          </Badge>
+        );
       default:
         return (
           <Badge variant="secondary">
