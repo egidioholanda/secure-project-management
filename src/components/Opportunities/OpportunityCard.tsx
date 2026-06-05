@@ -88,8 +88,16 @@ export const OpportunityCard = ({
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2 text-sm">
           <DollarSign className="w-4 h-4 text-success" />
+          <span className="text-xs text-muted-foreground">Venda:</span>
           <span className="font-semibold text-success">{value}</span>
         </div>
+        {monthlyValue && (
+          <div className="flex items-center gap-2 text-sm">
+            <Repeat className="w-4 h-4 text-accent" />
+            <span className="text-xs text-muted-foreground">Mensal:</span>
+            <span className="font-semibold text-accent">{monthlyValue}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="w-4 h-4" />
           <span>{responsible}</span>
