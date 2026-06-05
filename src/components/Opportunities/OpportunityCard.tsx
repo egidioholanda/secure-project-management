@@ -38,6 +38,7 @@ export const OpportunityCard = ({
   title, 
   client, 
   value, 
+  monthlyValue,
   type, 
   responsible, 
   createdAt,
