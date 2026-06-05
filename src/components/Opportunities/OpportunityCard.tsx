@@ -1,4 +1,4 @@
-import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban } from "lucide-react";
+import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
