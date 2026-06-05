@@ -25,20 +25,20 @@ const Dashboard = () => {
   ).length;
 
   // Calculate total pipeline value from opportunities (excluding won)
+  const parseBRL = (raw: string) => {
+    const cleaned = raw.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  };
+
   const pipelineValue = opportunities.reduce((total, opp) => {
-    if (opp.value && opp.status !== 'ganha') {
-      const numValue = parseFloat(opp.value.replace(/[^\d.,]/g, '').replace(',', '.'));
-      return total + (isNaN(numValue) ? 0 : numValue);
-    }
+    if (opp.value && opp.status !== 'ganha') return total + parseBRL(opp.value);
     return total;
   }, 0);
 
   // Calculate total monthly pipeline value from opportunities (excluding won)
   const pipelineMonthlyValue = opportunities.reduce((total, opp) => {
-    if (opp.monthlyValue && opp.status !== 'ganha') {
-      const numValue = parseFloat(opp.monthlyValue.replace(/[^\d.,]/g, '').replace(',', '.'));
-      return total + (isNaN(numValue) ? 0 : numValue);
-    }
+    if (opp.monthlyValue && opp.status !== 'ganha') return total + parseBRL(opp.monthlyValue);
     return total;
   }, 0);
 
