@@ -28,7 +28,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
-  roles: Array<{ role: 'admin' | 'manager' | 'user' }>;
+  roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
 interface EditUserDialogProps {
