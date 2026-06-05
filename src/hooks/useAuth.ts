@@ -89,6 +89,7 @@ export const useAuth = () => {
             profile: null,
             roles: [],
             isAdmin: false,
+            isSupTecnico: false,
             isLoading: false,
           }));
         }
