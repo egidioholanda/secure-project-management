@@ -71,9 +71,14 @@ const Dashboard = () => {
       gradient: true,
     },
     {
-      title: "Valor em Pipeline",
+      title: "Valor em Pipeline (vendas)",
       value: formatCurrency(pipelineValue),
       icon: TrendingUp,
+    },
+    {
+      title: "Valor em Pipeline (mensal)",
+      value: formatCurrency(pipelineMonthlyValue),
+      icon: Repeat,
     },
     {
       title: "Taxa de Conversão",
