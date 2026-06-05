@@ -9,6 +9,7 @@ export interface Opportunity {
   title: string;
   client: string;
   value: string;
+  monthlyValue: string;
   type: string;
   responsible: string;
   createdAt: string;
@@ -20,6 +21,7 @@ interface DbOpportunity {
   title: string;
   client: string;
   value: string | null;
+  monthly_value: string | null;
   type: string | null;
   responsible: string | null;
   status: string;
@@ -33,6 +35,7 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   title: db.title,
   client: db.client,
   value: db.value || "",
+  monthlyValue: db.monthly_value || "",
   type: db.type || "",
   responsible: db.responsible || "",
   createdAt: formatDistanceToNow(new Date(db.created_at), {
@@ -54,7 +57,7 @@ export const useOpportunities = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOpportunities((data || []).map(mapDbToOpportunity));
+      setOpportunities((data || []).map((d: any) => mapDbToOpportunity(d)));
     } catch (error) {
       console.error("Error fetching opportunities:", error);
       toast.error("Erro ao carregar oportunidades");
@@ -73,15 +76,16 @@ export const useOpportunities = () => {
           title: opp.title,
           client: opp.client,
           value: opp.value || null,
+          monthly_value: opp.monthlyValue || null,
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
-      const newOpp = mapDbToOpportunity(data);
+      const newOpp = mapDbToOpportunity(data as any);
       setOpportunities((prev) => [newOpp, ...prev]);
       toast.success("Oportunidade criada com sucesso!");
       return newOpp;
@@ -100,10 +104,11 @@ export const useOpportunities = () => {
           title: opp.title,
           client: opp.client,
           value: opp.value || null,
+          monthly_value: opp.monthlyValue || null,
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
-        })
+        } as any)
         .eq("id", opp.id);
 
       if (error) throw error;

@@ -459,6 +459,7 @@ export type Database = {
           client: string
           created_at: string
           id: string
+          monthly_value: string | null
           notes: string | null
           responsible: string | null
           status: string
@@ -471,6 +472,7 @@ export type Database = {
           client: string
           created_at?: string
           id?: string
+          monthly_value?: string | null
           notes?: string | null
           responsible?: string | null
           status?: string
@@ -483,6 +485,7 @@ export type Database = {
           client?: string
           created_at?: string
           id?: string
+          monthly_value?: string | null
           notes?: string | null
           responsible?: string | null
           status?: string
