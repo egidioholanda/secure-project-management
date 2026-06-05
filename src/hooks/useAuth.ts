@@ -12,10 +12,12 @@ interface Profile {
   updated_at: string;
 }
 
+export type AppRole = 'admin' | 'manager' | 'user' | 'sup_tecnico';
+
 interface UserRole {
   id: string;
   user_id: string;
-  role: 'admin' | 'manager' | 'user';
+  role: AppRole;
   created_at: string;
 }
 
@@ -26,6 +28,7 @@ interface AuthState {
   roles: UserRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isSupTecnico: boolean;
 }
 
 export const useAuth = () => {
