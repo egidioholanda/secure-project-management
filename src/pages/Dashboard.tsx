@@ -1,4 +1,4 @@
-import { Target, FolderKanban, TrendingUp, Clock, DollarSign, CheckCircle2 } from "lucide-react";
+import { Target, FolderKanban, TrendingUp, Clock, DollarSign, CheckCircle2, Repeat } from "lucide-react";
 import { MetricCard } from "@/components/Dashboard/MetricCard";
 import { Card } from "@/components/ui/card";
 import { useProjects } from "@/hooks/useProjects";
