@@ -33,6 +33,15 @@ const Dashboard = () => {
     return total;
   }, 0);
 
+  // Calculate total monthly pipeline value from opportunities (excluding won)
+  const pipelineMonthlyValue = opportunities.reduce((total, opp) => {
+    if (opp.monthlyValue && opp.status !== 'ganha') {
+      const numValue = parseFloat(opp.monthlyValue.replace(/[^\d.,]/g, '').replace(',', '.'));
+      return total + (isNaN(numValue) ? 0 : numValue);
+    }
+    return total;
+  }, 0);
+
   // Calculate conversion rate (won / total)
   const wonOpportunities = opportunities.filter(o => o.status === 'ganha').length;
   const totalOpportunities = opportunities.length;
