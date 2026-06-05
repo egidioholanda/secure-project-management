@@ -42,7 +42,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [fullName, setFullName] = useState(user.full_name || '');
-  const [role, setRole] = useState<'admin' | 'manager' | 'user'>(
+  const [role, setRole] = useState<'admin' | 'manager' | 'user' | 'sup_tecnico'>(
     user.roles[0]?.role || 'user'
   );
 
