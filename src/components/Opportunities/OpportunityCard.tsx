@@ -14,6 +14,7 @@ interface OpportunityCardProps {
   title: string;
   client: string;
   value: string;
+  monthlyValue?: string;
   type: string;
   responsible: string;
   createdAt: string;
