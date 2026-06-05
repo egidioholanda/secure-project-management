@@ -228,10 +228,20 @@ const Dashboard = () => {
                       <h3 className="font-medium text-sm mb-1">{project.name}</h3>
                       <p className="text-xs text-muted-foreground">{project.status}</p>
                     </div>
-                    <span className="text-sm font-semibold text-success">{project.value}</span>
+                    <div className="text-right">
+                      {project.saleValue && (
+                        <span className="block text-sm font-semibold text-success">Venda: {project.saleValue}</span>
+                      )}
+                      {project.monthlyValue && (
+                        <span className="block text-sm font-semibold text-primary">Mensal: {project.monthlyValue}</span>
+                      )}
+                      {!project.saleValue && !project.monthlyValue && (
+                        <span className="text-sm font-semibold text-muted-foreground">N/A</span>
+                      )}
+                    </div>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-primary transition-all duration-500"
                       style={{ width: `${project.progress}%` }}
                     />
