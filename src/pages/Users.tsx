@@ -77,17 +77,19 @@ const Users = () => {
       u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleBadge = (role: 'admin' | 'manager' | 'user') => {
+  const getRoleBadge = (role: 'admin' | 'manager' | 'user' | 'sup_tecnico') => {
     const variants = {
       admin: 'destructive',
       manager: 'default',
       user: 'secondary',
+      sup_tecnico: 'outline',
     } as const;
 
     const labels = {
       admin: 'Administrador',
       manager: 'Gerente',
       user: 'Usuário',
+      sup_tecnico: 'Suporte Técnico',
     };
 
     return (
