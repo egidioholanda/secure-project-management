@@ -53,12 +53,14 @@ export const useAuth = () => {
       const profile = profileResult.data as Profile | null;
       const roles = (rolesResult.data || []) as UserRole[];
       const isAdmin = roles.some((r) => r.role === 'admin');
+      const isSupTecnico = roles.some((r) => r.role === 'sup_tecnico');
 
       setAuthState((prev) => ({
         ...prev,
         profile,
         roles,
         isAdmin,
+        isSupTecnico,
         isLoading: false,
       }));
     } catch (error) {
