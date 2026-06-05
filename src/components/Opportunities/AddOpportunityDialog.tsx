@@ -157,12 +157,24 @@ export function AddOpportunityDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="value">Valor (R$) *</Label>
+              <Label htmlFor="value">Valor Venda (R$) *</Label>
               <Input
                 id="value"
                 placeholder="450.000"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="monthlyValue">Valor Mensal (R$)</Label>
+              <Input
+                id="monthlyValue"
+                placeholder="Ex: 1.500"
+                value={monthlyValue}
+                onChange={(e) => setMonthlyValue(e.target.value)}
               />
             </div>
           </div>
