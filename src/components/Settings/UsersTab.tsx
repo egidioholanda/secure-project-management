@@ -26,7 +26,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
-  roles: Array<{ role: 'admin' | 'manager' | 'user' }>;
+  roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
 export const UsersTab = () => {
@@ -58,7 +58,7 @@ export const UsersTab = () => {
         ...profile,
         roles: (roles || [])
           .filter((r) => r.user_id === profile.user_id)
-          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' })),
+          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' | 'sup_tecnico' })),
       }));
 
       setUsers(usersWithRoles);
