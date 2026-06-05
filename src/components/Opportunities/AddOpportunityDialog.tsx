@@ -50,6 +50,7 @@ export function AddOpportunityDialog({
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
   const [value, setValue] = useState("");
+  const [monthlyValue, setMonthlyValue] = useState("");
   const [type, setType] = useState("");
   const [responsible, setResponsible] = useState("");
   const [status, setStatus] = useState<Opportunity["status"]>("prospeccao");
@@ -61,8 +62,8 @@ export function AddOpportunityDialog({
     if (editingOpportunity) {
       setTitle(editingOpportunity.title);
       setClient(editingOpportunity.client);
-      // Remove "R$ " prefix for editing
       setValue(editingOpportunity.value.replace("R$ ", ""));
+      setMonthlyValue((editingOpportunity.monthlyValue || "").replace("R$ ", ""));
       setType(editingOpportunity.type);
       setResponsible(editingOpportunity.responsible);
       setStatus(editingOpportunity.status);
@@ -76,6 +77,7 @@ export function AddOpportunityDialog({
     setTitle("");
     setClient("");
     setValue("");
+    setMonthlyValue("");
     setType("");
     setResponsible("");
     setStatus("prospeccao");
@@ -94,6 +96,7 @@ export function AddOpportunityDialog({
         title,
         client,
         value: value.startsWith("R$") ? value : `R$ ${value}`,
+        monthlyValue: monthlyValue ? (monthlyValue.startsWith("R$") ? monthlyValue : `R$ ${monthlyValue}`) : "",
         type,
         responsible,
         status,
@@ -105,6 +108,7 @@ export function AddOpportunityDialog({
         title,
         client,
         value: `R$ ${value}`,
+        monthlyValue: monthlyValue ? `R$ ${monthlyValue}` : "",
         type,
         responsible,
         status,
