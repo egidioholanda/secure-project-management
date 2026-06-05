@@ -175,8 +175,8 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral dos seus projetos e oportunidades</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
