@@ -147,6 +147,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="sup_tecnico">Suporte Técnico</SelectItem>
                 <SelectItem value="manager">Gerente</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>
