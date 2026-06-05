@@ -94,14 +94,20 @@ const Dashboard = () => {
     const avgProgress = projectTasks.length > 0
       ? Math.round(projectTasks.reduce((sum, t) => sum + t.progress, 0) / projectTasks.length)
       : 0;
-    
+
+    // Find related opportunity for monthly value
+    const relatedOpp = opportunities.find(o => o.id === project.opportunityId);
+    const saleValue = project.value || relatedOpp?.value || '';
+    const monthlyValue = relatedOpp?.monthlyValue || '';
+
     return {
       name: `${project.name}${project.type ? ` - ${project.type}` : ''}`,
-      status: project.status === 'in_progress' ? 'Em Andamento' : 
-              project.status === 'completed' ? 'Concluído' : 
+      status: project.status === 'in_progress' ? 'Em Andamento' :
+              project.status === 'completed' ? 'Concluído' :
               project.status === 'planning' ? 'Planejamento' : project.status,
       progress: avgProgress,
-      value: project.value || 'N/A',
+      saleValue,
+      monthlyValue,
     };
   });
 
