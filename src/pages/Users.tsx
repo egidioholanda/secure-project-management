@@ -18,7 +18,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
-  roles: Array<{ role: 'admin' | 'manager' | 'user' }>;
+  roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
 const Users = () => {
@@ -51,7 +51,7 @@ const Users = () => {
         ...profile,
         roles: (roles || [])
           .filter((r) => r.user_id === profile.user_id)
-          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' })),
+          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' | 'sup_tecnico' })),
       }));
 
       setUsers(usersWithRoles);
@@ -77,17 +77,19 @@ const Users = () => {
       u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleBadge = (role: 'admin' | 'manager' | 'user') => {
+  const getRoleBadge = (role: 'admin' | 'manager' | 'user' | 'sup_tecnico') => {
     const variants = {
       admin: 'destructive',
       manager: 'default',
       user: 'secondary',
+      sup_tecnico: 'outline',
     } as const;
 
     const labels = {
       admin: 'Administrador',
       manager: 'Gerente',
       user: 'Usuário',
+      sup_tecnico: 'Suporte Técnico',
     };
 
     return (

@@ -26,7 +26,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
-  roles: Array<{ role: 'admin' | 'manager' | 'user' }>;
+  roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
 export const UsersTab = () => {
@@ -58,7 +58,7 @@ export const UsersTab = () => {
         ...profile,
         roles: (roles || [])
           .filter((r) => r.user_id === profile.user_id)
-          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' })),
+          .map((r) => ({ role: r.role as 'admin' | 'manager' | 'user' | 'sup_tecnico' })),
       }));
 
       setUsers(usersWithRoles);
@@ -97,6 +97,13 @@ export const UsersTab = () => {
           <Badge className="bg-accent/10 text-accent border-accent/20">
             <UserCheck className="w-3 h-3 mr-1" />
             Gerente
+          </Badge>
+        );
+      case 'sup_tecnico':
+        return (
+          <Badge variant="outline">
+            <UserCheck className="w-3 h-3 mr-1" />
+            Suporte Técnico
           </Badge>
         );
       default:

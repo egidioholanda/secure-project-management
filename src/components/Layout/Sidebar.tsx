@@ -24,12 +24,18 @@ const navItems = [
   { icon: Building2, label: "Clientes", path: "/clientes" },
 ];
 
+const SUP_TECNICO_PATHS = ["/catalogo", "/cronogramas", "/relatorios", "/clientes"];
+
 export const Sidebar = () => {
   const location = useLocation();
-  const { isAdmin, user } = useAuthContext();
+  const { isAdmin, isSupTecnico, user } = useAuthContext();
+
+  const baseItems = isSupTecnico && !isAdmin
+    ? navItems.filter((i) => SUP_TECNICO_PATHS.includes(i.path))
+    : navItems;
 
   const allNavItems = [
-    ...navItems,
+    ...baseItems,
     ...(isAdmin ? [{ icon: Users, label: "Usuários", path: "/usuarios" }] : []),
   ];
 

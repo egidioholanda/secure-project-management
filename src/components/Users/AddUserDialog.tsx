@@ -33,7 +33,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'admin' | 'manager' | 'user'>('user');
+  const [role, setRole] = useState<'admin' | 'manager' | 'user' | 'sup_tecnico'>('user');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +147,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="sup_tecnico">Suporte Técnico</SelectItem>
                 <SelectItem value="manager">Gerente</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>

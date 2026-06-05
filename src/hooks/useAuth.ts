@@ -12,10 +12,12 @@ interface Profile {
   updated_at: string;
 }
 
+export type AppRole = 'admin' | 'manager' | 'user' | 'sup_tecnico';
+
 interface UserRole {
   id: string;
   user_id: string;
-  role: 'admin' | 'manager' | 'user';
+  role: AppRole;
   created_at: string;
 }
 
@@ -26,6 +28,7 @@ interface AuthState {
   roles: UserRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isSupTecnico: boolean;
 }
 
 export const useAuth = () => {
@@ -36,7 +39,9 @@ export const useAuth = () => {
     roles: [],
     isLoading: true,
     isAdmin: false,
+    isSupTecnico: false,
   });
+
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
@@ -48,12 +53,14 @@ export const useAuth = () => {
       const profile = profileResult.data as Profile | null;
       const roles = (rolesResult.data || []) as UserRole[];
       const isAdmin = roles.some((r) => r.role === 'admin');
+      const isSupTecnico = roles.some((r) => r.role === 'sup_tecnico');
 
       setAuthState((prev) => ({
         ...prev,
         profile,
         roles,
         isAdmin,
+        isSupTecnico,
         isLoading: false,
       }));
     } catch (error) {
@@ -82,6 +89,7 @@ export const useAuth = () => {
             profile: null,
             roles: [],
             isAdmin: false,
+            isSupTecnico: false,
             isLoading: false,
           }));
         }

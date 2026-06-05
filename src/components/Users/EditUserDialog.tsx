@@ -28,7 +28,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
-  roles: Array<{ role: 'admin' | 'manager' | 'user' }>;
+  roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
 interface EditUserDialogProps {
@@ -42,7 +42,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [fullName, setFullName] = useState(user.full_name || '');
-  const [role, setRole] = useState<'admin' | 'manager' | 'user'>(
+  const [role, setRole] = useState<'admin' | 'manager' | 'user' | 'sup_tecnico'>(
     user.roles[0]?.role || 'user'
   );
 
@@ -135,6 +135,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="sup_tecnico">Suporte Técnico</SelectItem>
                 <SelectItem value="manager">Gerente</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>

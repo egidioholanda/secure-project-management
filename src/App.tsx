@@ -20,8 +20,10 @@ import Clients from "./pages/Clients";
 
 const queryClient = new QueryClient();
 
+const SUP_TECNICO_ALLOWED = ["/catalogo", "/cronogramas", "/relatorios", "/clientes"];
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuthContext();
+  const { user, isLoading, isAdmin, isSupTecnico } = useAuthContext();
   const location = useLocation();
 
   if (isLoading) {
@@ -34,6 +36,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (isSupTecnico && !isAdmin && !SUP_TECNICO_ALLOWED.includes(location.pathname)) {
+    return <Navigate to="/catalogo" replace />;
   }
 
   return <>{children}</>;
