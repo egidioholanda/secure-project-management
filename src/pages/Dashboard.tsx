@@ -1,4 +1,4 @@
-import { Target, FolderKanban, TrendingUp, Clock, DollarSign, CheckCircle2 } from "lucide-react";
+import { Target, FolderKanban, TrendingUp, Clock, DollarSign, CheckCircle2, Repeat } from "lucide-react";
 import { MetricCard } from "@/components/Dashboard/MetricCard";
 import { Card } from "@/components/ui/card";
 import { useProjects } from "@/hooks/useProjects";
@@ -33,6 +33,15 @@ const Dashboard = () => {
     return total;
   }, 0);
 
+  // Calculate total monthly pipeline value from opportunities (excluding won)
+  const pipelineMonthlyValue = opportunities.reduce((total, opp) => {
+    if (opp.monthlyValue && opp.status !== 'ganha') {
+      const numValue = parseFloat(opp.monthlyValue.replace(/[^\d.,]/g, '').replace(',', '.'));
+      return total + (isNaN(numValue) ? 0 : numValue);
+    }
+    return total;
+  }, 0);
+
   // Calculate conversion rate (won / total)
   const wonOpportunities = opportunities.filter(o => o.status === 'ganha').length;
   const totalOpportunities = opportunities.length;
@@ -62,9 +71,14 @@ const Dashboard = () => {
       gradient: true,
     },
     {
-      title: "Valor em Pipeline",
+      title: "Valor em Pipeline (vendas)",
       value: formatCurrency(pipelineValue),
       icon: TrendingUp,
+    },
+    {
+      title: "Valor em Pipeline (mensal)",
+      value: formatCurrency(pipelineMonthlyValue),
+      icon: Repeat,
     },
     {
       title: "Taxa de Conversão",
@@ -161,8 +175,8 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral dos seus projetos e oportunidades</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
@@ -183,7 +197,7 @@ const Dashboard = () => {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {metrics.map((metric, index) => (
           <MetricCard key={index} {...metric} />
         ))}
