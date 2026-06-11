@@ -17,13 +17,14 @@ import Login from "./pages/Login";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
+import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
 const SUP_TECNICO_ALLOWED = ["/projetos", "/catalogo", "/cronogramas", "/relatorios", "/clientes"];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, isAdmin, isSupTecnico } = useAuthContext();
+  const { user, isLoading, isAdmin, isSupTecnico, profile } = useAuthContext();
   const location = useLocation();
 
   if (isLoading) {
@@ -36,6 +37,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (profile && profile.approval_status !== 'approved') {
+    return <PendingApproval />;
   }
 
   if (isSupTecnico && !isAdmin && !SUP_TECNICO_ALLOWED.includes(location.pathname)) {
