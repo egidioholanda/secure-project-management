@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Pencil, FileText } from "lucide-react";
+import { ArrowLeft, Pencil, FileText, Link2, UserPlus, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Project, PlacedDevice, Proposal } from "@/types/project";
 import FloorPlanEditor from "./FloorPlanEditor";
 import ProposalEditor from "./ProposalEditor";
+import ProjectDocumentsSection from "./ProjectDocumentsSection";
+import { LinkClientDialog } from "./LinkClientDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useClients } from "@/hooks/useClients";
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -25,6 +28,9 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [existingProposal, setExistingProposal] = useState<Proposal | null>(null);
   const [loadingProposal, setLoadingProposal] = useState(true);
+  const [linkClientOpen, setLinkClientOpen] = useState(false);
+  const { clients } = useClients();
+  const linkedClient = project.clientId ? clients.find((c) => c.id === project.clientId) : null;
 
   const statusInfo = statusConfig[project.status as keyof typeof statusConfig];
 
