@@ -459,7 +459,7 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                 };
                 const st = statusMap[p.status] || statusMap.draft;
                 return (
-                  <Card key={p.id}>
+                  <Card key={p.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-4 pb-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1 min-w-0">
@@ -485,6 +485,24 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
                               R$ {Number(p.grand_total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </span>
                           </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Visualizar proposta"
+                            onClick={() => setViewingProposal({ proposalId: p.id, projectId: p.project_id })}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Exportar PDF"
+                            onClick={() => setViewingProposal({ proposalId: p.id, projectId: p.project_id, autoExport: true })}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
