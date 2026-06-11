@@ -202,6 +202,21 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     }));
   };
 
+  const handleSetItemQuantity = (itemId: string, value: string) => {
+    const parsed = parseInt(value, 10);
+    const newQuantity = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          quantity: newQuantity,
+          subtotal: newQuantity * (item.unit_price + item.installation_price),
+        };
+      }
+      return item;
+    }));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     if (items.length <= 1) {
       toast.error("A proposta deve ter pelo menos um item");
