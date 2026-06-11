@@ -20,7 +20,7 @@ import Clients from "./pages/Clients";
 
 const queryClient = new QueryClient();
 
-const SUP_TECNICO_ALLOWED = ["/catalogo", "/cronogramas", "/relatorios", "/clientes"];
+const SUP_TECNICO_ALLOWED = ["/projetos", "/catalogo", "/cronogramas", "/relatorios", "/clientes"];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading, isAdmin, isSupTecnico } = useAuthContext();

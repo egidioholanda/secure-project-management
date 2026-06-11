@@ -24,7 +24,7 @@ const navItems = [
   { icon: Building2, label: "Clientes", path: "/clientes" },
 ];
 
-const SUP_TECNICO_PATHS = ["/catalogo", "/cronogramas", "/relatorios", "/clientes"];
+const SUP_TECNICO_PATHS = ["/projetos", "/catalogo", "/cronogramas", "/relatorios", "/clientes"];
 
 export const Sidebar = () => {
   const location = useLocation();
