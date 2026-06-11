@@ -19,8 +19,10 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown
 } from "lucide-react";
+import ProjectDocumentsSection from "@/components/Projects/ProjectDocumentsSection";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -60,10 +62,15 @@ interface ClientDetailProps {
 
 function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { deleteClient } = useClients();
+  const { projects } = useProjects();
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
   const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
   const { settings: companySettings } = useCompanySettings();
+  const clientProjects = projects.filter(
+    (p) => p.clientId === client.id || (client.project_id && p.id === client.project_id)
+  );
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
