@@ -451,12 +451,21 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               <Upload className="w-16 h-16 mb-4 opacity-30" />
               <p className="text-lg font-medium mb-2">Nenhuma planta importada</p>
               <p className="text-sm text-center mb-4">
-                Importe uma planta baixa em PNG, JPG ou PDF para começar a posicionar os dispositivos
+                Importe uma planta baixa em PNG, JPG ou PDF, ou gere a proposta diretamente sem planta
               </p>
-              <Button onClick={() => fileInputRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-2" />
-                Importar Planta
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar Planta
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => onGenerateProposal([])}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Gerar Proposta sem Planta
+                </Button>
+              </div>
             </div>
           )}
         </Card>
