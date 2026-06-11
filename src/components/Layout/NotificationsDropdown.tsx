@@ -1,4 +1,4 @@
-import { Bell, AlertTriangle, Clock, Calendar } from "lucide-react";
+import { Bell, AlertTriangle, Clock, Calendar, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,6 +8,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useTaskNotifications, TaskNotification } from "@/hooks/useTaskNotifications";
+import { usePendingUsers } from "@/hooks/usePendingUsers";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -83,10 +84,13 @@ export const NotificationsDropdown = () => {
     loading, 
     overdueCount, 
     todayCount, 
-    totalCount,
+    totalCount: taskTotal,
     hasBeenSeen,
     markAsSeen 
   } = useTaskNotifications();
+  const { data: pendingUsers = [], canApprove } = usePendingUsers();
+  const pendingCount = canApprove ? pendingUsers.length : 0;
+  const totalCount = taskTotal + pendingCount;
 
   const handleOpenChange = (open: boolean) => {
     if (open && totalCount > 0) {
@@ -102,7 +106,6 @@ export const NotificationsDropdown = () => {
     }
   };
 
-  // Show badge only if there are notifications AND they haven't been seen today
   const showBadge = totalCount > 0 && !hasBeenSeen;
 
   return (
@@ -135,14 +138,14 @@ export const NotificationsDropdown = () => {
           <div className="p-4 text-center text-muted-foreground">
             Carregando...
           </div>
-        ) : notifications.length === 0 ? (
+        ) : notifications.length === 0 && pendingCount === 0 ? (
           <div className="p-8 text-center">
             <Bell className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
             <p className="text-sm text-muted-foreground">
               Nenhuma notificação
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Todas as tarefas estão em dia!
+              Tudo em dia!
             </p>
           </div>
         ) : (
@@ -161,8 +164,28 @@ export const NotificationsDropdown = () => {
               )}
             </div>
 
-            <ScrollArea className="max-h-[300px]">
+            <ScrollArea className="max-h-[340px]">
               <div className="p-2 space-y-2">
+                  {canApprove && pendingUsers.map((u) => (
+                    <button
+                      key={`pending-${u.id}`}
+                      onClick={() => navigate('/usuarios')}
+                      className="w-full p-3 rounded-lg border bg-accent/10 border-accent/30 hover:opacity-80 transition-opacity text-left"
+                    >
+                      <div className="flex items-start gap-3">
+                        <UserPlus className="h-4 w-4 text-accent mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            Novo cadastro pendente
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {u.full_name || u.email || 'Sem nome'}
+                          </p>
+                          <p className="text-xs font-medium mt-1">Aprovar acesso</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                   {notifications.map((notification) => (
                     <NotificationItem
                       key={notification.id}

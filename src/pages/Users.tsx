@@ -3,13 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Users as UsersIcon, Shield, UserCog, Trash2, Edit } from 'lucide-react';
+import { Plus, Search, Users as UsersIcon, Shield, UserCog, Trash2, Edit, Check, X, Clock } from 'lucide-react';
 import { AddUserDialog } from '@/components/Users/AddUserDialog';
 import { EditUserDialog } from '@/components/Users/EditUserDialog';
 import { DeleteUserDialog } from '@/components/Users/DeleteUserDialog';
+import { usePendingUsers } from '@/hooks/usePendingUsers';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface UserWithRole {
   id: string;
@@ -22,7 +31,7 @@ interface UserWithRole {
 }
 
 const Users = () => {
-  const { isAdmin, user } = useAuthContext();
+  const { isAdmin, isManager, user } = useAuthContext();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +39,10 @@ const Users = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const { data: pendingUsers = [], approve, reject } = usePendingUsers();
+  const canApprove = isAdmin || isManager;
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -99,7 +112,7 @@ const Users = () => {
     );
   };
 
-  if (!isAdmin) {
+  if (!canApprove) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Card className="max-w-md">
@@ -107,13 +120,26 @@ const Users = () => {
             <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
             <p className="text-muted-foreground">
-              Apenas administradores podem gerenciar usuários.
+              Apenas administradores e gerentes podem acessar esta página.
             </p>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const handleConfirmReject = () => {
+    if (!rejectingId) return;
+    reject.mutate(
+      { userId: rejectingId, reason: rejectReason },
+      {
+        onSuccess: () => {
+          setRejectingId(null);
+          setRejectReason('');
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -127,11 +153,62 @@ const Users = () => {
             Gerencie os usuários do sistema
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Usuário
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Novo Usuário
+          </Button>
+        )}
       </div>
+
+      {pendingUsers.length > 0 && (
+        <Card className="border-accent/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Clock className="w-5 h-5 text-accent" />
+              Cadastros pendentes de aprovação
+              <Badge variant="secondary">{pendingUsers.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingUsers.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between gap-3 p-3 rounded-md border bg-muted/30"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{p.full_name || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground truncate">{p.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cadastrado em {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={() => approve.mutate(p.user_id)}
+                    disabled={approve.isPending}
+                    className="gap-1"
+                  >
+                    <Check className="w-4 h-4" /> Aprovar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setRejectingId(p.user_id);
+                      setRejectReason('');
+                    }}
+                    className="gap-1"
+                  >
+                    <X className="w-4 h-4" /> Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -181,24 +258,26 @@ const Users = () => {
                       <p className="text-sm text-muted-foreground">{u.email}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingUser(u)}
-                      disabled={u.user_id === user?.id}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingUser(u)}
-                      disabled={u.user_id === user?.id}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingUser(u)}
+                        disabled={u.user_id === user?.id}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingUser(u)}
+                        disabled={u.user_id === user?.id}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -243,6 +322,37 @@ const Users = () => {
           onSuccess={fetchUsers}
         />
       )}
+
+      <Dialog open={!!rejectingId} onOpenChange={(o) => !o && setRejectingId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeitar cadastro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Informe um motivo (opcional) — o usuário verá esta mensagem ao tentar entrar.
+            </p>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Motivo da rejeição..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmReject}
+              disabled={reject.isPending}
+            >
+              Confirmar rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
