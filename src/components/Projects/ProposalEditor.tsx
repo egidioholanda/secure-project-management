@@ -22,9 +22,10 @@ interface ProposalEditorProps {
   placedDevices: PlacedDevice[];
   onBack: () => void;
   existingProposalId?: string;
+  autoExport?: boolean;
 }
 
-const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: ProposalEditorProps) => {
+const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, autoExport }: ProposalEditorProps) => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -488,6 +489,16 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       toast.error("Erro ao exportar PDF");
     }
   };
+
+  const [autoExported, setAutoExported] = useState(false);
+  useEffect(() => {
+    if (!autoExport || autoExported || loading || !proposal) return;
+    const t = setTimeout(() => {
+      setAutoExported(true);
+      handleExportPDF();
+    }, 800);
+    return () => clearTimeout(t);
+  }, [autoExport, autoExported, loading, proposal]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
