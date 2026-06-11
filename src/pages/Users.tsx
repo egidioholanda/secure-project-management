@@ -258,26 +258,26 @@ const Users = () => {
                       <p className="text-sm text-muted-foreground">{u.email}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingUser(u)}
-                      disabled={u.user_id === user?.id}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingUser(u)}
-                      disabled={u.user_id === user?.id}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
+                  {isAdmin && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingUser(u)}
+                        disabled={u.user_id === user?.id}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingUser(u)}
+                        disabled={u.user_id === user?.id}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
               <CardContent>
                 <div className="flex flex-wrap gap-1">
                   {u.roles.length > 0 ? (
