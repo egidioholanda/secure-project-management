@@ -1,8 +1,11 @@
 import { useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, MaintenanceOrder } from "@/hooks/useClients";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
 import { EditClientDialog } from "@/components/Clients/EditClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
