@@ -74,6 +74,22 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const clientProjects = projects.filter(
     (p) => p.clientId === client.id || (client.project_id && p.id === client.project_id)
   );
+  const projectIds = clientProjects.map((p) => p.id);
+  const { data: proposals = [] } = useQuery({
+    queryKey: ["client-proposals", client.id, projectIds],
+    queryFn: async () => {
+      if (projectIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("proposals")
+        .select("*")
+        .in("project_id", projectIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: projectIds.length > 0,
+  });
+
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
