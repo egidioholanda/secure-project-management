@@ -102,6 +102,7 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
   const [exportingOrderId, setExportingOrderId] = useState<string | null>(null);
+  const [viewingProposal, setViewingProposal] = useState<{ proposalId: string; projectId: string; autoExport?: boolean } | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const handleExportPDF = async (order: MaintenanceOrder) => {
