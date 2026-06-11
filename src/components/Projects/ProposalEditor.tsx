@@ -490,6 +490,16 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     }
   };
 
+  const [autoExported, setAutoExported] = useState(false);
+  useEffect(() => {
+    if (!autoExport || autoExported || loading || !proposal) return;
+    const t = setTimeout(() => {
+      setAutoExported(true);
+      handleExportPDF();
+    }, 800);
+    return () => clearTimeout(t);
+  }, [autoExport, autoExported, loading, proposal]);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
