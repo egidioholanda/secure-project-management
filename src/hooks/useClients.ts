@@ -60,10 +60,10 @@ export function useClients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*, project:projects(name)")
+        .select("*, project:projects!clients_project_id_fkey(name)")
         .order("name");
       if (error) throw error;
-      return data as Client[];
+      return data as unknown as Client[];
     },
   });
 
