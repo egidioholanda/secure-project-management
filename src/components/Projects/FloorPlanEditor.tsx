@@ -349,7 +349,6 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
           <div className="flex gap-2">
             <Button
               onClick={() => onGenerateProposal(placedDevices)}
-              disabled={placedDevices.length === 0}
               className="bg-gradient-primary"
             >
               <FileText className="w-4 h-4 mr-2" />
