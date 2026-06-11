@@ -153,11 +153,62 @@ const Users = () => {
             Gerencie os usuários do sistema
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Usuário
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Novo Usuário
+          </Button>
+        )}
       </div>
+
+      {pendingUsers.length > 0 && (
+        <Card className="border-accent/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Clock className="w-5 h-5 text-accent" />
+              Cadastros pendentes de aprovação
+              <Badge variant="secondary">{pendingUsers.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingUsers.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between gap-3 p-3 rounded-md border bg-muted/30"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{p.full_name || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground truncate">{p.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cadastrado em {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={() => approve.mutate(p.user_id)}
+                    disabled={approve.isPending}
+                    className="gap-1"
+                  >
+                    <Check className="w-4 h-4" /> Aprovar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setRejectingId(p.user_id);
+                      setRejectReason('');
+                    }}
+                    className="gap-1"
+                  >
+                    <X className="w-4 h-4" /> Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
