@@ -112,7 +112,7 @@ const Users = () => {
     );
   };
 
-  if (!isAdmin) {
+  if (!canApprove) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Card className="max-w-md">
@@ -120,13 +120,26 @@ const Users = () => {
             <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
             <p className="text-muted-foreground">
-              Apenas administradores podem gerenciar usuários.
+              Apenas administradores e gerentes podem acessar esta página.
             </p>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const handleConfirmReject = () => {
+    if (!rejectingId) return;
+    reject.mutate(
+      { userId: rejectingId, reason: rejectReason },
+      {
+        onSuccess: () => {
+          setRejectingId(null);
+          setRejectReason('');
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
