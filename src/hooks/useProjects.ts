@@ -15,6 +15,7 @@ interface DbProject {
   value: string | null;
   description: string | null;
   opportunity_id: string | null;
+  client_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +53,13 @@ const mapDbToProject = (db: DbProject): Project => ({
   value: db.value || "",
   address: db.description || "",
   opportunityId: db.opportunity_id || undefined,
+  clientId: db.client_id,
 });
+
+export const linkProjectToClient = async (projectId: string, clientId: string | null) => {
+  const { error } = await supabase.from("projects").update({ client_id: clientId }).eq("id", projectId);
+  if (error) throw error;
+};
 
 export const useProjects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
