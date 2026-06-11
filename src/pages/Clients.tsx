@@ -1,8 +1,11 @@
 import { useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, MaintenanceOrder } from "@/hooks/useClients";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 import { AddClientDialog } from "@/components/Clients/AddClientDialog";
 import { EditClientDialog } from "@/components/Clients/EditClientDialog";
 import { AddContractDialog } from "@/components/Clients/AddContractDialog";
@@ -19,8 +22,9 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt
 } from "lucide-react";
+
 import ProjectDocumentsSection from "@/components/Projects/ProjectDocumentsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -70,6 +74,22 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
   const clientProjects = projects.filter(
     (p) => p.clientId === client.id || (client.project_id && p.id === client.project_id)
   );
+  const projectIds = clientProjects.map((p) => p.id);
+  const { data: proposals = [] } = useQuery({
+    queryKey: ["client-proposals", client.id, projectIds],
+    queryFn: async () => {
+      if (projectIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("proposals")
+        .select("*")
+        .in("project_id", projectIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: projectIds.length > 0,
+  });
+
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
@@ -157,7 +177,13 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="schedules" className="gap-2">
             <CalendarClock className="w-4 h-4" /> Agendamentos ({schedules.length})
           </TabsTrigger>
+          <TabsTrigger value="proposals" className="gap-2">
+            <Receipt className="w-4 h-4" /> Propostas ({proposals.length})
+          </TabsTrigger>
         </TabsList>
+
+
+
 
         <TabsContent value="projects" className="space-y-3 mt-4">
           {clientProjects.length === 0 ? (
@@ -397,7 +423,62 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
             </div>
           )}
         </TabsContent>
+        <TabsContent value="proposals" className="space-y-3 mt-4">
+          {proposals.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Receipt className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>Nenhuma proposta gerada para os projetos deste cliente</p>
+              <p className="text-sm mt-1">As propostas salvas nos projetos aparecerão aqui</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {proposals.map((p: any) => {
+                const proj = clientProjects.find((pr) => pr.id === p.project_id);
+                const statusMap: Record<string, { label: string; className: string }> = {
+                  draft: { label: "Rascunho", className: "bg-gray-100 text-gray-700" },
+                  sent: { label: "Enviada", className: "bg-blue-100 text-blue-700" },
+                  accepted: { label: "Aceita", className: "bg-green-100 text-green-700" },
+                  rejected: { label: "Recusada", className: "bg-red-100 text-red-700" },
+                };
+                const st = statusMap[p.status] || statusMap.draft;
+                return (
+                  <Card key={p.id}>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium truncate">{p.title}</span>
+                            <Badge className={cn("text-xs", st.className)}>{st.label}</Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            {proj && (
+                              <span className="flex items-center gap-1">
+                                <Briefcase className="w-3 h-3" /> {proj.name}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {format(new Date(p.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </span>
+                            {p.validity_days && <span>Validade: {p.validity_days} dias</span>}
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Total: </span>
+                            <span className="font-semibold text-success">
+                              R$ {Number(p.grand_total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
 
       <AddContractDialog open={addContract} onOpenChange={setAddContract} clientId={client.id} />
       <EditClientDialog open={editClient} onOpenChange={setEditClient} client={client} />
