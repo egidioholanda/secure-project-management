@@ -278,6 +278,8 @@ const Users = () => {
                       </Button>
                     </div>
                   )}
+                </div>
+              </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-1">
                   {u.roles.length > 0 ? (
