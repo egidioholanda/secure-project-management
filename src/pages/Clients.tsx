@@ -180,6 +180,9 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="proposals" className="gap-2">
             <Receipt className="w-4 h-4" /> Propostas ({proposals.length})
           </TabsTrigger>
+        </TabsList>
+
+
 
 
         <TabsContent value="projects" className="space-y-3 mt-4">
