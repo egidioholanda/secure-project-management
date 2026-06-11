@@ -8,6 +8,8 @@ interface Profile {
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +30,7 @@ interface AuthState {
   roles: UserRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isManager: boolean;
   isSupTecnico: boolean;
 }
 
@@ -39,6 +42,7 @@ export const useAuth = () => {
     roles: [],
     isLoading: true,
     isAdmin: false,
+    isManager: false,
     isSupTecnico: false,
   });
 
@@ -53,6 +57,7 @@ export const useAuth = () => {
       const profile = profileResult.data as Profile | null;
       const roles = (rolesResult.data || []) as UserRole[];
       const isAdmin = roles.some((r) => r.role === 'admin');
+      const isManager = roles.some((r) => r.role === 'manager');
       const isSupTecnico = roles.some((r) => r.role === 'sup_tecnico');
 
       setAuthState((prev) => ({
@@ -60,6 +65,7 @@ export const useAuth = () => {
         profile,
         roles,
         isAdmin,
+        isManager,
         isSupTecnico,
         isLoading: false,
       }));
@@ -70,7 +76,6 @@ export const useAuth = () => {
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setAuthState((prev) => ({
@@ -81,7 +86,6 @@ export const useAuth = () => {
         }));
 
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks
           setTimeout(() => fetchUserData(session.user.id), 0);
         } else {
           setAuthState((prev) => ({
@@ -89,6 +93,7 @@ export const useAuth = () => {
             profile: null,
             roles: [],
             isAdmin: false,
+            isManager: false,
             isSupTecnico: false,
             isLoading: false,
           }));
@@ -96,7 +101,6 @@ export const useAuth = () => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuthState((prev) => ({
         ...prev,
