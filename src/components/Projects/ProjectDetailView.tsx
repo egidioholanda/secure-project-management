@@ -158,6 +158,9 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
         </div>
       </div>
 
+      {/* Documentos do Projeto */}
+      <ProjectDocumentsSection projectId={project.id} />
+
       {/* Editor de Planta */}
       <FloorPlanEditor
         projectId={project.id}
