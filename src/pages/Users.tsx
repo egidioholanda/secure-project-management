@@ -3,13 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Users as UsersIcon, Shield, UserCog, Trash2, Edit } from 'lucide-react';
+import { Plus, Search, Users as UsersIcon, Shield, UserCog, Trash2, Edit, Check, X, Clock } from 'lucide-react';
 import { AddUserDialog } from '@/components/Users/AddUserDialog';
 import { EditUserDialog } from '@/components/Users/EditUserDialog';
 import { DeleteUserDialog } from '@/components/Users/DeleteUserDialog';
+import { usePendingUsers } from '@/hooks/usePendingUsers';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface UserWithRole {
   id: string;
@@ -22,7 +31,7 @@ interface UserWithRole {
 }
 
 const Users = () => {
-  const { isAdmin, user } = useAuthContext();
+  const { isAdmin, isManager, user } = useAuthContext();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +39,10 @@ const Users = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const { data: pendingUsers = [], approve, reject } = usePendingUsers();
+  const canApprove = isAdmin || isManager;
 
   const fetchUsers = async () => {
     setIsLoading(true);
