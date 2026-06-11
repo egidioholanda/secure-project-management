@@ -22,8 +22,9 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt, Eye
 } from "lucide-react";
+import ProposalEditor from "@/components/Projects/ProposalEditor";
 
 import ProjectDocumentsSection from "@/components/Projects/ProjectDocumentsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
