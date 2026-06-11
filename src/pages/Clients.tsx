@@ -115,6 +115,21 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
     setExportingOrderId(null);
   };
 
+  if (viewingProposal) {
+    const proj = clientProjects.find((p) => p.id === viewingProposal.projectId);
+    if (proj) {
+      return (
+        <ProposalEditor
+          project={proj}
+          placedDevices={[]}
+          existingProposalId={viewingProposal.proposalId}
+          autoExport={viewingProposal.autoExport}
+          onBack={() => setViewingProposal(null)}
+        />
+      );
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
