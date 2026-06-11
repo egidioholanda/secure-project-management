@@ -99,6 +99,19 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {linkedClient ? (
+            <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+              <Building2 className="w-3 h-3" /> {linkedClient.name}
+            </Badge>
+          ) : null}
+          <Button
+            variant="outline"
+            onClick={() => setLinkClientOpen(true)}
+            className="gap-2"
+          >
+            {linkedClient ? <Link2 className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+            {linkedClient ? "Alterar Cliente" : "Vincular Cliente"}
+          </Button>
           {!loadingProposal && existingProposal && (
             <Button
               variant="outline"
@@ -115,6 +128,13 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           </Button>
         </div>
       </div>
+
+      <LinkClientDialog
+        open={linkClientOpen}
+        onOpenChange={setLinkClientOpen}
+        project={project}
+        onLinked={onBack}
+      />
 
       {/* Informações do Projeto */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
