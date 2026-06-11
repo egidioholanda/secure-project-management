@@ -320,6 +320,37 @@ const Users = () => {
           onSuccess={fetchUsers}
         />
       )}
+
+      <Dialog open={!!rejectingId} onOpenChange={(o) => !o && setRejectingId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeitar cadastro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Informe um motivo (opcional) — o usuário verá esta mensagem ao tentar entrar.
+            </p>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Motivo da rejeição..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmReject}
+              disabled={reject.isPending}
+            >
+              Confirmar rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
