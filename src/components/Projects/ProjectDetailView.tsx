@@ -70,7 +70,7 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           setView("editor");
           checkExistingProposal();
         }}
-        existingProposalId={existingProposal?.id && placedDevices.length === 0 ? existingProposal.id : undefined}
+        existingProposalId={existingProposal?.id}
       />
     );
   }

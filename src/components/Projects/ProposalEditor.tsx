@@ -202,6 +202,21 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
     }));
   };
 
+  const handleSetItemQuantity = (itemId: string, value: string) => {
+    const parsed = parseInt(value, 10);
+    const newQuantity = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          quantity: newQuantity,
+          subtotal: newQuantity * (item.unit_price + item.installation_price),
+        };
+      }
+      return item;
+    }));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     if (items.length <= 1) {
       toast.error("A proposta deve ter pelo menos um item");
@@ -784,7 +799,13 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => handleSetItemQuantity(item.id, e.target.value)}
+                      className="w-16 h-8 text-center px-1"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
