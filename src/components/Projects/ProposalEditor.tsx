@@ -22,9 +22,10 @@ interface ProposalEditorProps {
   placedDevices: PlacedDevice[];
   onBack: () => void;
   existingProposalId?: string;
+  autoExport?: boolean;
 }
 
-const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: ProposalEditorProps) => {
+const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, autoExport }: ProposalEditorProps) => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
