@@ -177,7 +177,10 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
           <TabsTrigger value="schedules" className="gap-2">
             <CalendarClock className="w-4 h-4" /> Agendamentos ({schedules.length})
           </TabsTrigger>
-        </TabsList>
+          <TabsTrigger value="proposals" className="gap-2">
+            <Receipt className="w-4 h-4" /> Propostas ({proposals.length})
+          </TabsTrigger>
+
 
         <TabsContent value="projects" className="space-y-3 mt-4">
           {clientProjects.length === 0 ? (
