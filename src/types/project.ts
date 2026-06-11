@@ -10,6 +10,7 @@ export interface Project {
   value: string;
   address?: string;
   opportunityId?: string;
+  clientId?: string | null;
 }
 
 export interface DeviceCategory {

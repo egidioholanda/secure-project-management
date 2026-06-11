@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Pencil, FileText } from "lucide-react";
+import { ArrowLeft, Pencil, FileText, Link2, UserPlus, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Project, PlacedDevice, Proposal } from "@/types/project";
 import FloorPlanEditor from "./FloorPlanEditor";
 import ProposalEditor from "./ProposalEditor";
+import ProjectDocumentsSection from "./ProjectDocumentsSection";
+import { LinkClientDialog } from "./LinkClientDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useClients } from "@/hooks/useClients";
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -25,6 +28,9 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [existingProposal, setExistingProposal] = useState<Proposal | null>(null);
   const [loadingProposal, setLoadingProposal] = useState(true);
+  const [linkClientOpen, setLinkClientOpen] = useState(false);
+  const { clients } = useClients();
+  const linkedClient = project.clientId ? clients.find((c) => c.id === project.clientId) : null;
 
   const statusInfo = statusConfig[project.status as keyof typeof statusConfig];
 
@@ -93,6 +99,19 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {linkedClient ? (
+            <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+              <Building2 className="w-3 h-3" /> {linkedClient.name}
+            </Badge>
+          ) : null}
+          <Button
+            variant="outline"
+            onClick={() => setLinkClientOpen(true)}
+            className="gap-2"
+          >
+            {linkedClient ? <Link2 className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+            {linkedClient ? "Alterar Cliente" : "Vincular Cliente"}
+          </Button>
           {!loadingProposal && existingProposal && (
             <Button
               variant="outline"
@@ -109,6 +128,13 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           </Button>
         </div>
       </div>
+
+      <LinkClientDialog
+        open={linkClientOpen}
+        onOpenChange={setLinkClientOpen}
+        project={project}
+        onLinked={onBack}
+      />
 
       {/* Informações do Projeto */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
@@ -131,6 +157,9 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
           <p className="font-medium text-success">{project.value}</p>
         </div>
       </div>
+
+      {/* Documentos do Projeto */}
+      <ProjectDocumentsSection projectId={project.id} />
 
       {/* Editor de Planta */}
       <FloorPlanEditor

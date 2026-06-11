@@ -19,8 +19,10 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown
 } from "lucide-react";
+import ProjectDocumentsSection from "@/components/Projects/ProjectDocumentsSection";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -60,10 +62,15 @@ interface ClientDetailProps {
 
 function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { deleteClient } = useClients();
+  const { projects } = useProjects();
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
   const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
   const { settings: companySettings } = useCompanySettings();
+  const clientProjects = projects.filter(
+    (p) => p.clientId === client.id || (client.project_id && p.id === client.project_id)
+  );
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addContract, setAddContract] = useState(false);
   const [addOrder, setAddOrder] = useState(false);
   const [addSchedule, setAddSchedule] = useState(false);
@@ -136,8 +143,11 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="contracts">
+      <Tabs defaultValue="projects">
         <TabsList>
+          <TabsTrigger value="projects" className="gap-2">
+            <Briefcase className="w-4 h-4" /> Projetos ({clientProjects.length})
+          </TabsTrigger>
           <TabsTrigger value="contracts" className="gap-2">
             <FileText className="w-4 h-4" /> Contratos ({contracts.length})
           </TabsTrigger>
@@ -148,6 +158,57 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
             <CalendarClock className="w-4 h-4" /> Agendamentos ({schedules.length})
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="projects" className="space-y-3 mt-4">
+          {clientProjects.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>Nenhum projeto vinculado a este cliente</p>
+              <p className="text-sm mt-1">Vincule projetos na página de Projetos</p>
+            </div>
+          ) : (
+            clientProjects.map((p) => (
+              <Card key={p.id}>
+                <Collapsible
+                  open={expandedProject === p.id}
+                  onOpenChange={(o) => setExpandedProject(o ? p.id : null)}
+                >
+                  <CollapsibleTrigger className="w-full text-left">
+                    <CardContent className="pt-4 pb-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Briefcase className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{p.name}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Badge variant="secondary" className="text-xs">{p.type}</Badge>
+                              <span>{p.status}</span>
+                              {p.value && <span className="text-success font-medium">{p.value}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "w-4 h-4 text-muted-foreground transition-transform",
+                            expandedProject === p.id && "rotate-180"
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4">
+                      <ProjectDocumentsSection projectId={p.id} />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
 
         <TabsContent value="contracts" className="space-y-4 mt-4">
           <div className="flex justify-end">

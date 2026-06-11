@@ -526,6 +526,56 @@ export type Database = {
         }
         Relationships: []
       }
+      project_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          name: string
+          project_id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          name: string
+          project_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          project_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_floor_plans: {
         Row: {
           created_at: string
@@ -562,6 +612,7 @@ export type Database = {
       projects: {
         Row: {
           client: string
+          client_id: string | null
           created_at: string
           description: string | null
           end_date: string | null
@@ -577,6 +628,7 @@ export type Database = {
         }
         Insert: {
           client: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -592,6 +644,7 @@ export type Database = {
         }
         Update: {
           client?: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -606,6 +659,13 @@ export type Database = {
           value?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_opportunity_id_fkey"
             columns: ["opportunity_id"]
