@@ -397,6 +397,10 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
+      // Margens laterais reduzidas para o conteúdo ocupar melhor a página
+      const sideMargin = 8;
+      const contentWidth = pdfWidth - 2 * sideMargin;
+
       // Render proposal content
       const proposalCanvas = await html2canvas(proposalRef.current, {
         scale: 2,
@@ -408,15 +412,12 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
       const proposalImgData = proposalCanvas.toDataURL("image/png");
       const proposalImgWidth = proposalCanvas.width;
       const proposalImgHeight = proposalCanvas.height;
-      
-      // Calculate ratio to fit width
-      const proposalRatio = Math.min(pdfWidth / proposalImgWidth, pdfHeight / proposalImgHeight);
-      const proposalImgX = (pdfWidth - proposalImgWidth * proposalRatio) / 2;
-      
-      // Calculate total pages needed for proposal
+
+      // Escala baseada na largura para preencher a página com margens estreitas
+      const proposalRatio = contentWidth / proposalImgWidth;
       const proposalScaledHeight = proposalImgHeight * proposalRatio;
-      const proposalTotalPages = Math.ceil(proposalScaledHeight / pdfHeight);
-      
+      const proposalTotalPages = Math.max(1, Math.ceil(proposalScaledHeight / pdfHeight));
+
       // Generate proposal pages
       for (let i = 0; i < proposalTotalPages; i++) {
         if (i > 0) {
@@ -425,15 +426,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
         pdf.addImage(
           proposalImgData,
           "PNG",
-          proposalImgX,
+          sideMargin,
           -i * pdfHeight,
           proposalImgWidth * proposalRatio,
-          proposalImgHeight * proposalRatio
+          proposalScaledHeight
         );
       }
 
       // Add floor plan if selected
-      if (includeFloorPlan && floorPlanRef.current) {
+      if (includeFloorPlan && floorPlan && floorPlanRef.current) {
         // Wait for PDF to render - increased time for better rendering
         if (floorPlan?.file_type === "application/pdf") {
           // Wait until PDF is loaded or timeout after 3 seconds
