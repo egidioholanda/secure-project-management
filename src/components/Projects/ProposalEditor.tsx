@@ -799,7 +799,13 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId }: 
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => handleSetItemQuantity(item.id, e.target.value)}
+                      className="w-16 h-8 text-center px-1"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
