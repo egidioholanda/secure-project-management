@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Upload, Download, Trash2, Plus } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Plus, Eye } from "lucide-react";
 import { useProjectDocuments } from "@/hooks/useProjectDocuments";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
