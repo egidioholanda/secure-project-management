@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus } from "lucide-react";
+import { SaveAsTemplateDialog, UseTemplateDialog, type ProposalTemplate, type ProposalTemplateItem } from "./ProposalTemplateDialogs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
