@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus } from "lucide-react";
+import { SaveAsTemplateDialog, UseTemplateDialog, type ProposalTemplate, type ProposalTemplateItem } from "./ProposalTemplateDialogs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,9 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [floorPlanDevices, setFloorPlanDevices] = useState<PlacedDevice[]>([]);
   const [floorPlanReady, setFloorPlanReady] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showUseTemplate, setShowUseTemplate] = useState(false);
+
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
@@ -259,7 +263,34 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     (device.model && device.model.toLowerCase().includes(catalogSearch.toLowerCase()))
   );
 
+  const handleApplyTemplate = (tpl: ProposalTemplate, tplItems: ProposalTemplateItem[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      title: tpl.title || prev.title,
+      introduction: tpl.introduction ?? prev.introduction,
+      scope: tpl.scope ?? prev.scope,
+      validity_days: tpl.validity_days ?? prev.validity_days,
+      payment_terms: tpl.payment_terms ?? prev.payment_terms,
+      warranty_terms: tpl.warranty_terms ?? prev.warranty_terms,
+      notes: tpl.notes ?? prev.notes,
+      discount_percentage: tpl.discount_percentage ?? prev.discount_percentage,
+    }));
+    const newItems: ProposalItem[] = tplItems.map((it, idx) => ({
+      id: `tpl-${idx}-${Date.now()}`,
+      proposal_id: proposal?.id || "",
+      device_id: it.device_id,
+      device_name: it.device_name,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      installation_price: it.installation_price,
+      subtotal: it.subtotal,
+    }));
+    setItems(newItems);
+    toast.success(`Template "${tpl.name}" aplicado!`);
+  };
+
   const handleSave = async () => {
+
     setSaving(true);
     try {
       const totals = calculateTotals();
@@ -519,7 +550,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           </Button>
           <h2 className="text-2xl font-bold">Proposta Comercial</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setShowUseTemplate(true)}>
+            <FileText className="w-4 h-4 mr-2" />
+            Usar Template
+          </Button>
+          <Button variant="outline" onClick={() => setShowSaveTemplate(true)}>
+            <BookmarkPlus className="w-4 h-4 mr-2" />
+            Salvar como Template
+          </Button>
           <Button variant="outline" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Salvando..." : "Salvar"}
@@ -529,6 +568,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
             Exportar PDF
           </Button>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -866,7 +906,20 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           />
         </div>
       )}
+
+      <SaveAsTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        formData={formData}
+        items={items}
+      />
+      <UseTemplateDialog
+        open={showUseTemplate}
+        onOpenChange={setShowUseTemplate}
+        onSelect={handleApplyTemplate}
+      />
     </div>
+
   );
 };
 

@@ -738,6 +738,105 @@ export type Database = {
           },
         ]
       }
+      proposal_template_items: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          device_name: string
+          id: string
+          installation_price: number
+          quantity: number
+          subtotal: number
+          template_id: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          device_name: string
+          id?: string
+          installation_price?: number
+          quantity?: number
+          subtotal?: number
+          template_id: string
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          device_name?: string
+          id?: string
+          installation_price?: number
+          quantity?: number
+          subtotal?: number
+          template_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_template_items_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          discount_percentage: number
+          id: string
+          introduction: string | null
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          scope: string | null
+          title: string | null
+          updated_at: string
+          validity_days: number
+          warranty_terms: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          discount_percentage?: number
+          id?: string
+          introduction?: string | null
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          scope?: string | null
+          title?: string | null
+          updated_at?: string
+          validity_days?: number
+          warranty_terms?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          discount_percentage?: number
+          id?: string
+          introduction?: string | null
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          scope?: string | null
+          title?: string | null
+          updated_at?: string
+          validity_days?: number
+          warranty_terms?: string | null
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           client_address: string | null
