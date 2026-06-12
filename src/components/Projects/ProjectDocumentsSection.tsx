@@ -24,7 +24,7 @@ const formatSize = (bytes: number | null) => {
 };
 
 const ProjectDocumentsSection = ({ projectId, canEdit = true }: Props) => {
-  const { documents, isLoading, uploadDocument, deleteDocument, downloadDocument } = useProjectDocuments(projectId);
+  const { documents, isLoading, uploadDocument, deleteDocument, downloadDocument, viewDocument } = useProjectDocuments(projectId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
