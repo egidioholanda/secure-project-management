@@ -83,6 +83,9 @@ const ProjectDocumentsSection = ({ projectId, canEdit = true }: Props) => {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" title="Visualizar" onClick={() => viewDocument(doc)}>
+                    <Eye className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" title="Baixar" onClick={() => downloadDocument(doc)}>
                     <Download className="w-4 h-4" />
                   </Button>
