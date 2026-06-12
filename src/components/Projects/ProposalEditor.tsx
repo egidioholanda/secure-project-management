@@ -41,6 +41,9 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [floorPlanDevices, setFloorPlanDevices] = useState<PlacedDevice[]>([]);
   const [floorPlanReady, setFloorPlanReady] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showUseTemplate, setShowUseTemplate] = useState(false);
+
 
   const [formData, setFormData] = useState({
     title: `Proposta Comercial - ${project.name}`,
