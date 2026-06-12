@@ -906,7 +906,20 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           />
         </div>
       )}
+
+      <SaveAsTemplateDialog
+        open={showSaveTemplate}
+        onOpenChange={setShowSaveTemplate}
+        formData={formData}
+        items={items}
+      />
+      <UseTemplateDialog
+        open={showUseTemplate}
+        onOpenChange={setShowUseTemplate}
+        onSelect={handleApplyTemplate}
+      />
     </div>
+
   );
 };
 
