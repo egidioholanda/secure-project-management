@@ -550,7 +550,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           </Button>
           <h2 className="text-2xl font-bold">Proposta Comercial</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setShowUseTemplate(true)}>
+            <FileText className="w-4 h-4 mr-2" />
+            Usar Template
+          </Button>
+          <Button variant="outline" onClick={() => setShowSaveTemplate(true)}>
+            <BookmarkPlus className="w-4 h-4 mr-2" />
+            Salvar como Template
+          </Button>
           <Button variant="outline" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Salvando..." : "Salvar"}
@@ -560,6 +568,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
             Exportar PDF
           </Button>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
