@@ -24,7 +24,7 @@ export const exportMaintenanceOrderToPDF = async (
   const imgX = (pdfWidth - imgWidth * ratio) / 2;
 
   const scaledHeight = imgHeight * ratio;
-  const totalPages = Math.ceil(scaledHeight / pdfHeight);
+  const totalPages = Math.max(1, Math.ceil((scaledHeight - 1) / pdfHeight));
 
   for (let i = 0; i < totalPages; i++) {
     if (i > 0) pdf.addPage();

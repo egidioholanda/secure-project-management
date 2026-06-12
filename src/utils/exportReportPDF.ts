@@ -30,7 +30,7 @@ export const exportReportToPDF = async (
   const imgY = 0;
 
   const scaledHeight = imgHeight * ratio;
-  const totalPages = Math.ceil(scaledHeight / pdfHeight);
+  const totalPages = Math.max(1, Math.ceil((scaledHeight - 1) / pdfHeight));
 
   for (let i = 0; i < totalPages; i++) {
     if (i > 0) {

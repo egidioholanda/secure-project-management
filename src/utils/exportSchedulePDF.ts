@@ -27,7 +27,8 @@ export const exportScheduleToPDF = async (
   const imgHeight = canvas.height;
   const ratio = pdfWidth / imgWidth;
   const scaledHeight = imgHeight * ratio;
-  const totalPages = Math.ceil(scaledHeight / pdfHeight);
+  // Subtract a small epsilon to avoid an extra blank page from sub-pixel rounding
+  const totalPages = Math.max(1, Math.ceil((scaledHeight - 1) / pdfHeight));
 
   for (let i = 0; i < totalPages; i++) {
     if (i > 0) pdf.addPage();

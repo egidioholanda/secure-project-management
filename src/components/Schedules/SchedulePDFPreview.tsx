@@ -81,7 +81,6 @@ export const SchedulePDFPreview = forwardRef<HTMLDivElement, SchedulePDFPreviewP
         ref={ref}
         style={{
           width: '210mm',
-          minHeight: '297mm',
           backgroundColor: '#ffffff',
           fontFamily: 'Arial, sans-serif',
           fontSize: '12px',
