@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Upload, Download, Trash2, Plus } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Plus, Eye } from "lucide-react";
 import { useProjectDocuments } from "@/hooks/useProjectDocuments";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,7 +24,7 @@ const formatSize = (bytes: number | null) => {
 };
 
 const ProjectDocumentsSection = ({ projectId, canEdit = true }: Props) => {
-  const { documents, isLoading, uploadDocument, deleteDocument, downloadDocument } = useProjectDocuments(projectId);
+  const { documents, isLoading, uploadDocument, deleteDocument, downloadDocument, viewDocument } = useProjectDocuments(projectId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -83,6 +83,9 @@ const ProjectDocumentsSection = ({ projectId, canEdit = true }: Props) => {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" title="Visualizar" onClick={() => viewDocument(doc)}>
+                    <Eye className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" title="Baixar" onClick={() => downloadDocument(doc)}>
                     <Download className="w-4 h-4" />
                   </Button>

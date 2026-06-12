@@ -89,5 +89,16 @@ export function useProjectDocuments(projectId?: string) {
     window.open(data.signedUrl, "_blank");
   };
 
-  return { documents, isLoading, uploadDocument, deleteDocument, downloadDocument };
+  const viewDocument = async (doc: ProjectDocument) => {
+    const { data, error } = await supabase.storage
+      .from("project-documents")
+      .createSignedUrl(doc.file_path, 60 * 5);
+    if (error || !data) {
+      toast.error("Não foi possível gerar link do arquivo");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  return { documents, isLoading, uploadDocument, deleteDocument, downloadDocument, viewDocument };
 }
