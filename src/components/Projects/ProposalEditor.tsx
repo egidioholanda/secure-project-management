@@ -263,7 +263,34 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     (device.model && device.model.toLowerCase().includes(catalogSearch.toLowerCase()))
   );
 
+  const handleApplyTemplate = (tpl: ProposalTemplate, tplItems: ProposalTemplateItem[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      title: tpl.title || prev.title,
+      introduction: tpl.introduction ?? prev.introduction,
+      scope: tpl.scope ?? prev.scope,
+      validity_days: tpl.validity_days ?? prev.validity_days,
+      payment_terms: tpl.payment_terms ?? prev.payment_terms,
+      warranty_terms: tpl.warranty_terms ?? prev.warranty_terms,
+      notes: tpl.notes ?? prev.notes,
+      discount_percentage: tpl.discount_percentage ?? prev.discount_percentage,
+    }));
+    const newItems: ProposalItem[] = tplItems.map((it, idx) => ({
+      id: `tpl-${idx}-${Date.now()}`,
+      proposal_id: proposal?.id || "",
+      device_id: it.device_id,
+      device_name: it.device_name,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      installation_price: it.installation_price,
+      subtotal: it.subtotal,
+    }));
+    setItems(newItems);
+    toast.success(`Template "${tpl.name}" aplicado!`);
+  };
+
   const handleSave = async () => {
+
     setSaving(true);
     try {
       const totals = calculateTotals();
