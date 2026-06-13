@@ -78,11 +78,21 @@ export const useAuth = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Token refresh happens silently in the background (e.g. when returning to the tab).
+        // Only update the session object — never trigger isLoading, which would unmount the page
+        // and discard any open forms.
+        if (event === 'TOKEN_REFRESHED') {
+          setAuthState((prev) => ({ ...prev, session }));
+          return;
+        }
+
+        // For all other events, only set isLoading when the user wasn't already known.
+        // This prevents the loading spinner from appearing on re-focus events.
         setAuthState((prev) => ({
           ...prev,
           user: session?.user ?? null,
           session,
-          isLoading: session?.user ? true : false,
+          isLoading: prev.user === null && !!session?.user,
         }));
 
         if (session?.user) {

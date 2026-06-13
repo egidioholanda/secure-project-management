@@ -7,6 +7,8 @@ import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/Layout/Sidebar";
 import { Header } from "@/components/Layout/Header";
 import Dashboard from "./pages/Dashboard";
+import DashboardOperacional from "./pages/DashboardOperacional";
+import DashboardComercial from "./pages/DashboardComercial";
 import Opportunities from "./pages/Opportunities";
 import Projects from "./pages/Projects";
 import Catalog from "./pages/Catalog";
@@ -21,7 +23,14 @@ import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
-const SUP_TECNICO_ALLOWED = ["/projetos", "/catalogo", "/cronogramas", "/relatorios", "/clientes"];
+const SUP_TECNICO_ALLOWED = [
+  "/projetos",
+  "/catalogo",
+  "/cronogramas",
+  "/relatorios",
+  "/clientes",
+  "/dashboard/operacional",
+];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading, isAdmin, isSupTecnico, profile } = useAuthContext();
@@ -44,7 +53,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (isSupTecnico && !isAdmin && !SUP_TECNICO_ALLOWED.includes(location.pathname)) {
-    return <Navigate to="/catalogo" replace />;
+    return <Navigate to="/dashboard/operacional" replace />;
   }
 
   return <>{children}</>;
@@ -87,6 +96,26 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Dashboard />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/operacional"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <DashboardOperacional />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/comercial"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <DashboardComercial />
             </AppLayout>
           </ProtectedRoute>
         }

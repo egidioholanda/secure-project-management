@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,14 @@ export interface ProjectFormData {
   opportunityId?: string;
 }
 
+const SERVICE_TYPES = [
+  "CFTV",
+  "Controle de Acesso",
+  "Alarme Perimetral",
+  "Sistema Integrado",
+  "Automação",
+];
+
 interface AddProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +45,27 @@ interface AddProjectDialogProps {
   editingProject?: Project | null;
   initialData?: ProjectFormData | null;
 }
+
+const SEPARATOR = "|||";
+
+const BR_STATES = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS",
+  "MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC",
+  "SP","SE","TO",
+];
+
+const composeAddress = (street: string, city: string, state: string): string => {
+  if (!street && !city && !state) return "";
+  return [street, city, state].join(SEPARATOR);
+};
+
+const parseAddress = (raw: string): { street: string; city: string; state: string } => {
+  if (!raw) return { street: "", city: "", state: "" };
+  const parts = raw.split(SEPARATOR);
+  if (parts.length === 3) return { street: parts[0], city: parts[1], state: parts[2] };
+  // backward compat: old single-field addresses go into street
+  return { street: raw, city: "", state: "" };
+};
 
 const AddProjectDialog = ({
   open,
@@ -47,64 +77,89 @@ const AddProjectDialog = ({
   const [formData, setFormData] = useState({
     name: "",
     client: "",
-    type: "",
+    types: [] as string[],
     status: "planning",
     startDate: "",
     endDate: "",
     manager: "",
     value: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
     opportunityId: "",
   });
 
   useEffect(() => {
     if (editingProject) {
+      const { street, city, state } = parseAddress(editingProject.address || "");
       setFormData({
         name: editingProject.name,
         client: editingProject.client,
-        type: editingProject.type,
+        types: editingProject.type ? editingProject.type.split(",").map((t) => t.trim()).filter(Boolean) : [],
         status: editingProject.status,
         startDate: editingProject.startDate,
         endDate: editingProject.endDate,
         manager: editingProject.manager,
         value: editingProject.value,
-        address: editingProject.address || "",
+        street,
+        city,
+        state,
         opportunityId: "",
       });
     } else if (initialData) {
       setFormData({
         name: initialData.name,
         client: initialData.client,
-        type: initialData.type,
+        types: initialData.type ? [initialData.type] : [],
         status: "planning",
         startDate: "",
         endDate: "",
         manager: initialData.responsible || "",
         value: initialData.value,
-        address: "",
+        street: "",
+        city: "",
+        state: "",
         opportunityId: initialData.opportunityId || "",
       });
     } else {
       setFormData({
         name: "",
         client: "",
-        type: "",
+        types: [],
         status: "planning",
         startDate: "",
         endDate: "",
         manager: "",
         value: "",
-        address: "",
+        street: "",
+        city: "",
+        state: "",
         opportunityId: "",
       });
     }
   }, [editingProject, initialData, open]);
 
+  const set = (field: string, value: string) =>
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+  const toggleType = (t: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      types: prev.types.includes(t)
+        ? prev.types.filter((x) => x !== t)
+        : [...prev.types, t],
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.client || !formData.type) {
+    if (!formData.name || !formData.client || formData.types.length === 0) {
       toast.error("Por favor, preencha todos os campos obrigatórios");
+      return;
+    }
+    if (!formData.city || !formData.state) {
+      toast.error("Cidade e estado são obrigatórios");
       return;
     }
 
@@ -112,13 +167,13 @@ const AddProjectDialog = ({
       id: editingProject?.id || "",
       name: formData.name,
       client: formData.client,
-      type: formData.type,
+      type: formData.types.join(","),
       status: formData.status,
       startDate: formData.startDate,
       endDate: formData.endDate,
       manager: formData.manager,
       value: formData.value,
-      address: formData.address,
+      address: composeAddress(formData.street, formData.city, formData.state),
       opportunityId: formData.opportunityId || undefined,
     };
 
@@ -137,124 +192,106 @@ const AddProjectDialog = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            {/* Nome */}
             <div className="col-span-2">
               <Label htmlFor="name">Nome do Projeto *</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => set("name", e.target.value)}
                 placeholder="Ex: Shopping Center - CFTV"
               />
             </div>
 
+            {/* Cliente */}
             <div>
               <Label htmlFor="client">Cliente *</Label>
               <Input
                 id="client"
                 value={formData.client}
-                onChange={(e) =>
-                  setFormData({ ...formData, client: e.target.value })
-                }
+                onChange={(e) => set("client", e.target.value)}
                 placeholder="Nome do cliente"
               />
             </div>
 
+            {/* Tipos de serviço */}
+            <div className="col-span-2">
+              <Label>Tipo de Serviço *</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                {SERVICE_TYPES.map((t) => (
+                  <label
+                    key={t}
+                    className="flex items-center gap-2 cursor-pointer rounded-lg border border-border px-3 py-2 hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <Checkbox
+                      checked={formData.types.includes(t)}
+                      onCheckedChange={() => toggleType(t)}
+                    />
+                    <span className="text-sm">{t}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Endereço */}
+            <div className="col-span-2">
+              <Label htmlFor="street">Endereço</Label>
+              <Input
+                id="street"
+                value={formData.street}
+                onChange={(e) => set("street", e.target.value)}
+                placeholder="Rua, número, complemento"
+              />
+            </div>
+
+            {/* Cidade */}
             <div>
-              <Label htmlFor="type">Tipo *</Label>
+              <Label htmlFor="city">Cidade *</Label>
+              <Input
+                id="city"
+                value={formData.city}
+                onChange={(e) => set("city", e.target.value)}
+                placeholder="Cidade"
+              />
+            </div>
+
+            {/* Estado */}
+            <div>
+              <Label htmlFor="state">Estado *</Label>
               <Select
-                value={formData.type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value })
-                }
+                value={formData.state}
+                onValueChange={(value) => set("state", value)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
+                <SelectTrigger id="state">
+                  <SelectValue placeholder="UF" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CFTV">CFTV</SelectItem>
-                  <SelectItem value="Controle de Acesso">
-                    Controle de Acesso
-                  </SelectItem>
-                  <SelectItem value="Alarme Perimetral">
-                    Alarme Perimetral
-                  </SelectItem>
-                  <SelectItem value="Sistema Integrado">
-                    Sistema Integrado
-                  </SelectItem>
-                  <SelectItem value="Automação">Automação</SelectItem>
+                  {BR_STATES.map((uf) => (
+                    <SelectItem key={uf} value={uf}>
+                      {uf}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-2">
-              <Label htmlFor="address">Endereço</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                placeholder="Endereço do projeto"
-              />
-            </div>
-
+            {/* Gerente */}
             <div>
               <Label htmlFor="manager">Gerente de Projeto</Label>
               <Input
                 id="manager"
                 value={formData.manager}
-                onChange={(e) =>
-                  setFormData({ ...formData, manager: e.target.value })
-                }
+                onChange={(e) => set("manager", e.target.value)}
                 placeholder="Nome do gerente"
               />
             </div>
 
-            <div>
-              <Label htmlFor="value">Valor</Label>
-              <Input
-                id="value"
-                value={formData.value}
-                onChange={(e) =>
-                  setFormData({ ...formData, value: e.target.value })
-                }
-                placeholder="R$ 0,00"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="startDate">Data de Início</Label>
-              <Input
-                id="startDate"
-                value={formData.startDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, startDate: e.target.value })
-                }
-                placeholder="DD/MM/AAAA"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="endDate">Data de Término Prevista</Label>
-              <Input
-                id="endDate"
-                value={formData.endDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, endDate: e.target.value })
-                }
-                placeholder="DD/MM/AAAA"
-              />
-            </div>
-
+            {/* Status */}
             <div>
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, status: value })
-                }
+                onValueChange={(value) => set("status", value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o status" />

@@ -64,19 +64,14 @@ const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
       <div className="space-y-3 mb-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Gerente:</span>
-          <span className="font-medium">{project.manager}</span>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Prazo:</span>
-          <span className="font-medium">
-            {project.startDate} - {project.endDate}
-          </span>
+          <span className="font-medium">{project.manager || "—"}</span>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-border">
-        <Badge variant="secondary">{project.type}</Badge>
+      <div className="pt-4 border-t border-border flex flex-wrap gap-1.5">
+        {project.type.split(",").filter(Boolean).map((t) => (
+          <Badge key={t} variant="secondary">{t.trim()}</Badge>
+        ))}
       </div>
     </Card>
   );
