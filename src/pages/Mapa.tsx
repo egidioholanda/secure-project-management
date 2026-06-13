@@ -4,7 +4,8 @@ import L from "leaflet";
 import { useProjects } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { MapPin, Search, FolderKanban, AlertCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Search, AlertCircle, Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 
@@ -25,14 +26,14 @@ function parseAddr(raw: string) {
   const parts = raw.split(SEP);
   return parts.length === 3
     ? { street: parts[0], city: parts[1], state: parts[2] }
-    : { street: raw,      city: "",       state: ""       };
+    : { street: raw, city: "", state: "" };
 }
 
 function geoQuery(raw: string): string | null {
   const { street, city, state } = parseAddr(raw || "");
   if (city && state) return `${street ? street + ", " : ""}${city}, ${state}, Brasil`;
-  if (city)          return `${city}, Brasil`;
-  if (street)        return `${street}, Brasil`;
+  if (city) return `${city}, Brasil`;
+  if (street) return `${street}, Brasil`;
   return null;
 }
 
@@ -41,38 +42,64 @@ function displayAddr(raw: string) {
   return [street, city, state].filter(Boolean).join(", ");
 }
 
-// ─── Status ───────────────────────────────────────────────────────────────────
+// ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS: Record<string, { label: string; hex: string }> = {
+const STATUS_CONFIG: Record<string, { label: string; hex: string }> = {
   planning:       { label: "Planejamento",  hex: "#3b82f6" },
-  execution:      { label: "Em Execução",   hex: "#f97316" },
-  completed:      { label: "Concluído",     hex: "#10b981" },
-  onhold:         { label: "Em Espera",     hex: "#f59e0b" },
-  "Em Andamento": { label: "Em Andamento",  hex: "#f97316" },
-  "in_progress":  { label: "Em Andamento",  hex: "#f97316" },
   "Planejamento": { label: "Planejamento",  hex: "#3b82f6" },
+  execution:      { label: "Em Execução",   hex: "#f97316" },
+  "Em Andamento": { label: "Em Andamento",  hex: "#f97316" },
+  in_progress:    { label: "Em Andamento",  hex: "#f97316" },
+  completed:      { label: "Concluído",     hex: "#10b981" },
   "Concluído":    { label: "Concluído",     hex: "#10b981" },
+  onhold:         { label: "Em Espera",     hex: "#f59e0b" },
 };
-const st = (s: string) => STATUS[s] ?? { label: s, hex: "#6b7280" };
+
+const ALL_STATUSES = [
+  { key: "planning",    label: "Planejamento", hex: "#3b82f6" },
+  { key: "execution",   label: "Em Execução",  hex: "#f97316" },
+  { key: "completed",   label: "Concluído",    hex: "#10b981" },
+  { key: "onhold",      label: "Em Espera",    hex: "#f59e0b" },
+];
+
+const CANONICAL: Record<string, string> = {
+  planning:       "planning",
+  "Planejamento": "planning",
+  execution:      "execution",
+  "Em Andamento": "execution",
+  in_progress:    "execution",
+  completed:      "completed",
+  "Concluído":    "completed",
+  onhold:         "onhold",
+};
+
+function st(s: string) {
+  return STATUS_CONFIG[s] ?? { label: s, hex: "#6b7280" };
+}
+
+function canonicalStatus(s: string): string {
+  return CANONICAL[s] ?? s;
+}
 
 // ─── Marker icon ─────────────────────────────────────────────────────────────
 
 function dotIcon(hex: string, active = false) {
-  const sz  = active ? 18 : 13;
-  const ring = active ? `box-shadow:0 0 0 4px ${hex}44,0 2px 8px rgba(0,0,0,.4)` : "box-shadow:0 2px 5px rgba(0,0,0,.35)";
+  const sz = active ? 18 : 13;
+  const ring = active
+    ? `box-shadow:0 0 0 4px ${hex}44,0 2px 8px rgba(0,0,0,.4)`
+    : "box-shadow:0 2px 5px rgba(0,0,0,.35)";
   return L.divIcon({
     className: "",
     html: `<div style="width:${sz}px;height:${sz}px;background:${hex};border:2.5px solid #fff;border-radius:50%;${ring}"></div>`,
-    iconSize:    [sz, sz],
-    iconAnchor:  [sz / 2, sz / 2],
+    iconSize: [sz, sz],
+    iconAnchor: [sz / 2, sz / 2],
     popupAnchor: [0, -(sz / 2 + 4)],
   });
 }
 
-// ─── Persistent view (localStorage) ──────────────────────────────────────────
+// ─── Persistent view ──────────────────────────────────────────────────────────
 
 const VIEW_KEY = "secureproject_mapa_view";
-
 interface SavedView { center: [number, number]; zoom: number }
 
 function loadView(): SavedView | null {
@@ -85,7 +112,6 @@ function loadView(): SavedView | null {
   return null;
 }
 
-// Saves center+zoom on every moveend (drag or zoom)
 function MapStateSaver() {
   useMapEvents({
     moveend(e) {
@@ -118,35 +144,145 @@ async function geocode(q: string): Promise<{ lat: number; lng: number } | null> 
   } catch { return null; }
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Filter panel ─────────────────────────────────────────────────────────────
 
-const LEGEND = [
-  { label: "Planejamento", hex: "#3b82f6" },
-  { label: "Em Execução",  hex: "#f97316" },
-  { label: "Concluído",    hex: "#10b981" },
-  { label: "Em Espera",    hex: "#f59e0b" },
-];
+function FilterPanel({
+  allTypes,
+  activeStatuses,
+  activeTypes,
+  onToggleStatus,
+  onToggleType,
+  onClear,
+}: {
+  allTypes: string[];
+  activeStatuses: Set<string>;
+  activeTypes: Set<string>;
+  onToggleStatus: (k: string) => void;
+  onToggleType: (t: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const hasActive = activeStatuses.size < ALL_STATUSES.length || activeTypes.size < allTypes.length;
 
-// AppLayout: header fixo 64px (pt-16) + padding inferior p-6 (24px) + nossa topbar (~53px)
+  return (
+    <div className="border-b border-border">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:bg-muted/50 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          Filtros
+          {hasActive && (
+            <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">
+              !
+            </span>
+          )}
+        </span>
+        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Status */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Status</p>
+            <div className="space-y-1">
+              {ALL_STATUSES.map(({ key, label, hex }) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={activeStatuses.has(key)}
+                    onChange={() => onToggleStatus(key)}
+                    className="rounded border-border w-3.5 h-3.5 accent-primary"
+                  />
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: hex }}
+                  />
+                  <span className="text-xs text-foreground group-hover:text-foreground/80">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Tipo */}
+          {allTypes.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Tipo de Serviço</p>
+              <div className="flex flex-wrap gap-1">
+                {allTypes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => onToggleType(t)}
+                    className={cn(
+                      "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                      activeTypes.has(t)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Clear */}
+          {hasActive && (
+            <button
+              onClick={onClear}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <X className="w-3 h-3" /> Limpar filtros
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const MAP_H = "calc(100vh - 64px - 24px - 53px)";
-
 const DEFAULT_VIEW: SavedView = { center: [-14.235, -51.925], zoom: 4 };
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 const Mapa = () => {
   const savedView = loadView() ?? DEFAULT_VIEW;
   const { projects, loading } = useProjects();
   const [geoProjects, setGeoProjects] = useState<GeoProject[]>([]);
-  const [geocoding,   setGeocoding]   = useState(false);
-  const [search,      setSearch]      = useState("");
-  const [activeId,    setActiveId]    = useState<string | null>(null);
-  const [flyTarget,   setFlyTarget]   = useState<{ lat: number; lng: number } | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
   const didGeocode = useRef(false);
+
+  // Filters
+  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
+    () => new Set(ALL_STATUSES.map((s) => s.key))
+  );
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
+  const [allTypes, setAllTypes] = useState<string[]>([]);
+
+  // Extract unique service types from projects
+  useEffect(() => {
+    if (projects.length === 0) return;
+    const types = new Set<string>();
+    projects.forEach((p) => {
+      if (p.type) p.type.split(",").forEach((t) => { const tr = t.trim(); if (tr) types.add(tr); });
+    });
+    const arr = Array.from(types).sort();
+    setAllTypes(arr);
+    setActiveTypes(new Set(arr)); // all selected by default
+  }, [projects]);
 
   useEffect(() => {
     if (loading || projects.length === 0 || didGeocode.current) return;
     didGeocode.current = true;
     setGeocoding(true);
-
     (async () => {
       const out: GeoProject[] = [];
       for (let i = 0; i < projects.length; i++) {
@@ -156,20 +292,56 @@ const Mapa = () => {
         if (q) {
           const g = await geocode(q);
           if (g) { lat = g.lat; lng = g.lng; ok = true; }
-          if (i < projects.length - 1) await new Promise(r => setTimeout(r, 1100));
+          if (i < projects.length - 1) await new Promise((r) => setTimeout(r, 1100));
         }
-        out.push({ ...p, lat, lng, geocodeStatus: ok ? "ok" : "error", displayAddress: displayAddr(p.address || "") });
+        out.push({
+          ...p,
+          lat, lng,
+          geocodeStatus: ok ? "ok" : "error",
+          displayAddress: displayAddr(p.address || ""),
+        });
       }
       setGeoProjects(out);
       setGeocoding(false);
     })();
   }, [loading, projects]);
 
-  const mapped   = geoProjects.filter(p => p.geocodeStatus === "ok");
-  const failed   = geoProjects.filter(p => p.geocodeStatus === "error");
-  const filtered = geoProjects.filter(p =>
-    [p.name, p.client, p.displayAddress].some(s => s.toLowerCase().includes(search.toLowerCase()))
-  );
+  const toggleStatus = useCallback((key: string) => {
+    setActiveStatuses((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleType = useCallback((t: string) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setActiveStatuses(new Set(ALL_STATUSES.map((s) => s.key)));
+    setActiveTypes(new Set(allTypes));
+  }, [allTypes]);
+
+  // Apply all filters
+  const filtered = geoProjects.filter((p) => {
+    const matchSearch = [p.name, p.client, p.displayAddress]
+      .some((s) => s?.toLowerCase().includes(search.toLowerCase()));
+    const matchStatus = activeStatuses.has(canonicalStatus(p.status));
+    const pTypes = p.type ? p.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+    const matchType = allTypes.length === 0 || pTypes.length === 0
+      ? true
+      : pTypes.some((t) => activeTypes.has(t));
+    return matchSearch && matchStatus && matchType;
+  });
+
+  const mapped = geoProjects.filter((p) => p.geocodeStatus === "ok");
+  const failed = geoProjects.filter((p) => p.geocodeStatus === "error");
+  const visibleMapped = filtered.filter((p) => p.geocodeStatus === "ok");
 
   const select = useCallback((p: GeoProject) => {
     if (p.geocodeStatus !== "ok") return;
@@ -178,12 +350,13 @@ const Mapa = () => {
   }, []);
 
   return (
-    // Negative horizontal and bottom margins to break out of AppLayout p-6 padding
     <div style={{ margin: "0 -24px -24px -24px" }}>
 
-      {/* ── Top bar ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 px-6 border-b border-border bg-card"
-           style={{ height: 53 }}>
+      {/* ── Top bar ── */}
+      <div
+        className="flex items-center justify-between gap-4 px-6 border-b border-border bg-card"
+        style={{ height: 53 }}
+      >
         <div className="flex items-center gap-2">
           <MapPin className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold">Mapa de Projetos</h1>
@@ -207,48 +380,82 @@ const Mapa = () => {
                   {failed.length} sem endereço
                 </span>
               )}
+              {visibleMapped.length !== mapped.length && (
+                <Badge variant="outline" className="text-xs">
+                  {visibleMapped.length} visível{visibleMapped.length !== 1 ? "is" : ""}
+                </Badge>
+              )}
             </>
           )}
         </div>
       </div>
 
-      {/* ── Content ───────────────────────────────────────────────── */}
+      {/* ── Content ── */}
       <div className="flex" style={{ height: MAP_H }}>
 
         {/* Sidebar */}
-        <div className="border-r border-border bg-card flex flex-col" style={{ width: 280, minWidth: 280 }}>
+        <div
+          className="border-r border-border bg-card flex flex-col"
+          style={{ width: 280, minWidth: 280 }}
+        >
+          {/* Search */}
           <div className="p-3 border-b border-border flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input className="pl-9 h-9 text-sm" placeholder="Buscar projeto…"
-                     value={search} onChange={e => setSearch(e.target.value)} />
+              <Input
+                className="pl-9 h-9 text-sm"
+                placeholder="Buscar projeto…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
           </div>
 
+          {/* Filters */}
+          <div className="flex-shrink-0">
+            <FilterPanel
+              allTypes={allTypes}
+              activeStatuses={activeStatuses}
+              activeTypes={activeTypes}
+              onToggleStatus={toggleStatus}
+              onToggleType={toggleType}
+              onClear={clearFilters}
+            />
+          </div>
+
+          {/* Project list */}
           <div className="flex-1 overflow-y-auto">
             {loading || (geocoding && geoProjects.length === 0) ? (
               <div className="p-3 space-y-2">
-                {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
               </div>
             ) : filtered.length === 0 ? (
-              <p className="p-6 text-center text-sm text-muted-foreground">Nenhum projeto encontrado</p>
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                Nenhum projeto encontrado
+              </p>
             ) : (
               <div className="p-2 space-y-1">
-                {filtered.map(p => {
-                  const info     = st(p.status);
+                {filtered.map((p) => {
+                  const info = st(p.status);
                   const isActive = p.id === activeId;
-                  const hasGeo   = p.geocodeStatus === "ok";
+                  const hasGeo = p.geocodeStatus === "ok";
                   return (
-                    <button key={p.id} onClick={() => select(p)} disabled={!hasGeo}
+                    <button
+                      key={p.id}
+                      onClick={() => select(p)}
+                      disabled={!hasGeo}
                       className={cn(
                         "w-full text-left rounded-lg px-3 py-2.5 transition-colors focus:outline-none hover:bg-muted/70",
                         isActive && "bg-primary/8 border border-primary/20",
-                        !hasGeo  && "opacity-50 cursor-not-allowed"
-                      )}>
+                        !hasGeo && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
                       <div className="flex items-start justify-between gap-2 mb-0.5">
                         <p className="font-semibold text-sm leading-tight line-clamp-1">{p.name}</p>
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
-                              style={{ backgroundColor: info.hex }} />
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
+                          style={{ backgroundColor: info.hex }}
+                        />
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-1">{p.client}</p>
                       {p.displayAddress && (
@@ -268,12 +475,13 @@ const Mapa = () => {
             )}
           </div>
 
+          {/* Legend */}
           <div className="p-3 border-t border-border flex-shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Legenda</p>
-            <div className="space-y-1.5">
-              {LEGEND.map(l => (
-                <div key={l.label} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: l.hex }} />
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+              {ALL_STATUSES.map((l) => (
+                <div key={l.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: l.hex }} />
                   {l.label}
                 </div>
               ))}
@@ -304,14 +512,17 @@ const Mapa = () => {
 
             {flyTarget && <FlyTo lat={flyTarget.lat} lng={flyTarget.lng} />}
 
-            {mapped.map(p => {
-              const info     = st(p.status);
+            {visibleMapped.map((p) => {
+              const info = st(p.status);
               const isActive = p.id === activeId;
-              const types    = p.type.split(",").map(t => t.trim()).filter(Boolean);
+              const types = p.type.split(",").map((t) => t.trim()).filter(Boolean);
               return (
-                <Marker key={p.id} position={[p.lat, p.lng]}
-                        icon={dotIcon(info.hex, isActive)}
-                        eventHandlers={{ click: () => setActiveId(p.id) }}>
+                <Marker
+                  key={p.id}
+                  position={[p.lat, p.lng]}
+                  icon={dotIcon(info.hex, isActive)}
+                  eventHandlers={{ click: () => setActiveId(p.id) }}
+                >
                   <Popup maxWidth={260}>
                     <div style={{ padding: "4px 0", display: "flex", flexDirection: "column", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -332,7 +543,7 @@ const Mapa = () => {
                       )}
                       {types.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, paddingTop: 4, borderTop: "1px solid #f0f0f0" }}>
-                          {types.map(t => (
+                          {types.map((t) => (
                             <span key={t} style={{
                               fontSize: 10, padding: "2px 6px", borderRadius: 4,
                               background: "#f3f4f6", color: "#374151", fontWeight: 500,
