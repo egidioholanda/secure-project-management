@@ -17,9 +17,10 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const normalizeStatus = (status: string) => {
-  if (["Em Andamento", "in_progress"].includes(status)) return "ongoing";
+  if (["Em Andamento", "in_progress", "execution"].includes(status)) return "ongoing";
   if (["Planejamento", "planning"].includes(status)) return "planning";
   if (["Concluído", "completed", "concluido"].includes(status)) return "completed";
+  if (["onhold", "Em Espera"].includes(status)) return "planning";
   return "other";
 };
 
