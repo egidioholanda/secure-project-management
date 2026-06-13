@@ -9,6 +9,7 @@ import { Header } from "@/components/Layout/Header";
 import Dashboard from "./pages/Dashboard";
 import DashboardOperacional from "./pages/DashboardOperacional";
 import DashboardComercial from "./pages/DashboardComercial";
+import Mapa from "./pages/Mapa";
 import Opportunities from "./pages/Opportunities";
 import Projects from "./pages/Projects";
 import Catalog from "./pages/Catalog";
@@ -30,6 +31,7 @@ const SUP_TECNICO_ALLOWED = [
   "/relatorios",
   "/clientes",
   "/dashboard/operacional",
+  "/mapa",
 ];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -116,6 +118,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <DashboardComercial />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mapa"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Mapa />
             </AppLayout>
           </ProtectedRoute>
         }

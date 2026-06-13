@@ -10,6 +10,7 @@ import {
   Settings,
   Users,
   Building2,
+  Map,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -23,6 +24,7 @@ const commercialItems = [
 const operationalItems = [
   { icon: HardHat, label: "Dashboard Operacional", path: "/dashboard/operacional" },
   { icon: FolderKanban, label: "Projetos", path: "/projetos" },
+  { icon: Map, label: "Mapa", path: "/mapa" },
   { icon: Package, label: "Catálogo", path: "/catalogo" },
   { icon: Calendar, label: "Cronogramas", path: "/cronogramas" },
   { icon: FileText, label: "Relatórios", path: "/relatorios" },
@@ -32,6 +34,7 @@ const operationalItems = [
 const SUP_TECNICO_PATHS = [
   "/dashboard/operacional",
   "/projetos",
+  "/mapa",
   "/catalogo",
   "/cronogramas",
   "/relatorios",
