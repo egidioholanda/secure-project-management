@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useProjects } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,6 +69,34 @@ function dotIcon(hex: string, active = false) {
   });
 }
 
+// ─── Persistent view (localStorage) ──────────────────────────────────────────
+
+const VIEW_KEY = "secureproject_mapa_view";
+
+interface SavedView { center: [number, number]; zoom: number }
+
+function loadView(): SavedView | null {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as SavedView;
+    if (Array.isArray(v.center) && v.center.length === 2 && typeof v.zoom === "number") return v;
+  } catch { /* ignore */ }
+  return null;
+}
+
+// Saves center+zoom on every moveend (drag or zoom)
+function MapStateSaver() {
+  useMapEvents({
+    moveend(e) {
+      const c = e.target.getCenter();
+      const z = e.target.getZoom();
+      localStorage.setItem(VIEW_KEY, JSON.stringify({ center: [c.lat, c.lng], zoom: z }));
+    },
+  });
+  return null;
+}
+
 // ─── FlyTo ───────────────────────────────────────────────────────────────────
 
 function FlyTo({ lat, lng }: { lat: number; lng: number }) {
@@ -102,7 +130,10 @@ const LEGEND = [
 // AppLayout: header fixo 64px (pt-16) + padding inferior p-6 (24px) + nossa topbar (~53px)
 const MAP_H = "calc(100vh - 64px - 24px - 53px)";
 
+const DEFAULT_VIEW: SavedView = { center: [-14.235, -51.925], zoom: 4 };
+
 const Mapa = () => {
+  const savedView = loadView() ?? DEFAULT_VIEW;
   const { projects, loading } = useProjects();
   const [geoProjects, setGeoProjects] = useState<GeoProject[]>([]);
   const [geocoding,   setGeocoding]   = useState(false);
@@ -260,11 +291,12 @@ const Mapa = () => {
           )}
 
           <MapContainer
-            center={[-14.235, -51.925]}
-            zoom={4}
+            center={savedView.center}
+            zoom={savedView.zoom}
             style={{ width: "100%", height: MAP_H }}
             zoomControl
           >
+            <MapStateSaver />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
