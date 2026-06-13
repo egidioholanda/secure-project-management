@@ -2,6 +2,7 @@ import { Search, User, LogOut, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import { NotificationsDropdown } from "./NotificationsDropdown";
 
 export const Header = () => {
   const { user, profile, isAdmin, signOut, isLoading } = useAuthContext();
+  const { collapsed } = useSidebar();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,7 +39,10 @@ export const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-64 right-0 h-16 bg-card border-b border-border z-40 backdrop-blur-sm bg-card/80">
+    <header
+      className="fixed top-0 right-0 h-16 bg-card border-b border-border z-40 backdrop-blur-sm bg-card/80 transition-all duration-300"
+      style={{ left: collapsed ? 64 : 256 }}
+    >
       <div className="h-full px-6 flex items-center justify-between">
         {/* Search */}
         <div className="flex-1 max-w-md">

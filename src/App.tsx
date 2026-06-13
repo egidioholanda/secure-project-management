@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { Sidebar } from "@/components/Layout/Sidebar";
 import { Header } from "@/components/Layout/Header";
 import Dashboard from "./pages/Dashboard";
@@ -62,11 +63,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const { collapsed } = useSidebar();
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Sidebar />
       <Header />
-      <main className="ml-64 pt-16 p-6">
+      <main
+        className="pt-16 p-6 transition-all duration-300"
+        style={{ marginLeft: collapsed ? 64 : 256 }}
+      >
         <div className="max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
@@ -224,7 +229,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <SidebarProvider>
+            <AppRoutes />
+          </SidebarProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
