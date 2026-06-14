@@ -96,7 +96,14 @@ const DashboardOperacional = () => {
         endDate !== null
           ? Math.ceil((endDate.getTime() - today.getTime()) / 86400000)
           : null;
-      return { ...project, avgProgress, endDate, normalized, isLate, daysLate, daysToEnd };
+      const assigneeCounts: Record<string, number> = {};
+      projectTasks.forEach((t) => {
+        if (t.assignee) assigneeCounts[t.assignee] = (assigneeCounts[t.assignee] || 0) + 1;
+      });
+      const topAssignee =
+        Object.entries(assigneeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const displayManager = topAssignee || project.manager || "";
+      return { ...project, avgProgress, endDate, normalized, isLate, daysLate, daysToEnd, displayManager };
     });
   }, [projects, tasks, today]);
 
@@ -121,7 +128,7 @@ const DashboardOperacional = () => {
   const managerData = useMemo(() => {
     const map: Record<string, number> = {};
     ongoing.forEach((p) => {
-      const key = p.manager || "Sem responsável";
+      const key = p.displayManager || "Sem responsável";
       map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
@@ -323,10 +330,10 @@ const DashboardOperacional = () => {
                   <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
                     {p.daysLate} dia{p.daysLate > 1 ? "s" : ""} de atraso
                   </span>
-                  {p.manager && (
+                  {p.displayManager && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <User className="w-3 h-3" />
-                      {p.manager.split(" ")[0]}
+                      {p.displayManager.split(" ")[0]}
                     </span>
                   )}
                 </div>
@@ -377,7 +384,7 @@ const DashboardOperacional = () => {
                       {p.client}
                     </td>
                     <td className="py-3.5 pr-4 text-muted-foreground hidden lg:table-cell">
-                      {p.manager || "—"}
+                      {p.displayManager || "—"}
                     </td>
                     <td className="py-3.5 pr-4">
                       {p.endDate ? (
@@ -450,10 +457,10 @@ const DashboardOperacional = () => {
                     Início previsto: {p.endDate.toLocaleDateString("pt-BR")}
                   </p>
                 )}
-                {p.manager && (
+                {p.displayManager && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <User className="w-3 h-3" />
-                    {p.manager}
+                    {p.displayManager}
                   </p>
                 )}
               </div>
