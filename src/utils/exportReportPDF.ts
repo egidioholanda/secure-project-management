@@ -23,12 +23,12 @@ export const exportReportToPDF = async (
 
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
+  const sideMargin = 8;
+  const contentWidth = pdfWidth - 2 * sideMargin;
+
   const imgWidth = canvas.width;
   const imgHeight = canvas.height;
-  const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-  const imgX = (pdfWidth - imgWidth * ratio) / 2;
-  const imgY = 0;
-
+  const ratio = contentWidth / imgWidth;
   const scaledHeight = imgHeight * ratio;
   const totalPages = Math.max(1, Math.ceil((scaledHeight - 1) / pdfHeight));
 
@@ -39,10 +39,10 @@ export const exportReportToPDF = async (
     pdf.addImage(
       imgData,
       "PNG",
-      imgX,
-      imgY - i * pdfHeight,
-      imgWidth * ratio,
-      imgHeight * ratio
+      sideMargin,
+      -i * pdfHeight,
+      contentWidth,
+      scaledHeight
     );
   }
 
