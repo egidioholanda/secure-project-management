@@ -76,23 +76,18 @@ export const useReports = () => {
 
   const fetchReports = async () => {
     try {
-      const { data: reportsData, error: reportsError } = await supabase
-        .from("reports")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [
+        { data: reportsData, error: reportsError },
+        { data: tasksData, error: tasksError },
+        { data: photosData, error: photosError },
+      ] = await Promise.all([
+        supabase.from("reports").select("*").order("created_at", { ascending: false }),
+        supabase.from("report_tasks").select("*"),
+        supabase.from("report_photos").select("id, report_id, url, caption"),
+      ]);
 
       if (reportsError) throw reportsError;
-
-      const { data: tasksData, error: tasksError } = await supabase
-        .from("report_tasks")
-        .select("*");
-
       if (tasksError) throw tasksError;
-
-      const { data: photosData, error: photosError } = await supabase
-        .from("report_photos")
-        .select("*");
-
       if (photosError) throw photosError;
 
       const mappedReports = (reportsData || []).map((r) =>

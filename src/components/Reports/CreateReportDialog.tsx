@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Upload, X, Plus, Trash2 } from "lucide-react";
+import { Calendar, Upload, X, Plus, Trash2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Report, ReportPhoto, TaskProgress } from "@/types/report";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -43,6 +46,7 @@ export const CreateReportDialog = ({
   onSave,
   editReport,
 }: CreateReportDialogProps) => {
+  const { profile, user } = useAuthContext();
   const [selectedProject, setSelectedProject] = useState("");
   const [title, setTitle] = useState("");
   const [periodStart, setPeriodStart] = useState("");
@@ -54,6 +58,7 @@ export const CreateReportDialog = ({
   const [photos, setPhotos] = useState<ReportPhoto[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   // Reset/populate form when dialog opens or editReport changes
   useEffect(() => {
@@ -91,22 +96,36 @@ export const CreateReportDialog = ({
 
   const selectedProjectData = projects.find(p => p.id === selectedProject);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const newPhoto: ReportPhoto = {
+    if (!files || files.length === 0) return;
+
+    setUploadingPhotos(true);
+    try {
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const ext = file.name.split(".").pop();
+          const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+          const { error } = await supabase.storage
+            .from("report-photos")
+            .upload(path, file, { contentType: file.type });
+          if (error) throw error;
+          const { data: urlData } = supabase.storage
+            .from("report-photos")
+            .getPublicUrl(path);
+          return {
             id: crypto.randomUUID(),
-            url: event.target?.result as string,
-            caption: file.name,
+            url: urlData.publicUrl,
+            caption: file.name.replace(/\.[^/.]+$/, ""),
             createdAt: new Date(),
-          };
-          setPhotos(prev => [...prev, newPhoto]);
-        };
-        reader.readAsDataURL(file);
-      });
+          } as ReportPhoto;
+        })
+      );
+      setPhotos(prev => [...prev, ...uploads]);
+    } catch {
+      toast.error("Erro ao fazer upload das fotos");
+    } finally {
+      setUploadingPhotos(false);
     }
   };
 
@@ -138,7 +157,7 @@ export const CreateReportDialog = ({
       projectId: selectedProject,
       projectName: projectData?.name || "",
       title,
-      author: "Usuário Atual",
+      author: profile?.full_name || user?.email || "Usuário Atual",
       status,
       period: {
         start: new Date(periodStart),
@@ -316,13 +335,15 @@ export const CreateReportDialog = ({
               />
               <label
                 htmlFor="photo-upload"
-                className="cursor-pointer flex flex-col items-center gap-2"
+                className={`cursor-pointer flex flex-col items-center gap-2 ${uploadingPhotos ? "opacity-50 pointer-events-none" : ""}`}
               >
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-primary" />
+                  {uploadingPhotos
+                    ? <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                    : <Upload className="w-6 h-6 text-primary" />}
                 </div>
                 <span className="text-sm font-medium text-foreground">
-                  Clique para fazer upload de fotos
+                  {uploadingPhotos ? "Enviando fotos..." : "Clique para fazer upload de fotos"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   PNG, JPG até 10MB
