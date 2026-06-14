@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Upload, X, Plus, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, Upload, Plus, Trash2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Report, ReportPhoto, TaskProgress } from "@/types/report";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -49,8 +53,8 @@ export const CreateReportDialog = ({
   const { profile, user } = useAuthContext();
   const [selectedProject, setSelectedProject] = useState("");
   const [title, setTitle] = useState("");
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd] = useState("");
+  const [periodStart, setPeriodStart] = useState<Date | null>(null);
+  const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
   const [summary, setSummary] = useState("");
   const [observations, setObservations] = useState("");
   const [challenges, setChallenges] = useState("");
@@ -65,8 +69,8 @@ export const CreateReportDialog = ({
     if (open && editReport) {
       setSelectedProject(editReport.projectId);
       setTitle(editReport.title);
-      setPeriodStart(format(editReport.period.start, "yyyy-MM-dd"));
-      setPeriodEnd(format(editReport.period.end, "yyyy-MM-dd"));
+      setPeriodStart(editReport.period.start);
+      setPeriodEnd(editReport.period.end);
       setSummary(editReport.summary);
       setObservations(editReport.observations);
       setChallenges(editReport.challenges);
@@ -82,8 +86,8 @@ export const CreateReportDialog = ({
     } else if (open && !editReport) {
       setSelectedProject("");
       setTitle("");
-      setPeriodStart("");
-      setPeriodEnd("");
+      setPeriodStart(null);
+      setPeriodEnd(null);
       setSummary("");
       setObservations("");
       setChallenges("");
@@ -160,8 +164,8 @@ export const CreateReportDialog = ({
       author: profile?.full_name || user?.email || "Usuário Atual",
       status,
       period: {
-        start: new Date(periodStart),
-        end: new Date(periodEnd),
+        start: periodStart,
+        end: periodEnd,
       },
       summary,
       observations,
@@ -178,8 +182,8 @@ export const CreateReportDialog = ({
   const resetForm = () => {
     setSelectedProject("");
     setTitle("");
-    setPeriodStart("");
-    setPeriodEnd("");
+    setPeriodStart(null);
+    setPeriodEnd(null);
     setSummary("");
     setObservations("");
     setChallenges("");
@@ -234,32 +238,64 @@ export const CreateReportDialog = ({
                 />
               </div>
 
-              <div>
-                <Label htmlFor="periodStart">Período Início</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="periodStart"
-                    type="date"
-                    value={periodStart}
-                    onChange={(e) => setPeriodStart(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label>Período Início</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !periodStart && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {periodStart
+                        ? format(periodStart, "dd/MM/yyyy", { locale: ptBR })
+                        : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={periodStart ?? undefined}
+                      onSelect={(date) => date && setPeriodStart(date)}
+                      initialFocus
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div>
-                <Label htmlFor="periodEnd">Período Fim</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="periodEnd"
-                    type="date"
-                    value={periodEnd}
-                    onChange={(e) => setPeriodEnd(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label>Período Fim</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !periodEnd && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {periodEnd
+                        ? format(periodEnd, "dd/MM/yyyy", { locale: ptBR })
+                        : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={periodEnd ?? undefined}
+                      onSelect={(date) => date && setPeriodEnd(date)}
+                      initialFocus
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="col-span-2">
