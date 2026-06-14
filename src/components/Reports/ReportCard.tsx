@@ -39,9 +39,10 @@ export const ReportCard = ({ report, onView, onEdit, onDelete }: ReportCardProps
     published: "Publicado",
   };
 
-  const completedTasks = report.tasks.filter(t => t.status === 'completed').length;
   const totalTasks = report.tasks.length;
-  const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const progressPercentage = totalTasks > 0
+    ? Math.round(report.tasks.reduce((sum, t) => sum + t.progress, 0) / totalTasks)
+    : 0;
 
   const handleDownloadPDF = async () => {
     if (!pdfRef.current) return;

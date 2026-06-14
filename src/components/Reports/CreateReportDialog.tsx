@@ -67,7 +67,12 @@ export const CreateReportDialog = ({
       setChallenges(editReport.challenges);
       setNextSteps(editReport.nextSteps);
       setPhotos(editReport.photos);
-      setSelectedTasks(editReport.tasks.map(t => t.id));
+      const projectData = projects.find(p => p.id === editReport.projectId);
+      const matchedIds = editReport.tasks.map(t => {
+        const scheduleTask = projectData?.tasks.find(st => st.name === t.name);
+        return scheduleTask?.id ?? t.id;
+      });
+      setSelectedTasks(matchedIds);
       setStatus(editReport.status);
     } else if (open && !editReport) {
       setSelectedProject("");
@@ -369,9 +374,25 @@ export const CreateReportDialog = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Selecione as tarefas que deseja incluir no relatório:
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Selecione as tarefas que deseja incluir no relatório:
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allIds = selectedProjectData.tasks.map(t => t.id);
+                      const allSelected = allIds.every(id => selectedTasks.includes(id));
+                      setSelectedTasks(allSelected ? [] : allIds);
+                    }}
+                  >
+                    {selectedProjectData.tasks.every(t => selectedTasks.includes(t.id))
+                      ? "Desmarcar Todas"
+                      : "Selecionar Todas"}
+                  </Button>
+                </div>
                 {selectedProjectData.tasks.map(task => (
                   <div
                     key={task.id}

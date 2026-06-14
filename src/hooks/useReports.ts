@@ -184,6 +184,9 @@ export const useReports = () => {
   };
 
   const updateReport = async (report: Report) => {
+    // Optimistic update — UI reacts immediately
+    setReports((prev) => prev.map((r) => (r.id === report.id ? report : r)));
+
     try {
       const { error: reportError } = await supabase
         .from("reports")
@@ -203,41 +206,42 @@ export const useReports = () => {
 
       if (reportError) throw reportError;
 
-      // Delete old tasks and insert new ones
-      await supabase.from("report_tasks").delete().eq("report_id", report.id);
+      // Delete tasks and photos in parallel
+      await Promise.all([
+        supabase.from("report_tasks").delete().eq("report_id", report.id),
+        supabase.from("report_photos").delete().eq("report_id", report.id),
+      ]);
 
-      if (report.tasks && report.tasks.length > 0) {
-        const tasksToInsert = report.tasks.map((t) => ({
-          report_id: report.id,
-          task_name: t.name,
-          progress: t.progress,
-          status: t.status,
-          assignee: t.assignee || null,
-        }));
+      // Insert new tasks and photos in parallel
+      await Promise.all([
+        report.tasks.length > 0
+          ? supabase.from("report_tasks").insert(
+              report.tasks.map((t) => ({
+                report_id: report.id,
+                task_name: t.name,
+                progress: t.progress,
+                status: t.status,
+                assignee: t.assignee || null,
+              }))
+            )
+          : Promise.resolve(),
+        report.photos.length > 0
+          ? supabase.from("report_photos").insert(
+              report.photos.map((p) => ({
+                report_id: report.id,
+                url: p.url,
+                caption: p.caption || null,
+              }))
+            )
+          : Promise.resolve(),
+      ]);
 
-        await supabase.from("report_tasks").insert(tasksToInsert);
-      }
-
-      // Delete old photos and insert new ones
-      await supabase.from("report_photos").delete().eq("report_id", report.id);
-
-      if (report.photos && report.photos.length > 0) {
-        const photosToInsert = report.photos.map((p) => ({
-          report_id: report.id,
-          url: p.url,
-          caption: p.caption || null,
-        }));
-
-        await supabase.from("report_photos").insert(photosToInsert);
-      }
-
-      setReports((prev) =>
-        prev.map((r) => (r.id === report.id ? report : r))
-      );
       toast.success("Relatório atualizado com sucesso!");
     } catch (error) {
       console.error("Error updating report:", error);
       toast.error("Erro ao atualizar relatório");
+      // Revert optimistic update on failure
+      await fetchReports();
     }
   };
 
