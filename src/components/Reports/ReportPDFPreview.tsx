@@ -17,10 +17,9 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
       completed: "Concluída",
     };
 
-    const completedTasks = report.tasks.filter((t) => t.status === "completed").length;
     const progressPercentage =
       report.tasks.length > 0
-        ? Math.round((completedTasks / report.tasks.length) * 100)
+        ? Math.round(report.tasks.reduce((sum, t) => sum + t.progress, 0) / report.tasks.length)
         : 0;
 
     return (
@@ -106,7 +105,7 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
                 />
               </div>
               <span className="text-sm font-medium text-gray-700">
-                {progressPercentage}% ({completedTasks}/{report.tasks.length})
+                {progressPercentage}% ({report.tasks.length} tarefa{report.tasks.length !== 1 ? "s" : ""})
               </span>
             </div>
             <table className="w-full text-sm border-collapse">
