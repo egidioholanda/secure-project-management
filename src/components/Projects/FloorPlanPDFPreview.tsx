@@ -131,46 +131,49 @@ export const FloorPlanPDFPreview = forwardRef<HTMLDivElement, FloorPlanPDFPrevie
           )}
         </div>
 
-        {/* Device Legend */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2">
-            Legenda dos Dispositivos
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
-            {floorPlanDevices.map((device, index) => (
-              <div key={device.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                  {index + 1}
-                </div>
-                <span className="text-gray-800 font-medium text-sm">{device.device?.name || "Dispositivo"}</span>
+        {/* Device Legend + Summary — only when there are placed devices */}
+        {floorPlanDevices.length > 0 && (
+          <>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2">
+                Legenda dos Dispositivos
+              </h2>
+              <div className="grid grid-cols-3 gap-3">
+                {floorPlanDevices.map((device, index) => (
+                  <div key={device.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <span className="text-gray-800 font-medium text-sm">{device.device?.name || "Dispositivo"}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Summary */}
-        <div className="p-5 bg-gray-100 rounded-lg border border-gray-200">
-          <h3 className="font-bold text-gray-800 mb-3 text-lg">Resumo dos Equipamentos</h3>
-          <p className="text-gray-700 mb-3">
-            Total de dispositivos posicionados: <strong className="text-blue-600">{floorPlanDevices.length}</strong>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(
-              floorPlanDevices.reduce((acc, d) => {
-                const name = d.device?.name || "Dispositivo";
-                acc[name] = (acc[name] || 0) + 1;
-                return acc;
-              }, {} as Record<string, number>)
-            ).map(([name, count]) => (
-              <span
-                key={name}
-                className="px-3 py-1.5 bg-white text-gray-700 rounded-full text-sm border border-gray-300 font-medium"
-              >
-                {count}x {name}
-              </span>
-            ))}
-          </div>
-        </div>
+            <div className="p-5 bg-gray-100 rounded-lg border border-gray-200">
+              <h3 className="font-bold text-gray-800 mb-3 text-lg">Resumo dos Equipamentos</h3>
+              <p className="text-gray-700 mb-3">
+                Total de dispositivos posicionados: <strong className="text-blue-600">{floorPlanDevices.length}</strong>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(
+                  floorPlanDevices.reduce((acc, d) => {
+                    const name = d.device?.name || "Dispositivo";
+                    acc[name] = (acc[name] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>)
+                ).map(([name, count]) => (
+                  <span
+                    key={name}
+                    className="px-3 py-1.5 bg-white text-gray-700 rounded-full text-sm border border-gray-300 font-medium"
+                  >
+                    {count}x {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Footer */}
         <div className="pt-6 mt-8 border-t-2 border-gray-300 text-sm text-gray-500 text-center">
