@@ -84,10 +84,12 @@ const DashboardOperacional = () => {
           : 0;
       const endDate = parseDisplayDate(project.endDate);
       const normalized = normalizeStatus(project.status);
+      const hasLateTasks = projectTasks.some(
+        (t) => t.endDate < today && t.progress < 100
+      );
       const isLate =
-        endDate !== null &&
-        endDate < today &&
-        normalized !== "completed";
+        normalized !== "completed" &&
+        ((endDate !== null && endDate < today) || hasLateTasks);
       const daysLate =
         isLate && endDate
           ? Math.ceil((today.getTime() - endDate.getTime()) / 86400000)
