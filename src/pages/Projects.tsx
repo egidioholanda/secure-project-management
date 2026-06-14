@@ -64,14 +64,23 @@ const Projects = () => {
 
   if (selectedProject) {
     return (
-      <ProjectDetailView
-        project={selectedProject}
-        onBack={() => setSelectedProject(null)}
-        onEdit={(project) => {
-          setEditingProject(project);
-          setIsDialogOpen(true);
-        }}
-      />
+      <>
+        <ProjectDetailView
+          project={selectedProject}
+          onBack={() => setSelectedProject(null)}
+          onEdit={(project) => {
+            setEditingProject(project);
+            setIsDialogOpen(true);
+          }}
+        />
+        <AddProjectDialog
+          open={isDialogOpen}
+          onOpenChange={handleDialogClose}
+          onAddProject={handleAddOrUpdateProject}
+          editingProject={editingProject}
+          initialData={initialFormData}
+        />
+      </>
     );
   }
 
