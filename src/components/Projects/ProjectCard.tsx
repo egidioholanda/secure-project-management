@@ -31,17 +31,22 @@ const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
       <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(project)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
               <Pencil className="h-4 w-4 mr-2" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => onDelete(project.id)}
+              onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
