@@ -7,7 +7,6 @@ import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { Sidebar } from "@/components/Layout/Sidebar";
 import { Header } from "@/components/Layout/Header";
-import Dashboard from "./pages/Dashboard";
 import DashboardOperacional from "./pages/DashboardOperacional";
 import DashboardComercial from "./pages/DashboardComercial";
 import Mapa from "./pages/Mapa";
@@ -99,13 +98,7 @@ const AppRoutes = () => {
       />
       <Route
         path="/"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Dashboard />
-            </AppLayout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/dashboard/operacional" replace />}
       />
       <Route
         path="/dashboard/operacional"
