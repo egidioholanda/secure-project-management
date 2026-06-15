@@ -5,6 +5,12 @@ import { cn } from '@/lib/utils';
 import type { CalendarConfig } from '@/utils/workingDaysEngine';
 import { DEFAULT_CALENDAR_CONFIG, isWorkingDay } from '@/utils/workingDaysEngine';
 
+const NON_WORKING_STYLE: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(-45deg, rgba(120,120,180,0.13) 0px, rgba(120,120,180,0.13) 1.5px, transparent 1.5px, transparent 7px)',
+  backgroundColor: 'rgba(100,100,160,0.07)',
+};
+
 interface GanttRowProps {
   task: Task;
   previewTask: Task | null;
@@ -47,12 +53,11 @@ export const GanttRow = ({
         return (
           <div
             key={idx}
-            className={cn(
-              'flex-shrink-0 border-r border-border/50',
-              !working && 'bg-muted/50',
-              isToday && 'bg-primary/5'
-            )}
-            style={{ width: dayWidth }}
+            className={cn('flex-shrink-0 border-r border-border/50', isToday && 'bg-primary/5')}
+            style={{
+              width: dayWidth,
+              ...(!working && !isToday ? NON_WORKING_STYLE : {}),
+            }}
           />
         );
       })}

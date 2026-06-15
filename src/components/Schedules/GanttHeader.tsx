@@ -6,6 +6,12 @@ import type { Task } from '@/types/schedule';
 import type { CalendarConfig } from '@/utils/workingDaysEngine';
 import { DEFAULT_CALENDAR_CONFIG, isWorkingDay } from '@/utils/workingDaysEngine';
 
+const NON_WORKING_STYLE: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(-45deg, rgba(120,120,180,0.13) 0px, rgba(120,120,180,0.13) 1.5px, transparent 1.5px, transparent 7px)',
+  backgroundColor: 'rgba(100,100,160,0.07)',
+};
+
 interface GanttHeaderProps {
   startDate: Date;
   endDate: Date;
@@ -53,15 +59,28 @@ export const GanttHeader = ({
           key={idx}
           className={cn(
             'flex-shrink-0 border-r border-border text-center text-xs py-1 transition-colors',
-            !working && 'bg-muted/70',
-            isToday && 'bg-primary/10'
+            isToday && '!bg-primary/10'
           )}
-          style={{ width: dayWidth }}
+          style={{
+            width: dayWidth,
+            ...(!working && !isToday ? NON_WORKING_STYLE : {}),
+          }}
         >
-          <div className={cn('font-medium capitalize', !working ? 'text-muted-foreground/60' : 'text-muted-foreground')}>
+          <div
+            className={cn(
+              'font-medium capitalize',
+              working ? 'text-muted-foreground' : 'text-muted-foreground/40'
+            )}
+          >
             {format(day, 'EEE', { locale: ptBR })}
           </div>
-          <div className={cn('font-bold', isToday && 'text-primary', !working && 'text-muted-foreground/60')}>
+          <div
+            className={cn(
+              'font-bold',
+              isToday && 'text-primary',
+              !working && !isToday && 'text-muted-foreground/40'
+            )}
+          >
             {format(day, 'd')}
           </div>
         </div>
@@ -80,14 +99,15 @@ export const GanttHeader = ({
       <div className="relative flex h-8 bg-muted/20 border-b border-border">
         {days.map((day, idx) => {
           const working = isWorkingDay(day, calendarConfig);
+          const isToday = format(day, 'yyyy-MM-dd') === todayStr;
           return (
             <div
               key={idx}
-              className={cn(
-                'flex-shrink-0 border-r border-border/30',
-                !working && 'bg-muted/40'
-              )}
-              style={{ width: dayWidth }}
+              className={cn('flex-shrink-0 border-r border-border/30', isToday && 'bg-primary/5')}
+              style={{
+                width: dayWidth,
+                ...(!working && !isToday ? NON_WORKING_STYLE : {}),
+              }}
             />
           );
         })}
