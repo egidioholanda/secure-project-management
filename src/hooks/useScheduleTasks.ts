@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
+import { addDays, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/schedule";
 import { toast } from "sonner";
+import {
+  CalendarConfig,
+  DEFAULT_CALENDAR_CONFIG,
+  snapToNextWorkingDay,
+} from "@/utils/workingDaysEngine";
 
 interface DbTask {
   id: string;
@@ -18,20 +24,32 @@ interface DbTask {
   updated_at: string;
 }
 
+// Parse "YYYY-MM-DD" as LOCAL midnight to avoid UTC offset shifting date by 1 day in Brazil (UTC-3)
+const parseLocalDate = (s: string): Date => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// Format using local date methods so timezone doesn't roll back the day
+const formatDateForDb = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 const mapDbToTask = (db: DbTask): Task => ({
   id: db.id,
   name: db.name,
   projectId: db.project_id || "",
   projectName: db.project_name || "",
-  startDate: new Date(db.start_date),
-  endDate: new Date(db.end_date),
+  startDate: parseLocalDate(db.start_date),
+  endDate: parseLocalDate(db.end_date),
   progress: db.progress,
   assignee: db.assignee || "",
   color: db.color || "#3B82F6",
   dependencies: Array.isArray(db.dependencies) ? db.dependencies : [],
 });
-
-const formatDateForDb = (date: Date): string => date.toISOString().split("T")[0];
 
 const taskToDbPayload = (task: Task) => ({
   name: task.name,
@@ -117,16 +135,21 @@ export const useScheduleTasks = () => {
 
   /**
    * Add a Finish-to-Start dependency: targetId will depend on sourceId.
-   * Prevents circular dependencies by checking the reverse link doesn't exist.
+   * Auto-reschedules the target (and cascades successors) to respect the new constraint.
    */
-  const addDependency = async (sourceId: string, targetId: string) => {
+  const addDependency = async (
+    sourceId: string,
+    targetId: string,
+    config: CalendarConfig = DEFAULT_CALENDAR_CONFIG
+  ) => {
     if (sourceId === targetId) return;
+
+    const source = tasks.find((t) => t.id === sourceId);
     const target = tasks.find((t) => t.id === targetId);
-    if (!target) return;
+    if (!source || !target) return;
 
     // Prevent circular: check if source already depends on target
-    const alreadyDependsOnTarget = (tasks.find((t) => t.id === sourceId)?.dependencies || []).includes(targetId);
-    if (alreadyDependsOnTarget) {
+    if ((source.dependencies || []).includes(targetId)) {
       toast.error("Dependência circular detectada e bloqueada");
       return;
     }
@@ -134,9 +157,54 @@ export const useScheduleTasks = () => {
     const existing = target.dependencies || [];
     if (existing.includes(sourceId)) return; // already linked
 
-    const updated = { ...target, dependencies: [...existing, sourceId] };
-    await updateTask(updated);
-    toast.success("Dependência criada");
+    // Compute new start for target: first working day after source ends
+    const firstValidStart = snapToNextWorkingDay(addDays(source.endDate, 1), config);
+    const targetDuration = differenceInDays(target.endDate, target.startDate);
+
+    const needsReschedule = target.startDate < firstValidStart;
+    const newStart = needsReschedule ? firstValidStart : target.startDate;
+    const newEnd = needsReschedule ? addDays(firstValidStart, targetDuration) : target.endDate;
+
+    const updatedTarget: Task = {
+      ...target,
+      dependencies: [...existing, sourceId],
+      startDate: newStart,
+      endDate: newEnd,
+    };
+
+    // Build cascade: collect all successor tasks that need shifting
+    const allUpdates: Task[] = [updatedTarget];
+    const visited = new Set<string>([updatedTarget.id]);
+
+    const cascade = (movedTask: Task, currentTasks: Task[]) => {
+      const successors = currentTasks.filter(
+        (t) => !visited.has(t.id) && t.dependencies?.includes(movedTask.id)
+      );
+      for (const s of successors) {
+        visited.add(s.id);
+        const sFirstValid = snapToNextWorkingDay(addDays(movedTask.endDate, 1), config);
+        if (s.startDate < sFirstValid) {
+          const sDuration = differenceInDays(s.endDate, s.startDate);
+          const sUpdated: Task = {
+            ...s,
+            startDate: sFirstValid,
+            endDate: addDays(sFirstValid, sDuration),
+          };
+          allUpdates.push(sUpdated);
+          cascade(sUpdated, currentTasks);
+        }
+      }
+    };
+
+    cascade(updatedTarget, tasks);
+    await updateMultipleTasks(allUpdates);
+
+    const rescheduled = allUpdates.length - 1;
+    if (rescheduled > 0) {
+      toast.success(`Dependência criada · ${rescheduled} tarefa(s) reagendada(s)`);
+    } else {
+      toast.success("Dependência criada");
+    }
   };
 
   const removeDependency = async (taskId: string, depId: string) => {

@@ -19,7 +19,7 @@ import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 
 const Schedules = () => {
-  const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, deleteTask } =
+  const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask } =
     useScheduleTasks();
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const { settings: companySettings } = useCompanySettings();
@@ -201,7 +201,8 @@ const Schedules = () => {
           tasks={filteredTasks}
           onUpdateTask={handleUpdateTask}
           onUpdateMultiple={handleUpdateMultiple}
-          onAddDependency={addDependency}
+          onAddDependency={(sourceId, targetId) => addDependency(sourceId, targetId, calendarConfig)}
+          onRemoveDependency={removeDependency}
           onTaskClick={handleTaskClick}
           startDate={dateRange.start}
           endDate={dateRange.end}

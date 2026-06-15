@@ -23,6 +23,7 @@ interface GanttChartProps {
   onUpdateTask: (task: Task) => void;
   onUpdateMultiple: (tasks: Task[]) => void;
   onAddDependency: (sourceId: string, targetId: string) => void;
+  onRemoveDependency: (taskId: string, depId: string) => void;
   onTaskClick: (task: Task) => void;
   startDate: Date;
   endDate: Date;
@@ -33,6 +34,7 @@ export const GanttChart = ({
   onUpdateTask,
   onUpdateMultiple,
   onAddDependency,
+  onRemoveDependency,
   onTaskClick,
   startDate,
   endDate,
@@ -167,6 +169,7 @@ export const GanttChart = ({
               dayWidth={DAY_WIDTH}
               totalWidth={totalChartWidth}
               totalHeight={totalChartHeight}
+              onRemoveDependency={onRemoveDependency}
             />
 
             {regularTasks.map((task) => (
