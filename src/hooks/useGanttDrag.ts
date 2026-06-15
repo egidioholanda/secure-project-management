@@ -1,6 +1,12 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '@/types/schedule';
-import { addDays } from 'date-fns';
+import { addDays, differenceInDays } from 'date-fns';
+import type { CalendarConfig } from '@/utils/workingDaysEngine';
+import {
+  DEFAULT_CALENDAR_CONFIG,
+  snapToNextWorkingDay,
+  snapToPrevWorkingDay,
+} from '@/utils/workingDaysEngine';
 
 type DragType = 'move' | 'resize-start' | 'resize-end' | null;
 
@@ -15,7 +21,8 @@ export const useGanttDrag = (
   tasks: Task[],
   onUpdateTask: (task: Task) => void,
   onUpdateMultiple: (tasks: Task[]) => void,
-  dayWidth: number
+  dayWidth: number,
+  calendarConfig: CalendarConfig = DEFAULT_CALENDAR_CONFIG
 ) => {
   const [dragState, setDragState] = useState<DragState>({
     taskId: null,
@@ -24,7 +31,6 @@ export const useGanttDrag = (
     originalTask: null,
   });
 
-  // Preview task: the dragged task with updated dates (not yet persisted)
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
 
   const handleDragStart = useCallback(
@@ -61,6 +67,23 @@ export const useGanttDrag = (
     return { newStart, newEnd };
   };
 
+  // Snap dates to working days based on drag type
+  const snapToWorkingDays = (task: Task, type: DragType): Task => {
+    switch (type) {
+      case 'move': {
+        const snappedStart = snapToNextWorkingDay(task.startDate, calendarConfig);
+        const duration = differenceInDays(task.endDate, task.startDate);
+        return { ...task, startDate: snappedStart, endDate: addDays(snappedStart, duration) };
+      }
+      case 'resize-start':
+        return { ...task, startDate: snapToNextWorkingDay(task.startDate, calendarConfig) };
+      case 'resize-end':
+        return { ...task, endDate: snapToPrevWorkingDay(task.endDate, calendarConfig) };
+      default:
+        return task;
+    }
+  };
+
   // During drag: only update local preview, no Supabase calls
   const handleDragMove = useCallback(
     (e: React.MouseEvent) => {
@@ -79,7 +102,7 @@ export const useGanttDrag = (
     [dragState, dayWidth]
   );
 
-  // On release: persist final position + cascade successors if it was a move
+  // On release: snap to working day, persist, cascade successors for moves
   const handleDragEnd = useCallback(() => {
     if (!dragState.originalTask || !previewTask) {
       setDragState({ taskId: null, type: null, startX: 0, originalTask: null });
@@ -87,10 +110,11 @@ export const useGanttDrag = (
       return;
     }
 
+    const snapped = snapToWorkingDays(previewTask, dragState.type);
+
     if (dragState.type === 'move') {
       const originalEndMs = dragState.originalTask.endDate.getTime();
 
-      // Successors: tasks in the same project that start on or after the moved task's original end date
       const successors = tasks.filter(
         (t) =>
           t.projectId === dragState.originalTask!.projectId &&
@@ -99,26 +123,23 @@ export const useGanttDrag = (
       );
 
       if (successors.length > 0) {
-        const daysDelta = Math.round(
-          (previewTask.startDate.getTime() - dragState.originalTask.startDate.getTime()) /
-            (1000 * 60 * 60 * 24)
-        );
+        const daysDelta = differenceInDays(snapped.startDate, dragState.originalTask.startDate);
         const cascaded = successors.map((t) => ({
           ...t,
           startDate: addDays(t.startDate, daysDelta),
           endDate: addDays(t.endDate, daysDelta),
         }));
-        onUpdateMultiple([previewTask, ...cascaded]);
+        onUpdateMultiple([snapped, ...cascaded]);
       } else {
-        onUpdateTask(previewTask);
+        onUpdateTask(snapped);
       }
     } else {
-      onUpdateTask(previewTask);
+      onUpdateTask(snapped);
     }
 
     setDragState({ taskId: null, type: null, startX: 0, originalTask: null });
     setPreviewTask(null);
-  }, [dragState, previewTask, tasks, onUpdateTask, onUpdateMultiple]);
+  }, [dragState, previewTask, tasks, onUpdateTask, onUpdateMultiple, calendarConfig]);
 
   return {
     dragState,

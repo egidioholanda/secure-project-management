@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { addDays, subDays } from 'date-fns';
+import { addDays, subDays, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Filter, Download, Loader2 } from 'lucide-react';
 import type { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
@@ -31,8 +31,8 @@ const Schedules = () => {
   const [filterProject, setFilterProject] = useState<string>('all');
 
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 7),
-    end: addDays(new Date(), 52),
+    start: startOfDay(subDays(new Date(), 7)),
+    end: startOfDay(addDays(new Date(), 52)),
   });
 
   const projectsList = useMemo(() => {
@@ -91,7 +91,7 @@ const Schedules = () => {
   };
 
   const goToToday = () =>
-    setDateRange({ start: subDays(new Date(), 7), end: addDays(new Date(), 52) });
+    setDateRange({ start: startOfDay(subDays(new Date(), 7)), end: startOfDay(addDays(new Date(), 52)) });
 
   if (loading || projectsLoading) {
     return (
@@ -206,6 +206,7 @@ const Schedules = () => {
           onTaskClick={handleTaskClick}
           startDate={dateRange.start}
           endDate={dateRange.end}
+          calendarConfig={calendarConfig}
         />
       </div>
 

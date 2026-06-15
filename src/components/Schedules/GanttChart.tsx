@@ -8,6 +8,8 @@ import { useGanttDrag } from '@/hooks/useGanttDrag';
 import { getCriticalPath } from '@/utils/ganttUtils';
 import { eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type { CalendarConfig } from '@/utils/workingDaysEngine';
+import { DEFAULT_CALENDAR_CONFIG } from '@/utils/workingDaysEngine';
 
 const DAY_WIDTH = 40;
 const ROW_HEIGHT = 48;
@@ -27,6 +29,7 @@ interface GanttChartProps {
   onTaskClick: (task: Task) => void;
   startDate: Date;
   endDate: Date;
+  calendarConfig?: CalendarConfig;
 }
 
 export const GanttChart = ({
@@ -38,12 +41,13 @@ export const GanttChart = ({
   onTaskClick,
   startDate,
   endDate,
+  calendarConfig = DEFAULT_CALENDAR_CONFIG,
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [linkingState, setLinkingState] = useState<LinkingState | null>(null);
 
   const { dragState, previewTask, handleDragStart, handleDragMove, handleDragEnd, isDragging } =
-    useGanttDrag(tasks, onUpdateTask, onUpdateMultiple, DAY_WIDTH);
+    useGanttDrag(tasks, onUpdateTask, onUpdateMultiple, DAY_WIDTH, calendarConfig);
 
   const milestoneTasks = useMemo(() => tasks.filter((t) => t.isMilestone), [tasks]);
   const regularTasks = useMemo(() => tasks.filter((t) => !t.isMilestone), [tasks]);
@@ -76,7 +80,6 @@ export const GanttChart = ({
     };
 
     const onUp = (e: MouseEvent) => {
-      // Detect if mouse released over a task bar
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const barEl = el?.closest('[data-task-id]');
       const targetId = barEl?.getAttribute('data-task-id');
@@ -148,6 +151,7 @@ export const GanttChart = ({
             dayWidth={DAY_WIDTH}
             viewMode="day"
             milestoneTasks={milestoneTasks}
+            calendarConfig={calendarConfig}
           />
 
           {/* Task rows + SVG overlay */}
@@ -162,7 +166,7 @@ export const GanttChart = ({
               </div>
             )}
 
-            {/* Dependency arrows SVG — rendered below task bars */}
+            {/* Dependency arrows SVG */}
             <DependencyArrows
               tasks={regularTasks}
               startDate={startDate}
@@ -186,6 +190,7 @@ export const GanttChart = ({
                 onLinkStart={handleLinkStart}
                 isDragging={dragState.taskId === task.id}
                 onTaskClick={onTaskClick}
+                calendarConfig={calendarConfig}
               />
             ))}
 
@@ -198,7 +203,7 @@ export const GanttChart = ({
         </div>
       </div>
 
-      {/* Ghost line overlay — fixed position while dragging a link */}
+      {/* Ghost line overlay */}
       {linkingState && ghostSourcePos && (
         <div className="fixed inset-0 pointer-events-none z-[9999]">
           <svg className="w-full h-full overflow-visible">

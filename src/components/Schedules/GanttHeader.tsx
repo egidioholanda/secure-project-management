@@ -3,6 +3,8 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task } from '@/types/schedule';
+import type { CalendarConfig } from '@/utils/workingDaysEngine';
+import { DEFAULT_CALENDAR_CONFIG, isWorkingDay } from '@/utils/workingDaysEngine';
 
 interface GanttHeaderProps {
   startDate: Date;
@@ -10,10 +12,18 @@ interface GanttHeaderProps {
   dayWidth: number;
   viewMode: 'day' | 'week' | 'month';
   milestoneTasks: Task[];
+  calendarConfig?: CalendarConfig;
 }
 
-export const GanttHeader = ({ startDate, endDate, dayWidth, milestoneTasks }: GanttHeaderProps) => {
+export const GanttHeader = ({
+  startDate,
+  endDate,
+  dayWidth,
+  milestoneTasks,
+  calendarConfig = DEFAULT_CALENDAR_CONFIG,
+}: GanttHeaderProps) => {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const getMonthHeaders = () => {
     const months = eachMonthOfInterval({ start: startDate, end: endDate });
@@ -35,23 +45,25 @@ export const GanttHeader = ({ startDate, endDate, dayWidth, milestoneTasks }: Ga
 
   const getDayHeaders = () => {
     return days.map((day, idx) => {
-      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-      const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+      const working = isWorkingDay(day, calendarConfig);
+      const isToday = format(day, 'yyyy-MM-dd') === todayStr;
 
       return (
         <div
           key={idx}
           className={cn(
-            'flex-shrink-0 border-r border-border text-center text-xs py-1',
-            isWeekend && 'bg-muted/70',
+            'flex-shrink-0 border-r border-border text-center text-xs py-1 transition-colors',
+            !working && 'bg-muted/70',
             isToday && 'bg-primary/10'
           )}
           style={{ width: dayWidth }}
         >
-          <div className="font-medium text-muted-foreground capitalize">
+          <div className={cn('font-medium capitalize', !working ? 'text-muted-foreground/60' : 'text-muted-foreground')}>
             {format(day, 'EEE', { locale: ptBR })}
           </div>
-          <div className={cn('font-bold', isToday && 'text-primary')}>{format(day, 'd')}</div>
+          <div className={cn('font-bold', isToday && 'text-primary', !working && 'text-muted-foreground/60')}>
+            {format(day, 'd')}
+          </div>
         </div>
       );
     });
@@ -66,15 +78,14 @@ export const GanttHeader = ({ startDate, endDate, dayWidth, milestoneTasks }: Ga
 
       {/* Milestone row */}
       <div className="relative flex h-8 bg-muted/20 border-b border-border">
-        {/* Grid cells */}
         {days.map((day, idx) => {
-          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+          const working = isWorkingDay(day, calendarConfig);
           return (
             <div
               key={idx}
               className={cn(
                 'flex-shrink-0 border-r border-border/30',
-                isWeekend && 'bg-muted/30'
+                !working && 'bg-muted/40'
               )}
               style={{ width: dayWidth }}
             />
@@ -107,7 +118,6 @@ export const GanttHeader = ({ startDate, endDate, dayWidth, milestoneTasks }: Ga
           })}
         </TooltipProvider>
 
-        {/* Label */}
         <div className="absolute left-0 top-0 bottom-0 flex items-center px-2 pointer-events-none">
           <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
             {milestoneTasks.length > 0 ? 'Marcos' : ''}
