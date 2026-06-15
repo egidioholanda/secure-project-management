@@ -7,6 +7,7 @@ import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
 import { AddTaskDialog } from '@/components/Schedules/AddTaskDialog';
 import { SchedulePDFPreview } from '@/components/Schedules/SchedulePDFPreview';
 import { ScheduleSummary } from '@/components/Schedules/ScheduleSummary';
+import { CalendarConfigPopover } from '@/components/Schedules/CalendarConfigPopover';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,12 +15,15 @@ import { toast } from 'sonner';
 import { useScheduleTasks } from '@/hooks/useScheduleTasks';
 import { useProjects } from '@/hooks/useProjects';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 
 const Schedules = () => {
-  const { tasks, loading, addTask, updateTask, updateMultipleTasks, deleteTask } = useScheduleTasks();
+  const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, deleteTask } =
+    useScheduleTasks();
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const { settings: companySettings } = useCompanySettings();
+  const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const pdfRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -45,15 +49,12 @@ const Schedules = () => {
     return tasks.filter((task) => task.projectId === filterProject);
   }, [tasks, filterProject]);
 
-  const handleUpdateTask = async (updatedTask: Task) => {
-    await updateTask(updatedTask);
-  };
+  const handleUpdateTask = async (updatedTask: Task) => updateTask(updatedTask);
 
   const handleUpdateMultiple = async (updatedTasks: Task[]) => {
     await updateMultipleTasks(updatedTasks);
-    if (updatedTasks.length > 1) {
+    if (updatedTasks.length > 1)
       toast.success(`Ajuste em cascata: ${updatedTasks.length} tarefas atualizadas`);
-    }
   };
 
   const handleTaskClick = (task: Task) => {
@@ -64,14 +65,6 @@ const Schedules = () => {
   const handleSaveTask = async (task: Task) => {
     await updateTask(task);
     toast.success('Tarefa atualizada com sucesso!');
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-  };
-
-  const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
-    await addTask(newTask);
   };
 
   const filterLabel = useMemo(() => {
@@ -85,28 +78,20 @@ const Schedules = () => {
     try {
       await exportScheduleToPDF(pdfRef.current, 'cronograma');
       toast.success('Cronograma exportado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao exportar PDF:', error);
-      toast.error('Erro ao exportar o cronograma. Tente novamente.');
+    } catch {
+      toast.error('Erro ao exportar o cronograma.');
     } finally {
       setExporting(false);
     }
   };
 
   const navigateTimeline = (direction: 'prev' | 'next') => {
-    const days = direction === 'prev' ? -14 : 14;
-    setDateRange((prev) => ({
-      start: addDays(prev.start, days),
-      end: addDays(prev.end, days),
-    }));
+    const d = direction === 'prev' ? -14 : 14;
+    setDateRange((prev) => ({ start: addDays(prev.start, d), end: addDays(prev.end, d) }));
   };
 
-  const goToToday = () => {
-    setDateRange({
-      start: subDays(new Date(), 7),
-      end: addDays(new Date(), 52),
-    });
-  };
+  const goToToday = () =>
+    setDateRange({ start: subDays(new Date(), 7), end: addDays(new Date(), 52) });
 
   if (loading || projectsLoading) {
     return (
@@ -118,18 +103,18 @@ const Schedules = () => {
 
   return (
     <div className="space-y-4 h-full flex flex-col">
-      {/* Header */}
+      {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-1">Cronogramas</h1>
-          <p className="text-muted-foreground">
-            Gráfico de Gantt interativo com caminho crítico e semáforo de progresso
+          <p className="text-muted-foreground text-sm">
+            Gantt interativo · semáforo · caminho crítico · dependências · calendário flexível
           </p>
         </div>
-        <AddTaskDialog projects={projectsList} onAdd={handleAddTask} />
+        <AddTaskDialog projects={projectsList} onAdd={addTask} />
       </div>
 
-      {/* Summary Dashboard */}
+      {/* Summary cards */}
       {filteredTasks.length > 0 && <ScheduleSummary tasks={filteredTasks} />}
 
       {/* Toolbar */}
@@ -149,31 +134,35 @@ const Schedules = () => {
           </div>
 
           {/* Legend */}
-          <div className="hidden lg:flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm border-2 border-[#10B981] bg-[#10B98115]" />
+              <span className="w-3 h-3 rounded-sm border-2 border-[#10B981] bg-[#10B98115] inline-block" />
               No prazo
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm border-2 border-[#F59E0B] bg-[#F59E0B15]" />
+              <span className="w-3 h-3 rounded-sm border-2 border-[#F59E0B] bg-[#F59E0B15] inline-block" />
               Em risco
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-sm border-2 border-[#EF4444] bg-[#EF444415]" />
+              <span className="w-3 h-3 rounded-sm border-2 border-[#EF4444] bg-[#EF444415] inline-block" />
               Atrasada
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-destructive" />
-              Caminho crítico
+              <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+              Dependência
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
+              Crítico
             </span>
           </div>
 
-          {/* Filters + Export */}
-          <div className="flex items-center gap-3">
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterProject} onValueChange={setFilterProject}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[170px]">
                   <SelectValue placeholder="Filtrar por projeto" />
                 </SelectTrigger>
                 <SelectContent>
@@ -190,36 +179,43 @@ const Schedules = () => {
               </Select>
             </div>
 
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPDF} disabled={exporting}>
+            <CalendarConfigPopover config={calendarConfig} onChange={updateCalendarConfig} />
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleExportPDF}
+              disabled={exporting}
+            >
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Exportar PDF
+              PDF
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* Gantt Chart */}
+      {/* Gantt */}
       <div className="flex-1 min-h-[500px]">
         <GanttChart
           tasks={filteredTasks}
           onUpdateTask={handleUpdateTask}
           onUpdateMultiple={handleUpdateMultiple}
+          onAddDependency={addDependency}
           onTaskClick={handleTaskClick}
           startDate={dateRange.start}
           endDate={dateRange.end}
         />
       </div>
 
-      {/* Edit Dialog */}
       <TaskEditDialog
         task={selectedTask}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveTask}
-        onDelete={handleDeleteTask}
+        onDelete={deleteTask}
       />
 
-      {/* Hidden PDF Preview */}
       <div className="fixed left-[-9999px] top-0 pointer-events-none">
         <SchedulePDFPreview
           ref={pdfRef}
