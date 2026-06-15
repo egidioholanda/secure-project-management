@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus, Wrench } from "lucide-react";
 import { SaveAsTemplateDialog, UseTemplateDialog, type ProposalTemplate, type ProposalTemplateItem } from "./ProposalTemplateDialogs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,8 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { PlacedDevice, Proposal, ProposalItem, Project, Device, FloorPlan } from "@/types/project";
+import type { PlacedDevice, Proposal, ProposalItem, Project, Device, FloorPlan, Service } from "@/types/project";
 import { useDevices } from "@/hooks/useDevices";
+import { useServices } from "@/hooks/useServices";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -36,6 +37,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
   const [showAddItem, setShowAddItem] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const { devices: catalogDevices, categories, loading: loadingDevices } = useDevices();
+  const { services: catalogServices, loading: loadingServices } = useServices();
   const { settings: companySettings } = useCompanySettings();
   const [includeFloorPlan, setIncludeFloorPlan] = useState(false);
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
@@ -43,6 +45,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
   const [floorPlanReady, setFloorPlanReady] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showUseTemplate, setShowUseTemplate] = useState(false);
+  const [catalogTab, setCatalogTab] = useState<"products" | "services">("products");
 
 
   const [formData, setFormData] = useState({
@@ -263,6 +266,35 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     (device.model && device.model.toLowerCase().includes(catalogSearch.toLowerCase()))
   );
 
+  const handleAddCatalogService = (service: Service) => {
+    const existingItem = items.find(item => item.service_id === service.id);
+    if (existingItem) {
+      handleUpdateItemQuantity(existingItem.id, 1);
+      toast.success("Quantidade atualizada!");
+    } else {
+      const newItem: ProposalItem = {
+        id: `service-${Date.now()}`,
+        proposal_id: proposal?.id || "",
+        device_id: null,
+        service_id: service.id,
+        device_name: service.name,
+        quantity: 1,
+        unit_price: service.unit_price,
+        installation_price: 0,
+        subtotal: service.unit_price,
+      };
+      setItems([...items, newItem]);
+      toast.success("Serviço adicionado à proposta!");
+    }
+    setShowAddItem(false);
+    setCatalogSearch("");
+  };
+
+  const filteredCatalogServices = catalogServices.filter(service =>
+    service.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+    (service.description && service.description.toLowerCase().includes(catalogSearch.toLowerCase()))
+  );
+
   const handleApplyTemplate = (tpl: ProposalTemplate, tplItems: ProposalTemplateItem[]) => {
     setFormData((prev) => ({
       ...prev,
@@ -330,6 +362,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
         const itemsToInsert = items.map((item) => ({
           proposal_id: proposal.id,
           device_id: item.device_id,
+          service_id: item.service_id,
           device_name: item.device_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
@@ -343,7 +376,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           .select();
 
         if (itemsError) throw itemsError;
-        
+
         // Atualiza o estado local com os itens salvos (com IDs reais do banco)
         if (savedItems) {
           setItems(savedItems as ProposalItem[]);
@@ -383,6 +416,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
         const itemsToInsert = items.map((item) => ({
           proposal_id: savedProposal.id,
           device_id: item.device_id,
+          service_id: item.service_id,
           device_name: item.device_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
@@ -749,7 +783,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
               </Button>
             </div>
 
-            {/* Lista de produtos do catálogo */}
+            {/* Lista do catálogo */}
             {showAddItem && (
               <div className="p-4 mb-4 border rounded-lg bg-muted/30 space-y-3">
                 <div className="flex items-center justify-between">
@@ -758,11 +792,30 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                
+
+                {/* Tabs produtos / serviços */}
+                <div className="flex gap-1 border-b pb-2">
+                  <Button
+                    size="sm"
+                    variant={catalogTab === "products" ? "default" : "ghost"}
+                    onClick={() => { setCatalogTab("products"); setCatalogSearch(""); }}
+                  >
+                    Produtos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={catalogTab === "services" ? "default" : "ghost"}
+                    onClick={() => { setCatalogTab("services"); setCatalogSearch(""); }}
+                  >
+                    <Wrench className="w-3 h-3 mr-1" />
+                    Serviços
+                  </Button>
+                </div>
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar produto por nome, marca ou modelo..."
+                    placeholder={catalogTab === "products" ? "Buscar produto..." : "Buscar serviço..."}
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
                     className="pl-9"
@@ -770,53 +823,95 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
                 </div>
 
                 <div className="max-h-64 overflow-y-auto space-y-2">
-                  {loadingDevices ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">Carregando catálogo...</p>
-                  ) : filteredCatalogDevices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      {catalogSearch ? "Nenhum produto encontrado" : "Nenhum produto no catálogo"}
-                    </p>
+                  {catalogTab === "products" ? (
+                    loadingDevices ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+                    ) : filteredCatalogDevices.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {catalogSearch ? "Nenhum produto encontrado" : "Nenhum produto no catálogo"}
+                      </p>
+                    ) : (
+                      filteredCatalogDevices.map((device) => {
+                        const category = categories.find(c => c.id === device.category_id);
+                        const isAlreadyAdded = items.some(item => item.device_id === device.id);
+                        return (
+                          <div
+                            key={device.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                              isAlreadyAdded
+                                ? "bg-primary/10 border-primary/30 hover:bg-primary/20"
+                                : "bg-background hover:bg-muted"
+                            }`}
+                            onClick={() => handleAddCatalogItem(device)}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{device.name}</p>
+                                {isAlreadyAdded && (
+                                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+                                    Já adicionado
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {category && <span>{category.name}</span>}
+                                {device.brand && <span>• {device.brand}</span>}
+                                {device.model && <span>• {device.model}</span>}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-primary">
+                                {formatCurrency(device.unit_price + device.installation_price)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Equip: {formatCurrency(device.unit_price)} + Inst: {formatCurrency(device.installation_price)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
                   ) : (
-                    filteredCatalogDevices.map((device) => {
-                      const category = categories.find(c => c.id === device.category_id);
-                      const isAlreadyAdded = items.some(item => item.device_id === device.id);
-                      
-                      return (
-                        <div
-                          key={device.id}
-                          className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                            isAlreadyAdded 
-                              ? "bg-primary/10 border-primary/30 hover:bg-primary/20" 
-                              : "bg-background hover:bg-muted"
-                          }`}
-                          onClick={() => handleAddCatalogItem(device)}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{device.name}</p>
-                              {isAlreadyAdded && (
-                                <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                                  Já adicionado
-                                </span>
+                    loadingServices ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+                    ) : filteredCatalogServices.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {catalogSearch ? "Nenhum serviço encontrado" : "Nenhum serviço no catálogo"}
+                      </p>
+                    ) : (
+                      filteredCatalogServices.map((service) => {
+                        const isAlreadyAdded = items.some(item => item.service_id === service.id);
+                        return (
+                          <div
+                            key={service.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                              isAlreadyAdded
+                                ? "bg-primary/10 border-primary/30 hover:bg-primary/20"
+                                : "bg-background hover:bg-muted"
+                            }`}
+                            onClick={() => handleAddCatalogService(service)}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Wrench className="w-4 h-4 text-muted-foreground" />
+                                <p className="font-medium">{service.name}</p>
+                                {isAlreadyAdded && (
+                                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+                                    Já adicionado
+                                  </span>
+                                )}
+                              </div>
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground ml-6 truncate">{service.description}</p>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              {category && <span>{category.name}</span>}
-                              {device.brand && <span>• {device.brand}</span>}
-                              {device.model && <span>• {device.model}</span>}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-primary">
-                              {formatCurrency(device.unit_price + device.installation_price)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Equip: {formatCurrency(device.unit_price)} + Inst: {formatCurrency(device.installation_price)}
+                            <p className="font-medium text-primary ml-4 shrink-0">
+                              {formatCurrency(service.unit_price)}
                             </p>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
+                    )
                   )}
                 </div>
               </div>
@@ -830,8 +925,14 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
+                      {item.service_id && <Wrench className="w-4 h-4 text-muted-foreground shrink-0" />}
                       <p className="font-medium">{item.device_name}</p>
-                      {!item.device_id && (
+                      {item.service_id && (
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                          Serviço
+                        </span>
+                      )}
+                      {!item.device_id && !item.service_id && (
                         <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                           Manual
                         </span>

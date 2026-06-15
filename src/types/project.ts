@@ -81,9 +81,17 @@ export interface ProposalItem {
   id: string;
   proposal_id: string;
   device_id: string | null;
+  service_id: string | null;
   device_name: string;
   quantity: number;
   unit_price: number;
   installation_price: number;
   subtotal: number;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string | null;
+  unit_price: number;
 }
