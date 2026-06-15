@@ -1,17 +1,20 @@
-import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { format, eachDayOfInterval, eachMonthOfInterval, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Task } from '@/types/schedule';
 
 interface GanttHeaderProps {
   startDate: Date;
   endDate: Date;
   dayWidth: number;
   viewMode: 'day' | 'week' | 'month';
+  milestoneTasks: Task[];
 }
 
-export const GanttHeader = ({ startDate, endDate, dayWidth, viewMode }: GanttHeaderProps) => {
+export const GanttHeader = ({ startDate, endDate, dayWidth, milestoneTasks }: GanttHeaderProps) => {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
-  
+
   const getMonthHeaders = () => {
     const months = eachMonthOfInterval({ start: startDate, end: endDate });
     return months.map((month, idx) => {
@@ -30,27 +33,25 @@ export const GanttHeader = ({ startDate, endDate, dayWidth, viewMode }: GanttHea
     });
   };
 
-  const getWeekHeaders = () => {
+  const getDayHeaders = () => {
     return days.map((day, idx) => {
       const isWeekend = day.getDay() === 0 || day.getDay() === 6;
       const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-      
+
       return (
         <div
           key={idx}
           className={cn(
-            "flex-shrink-0 border-r border-border text-center text-xs py-1",
-            isWeekend && "bg-muted/70",
-            isToday && "bg-primary/10"
+            'flex-shrink-0 border-r border-border text-center text-xs py-1',
+            isWeekend && 'bg-muted/70',
+            isToday && 'bg-primary/10'
           )}
           style={{ width: dayWidth }}
         >
           <div className="font-medium text-muted-foreground capitalize">
             {format(day, 'EEE', { locale: ptBR })}
           </div>
-          <div className={cn("font-bold", isToday && "text-primary")}>
-            {format(day, 'd')}
-          </div>
+          <div className={cn('font-bold', isToday && 'text-primary')}>{format(day, 'd')}</div>
         </div>
       );
     });
@@ -59,12 +60,59 @@ export const GanttHeader = ({ startDate, endDate, dayWidth, viewMode }: GanttHea
   return (
     <div className="sticky top-0 z-20 bg-card border-b border-border">
       {/* Month row */}
-      <div className="flex border-b border-border">
-        {getMonthHeaders()}
-      </div>
+      <div className="flex border-b border-border">{getMonthHeaders()}</div>
       {/* Day row */}
-      <div className="flex">
-        {getWeekHeaders()}
+      <div className="flex border-b border-border">{getDayHeaders()}</div>
+
+      {/* Milestone row */}
+      <div className="relative flex h-8 bg-muted/20 border-b border-border">
+        {/* Grid cells */}
+        {days.map((day, idx) => {
+          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+          return (
+            <div
+              key={idx}
+              className={cn(
+                'flex-shrink-0 border-r border-border/30',
+                isWeekend && 'bg-muted/30'
+              )}
+              style={{ width: dayWidth }}
+            />
+          );
+        })}
+
+        {/* Milestone diamonds */}
+        <TooltipProvider>
+          {milestoneTasks.map((milestone) => {
+            const offset = differenceInDays(milestone.startDate, startDate);
+            if (offset < 0 || offset > days.length) return null;
+            const left = offset * dayWidth + dayWidth / 2;
+
+            return (
+              <Tooltip key={milestone.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rotate-45 cursor-pointer hover:scale-125 transition-transform z-10"
+                    style={{ left, backgroundColor: milestone.color, border: `2px solid ${milestone.color}` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-popover text-popover-foreground">
+                  <p className="font-semibold text-sm">{milestone.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(milestone.startDate, "dd 'de' MMM yyyy", { locale: ptBR })}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
+
+        {/* Label */}
+        <div className="absolute left-0 top-0 bottom-0 flex items-center px-2 pointer-events-none">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+            {milestoneTasks.length > 0 ? 'Marcos' : ''}
+          </span>
+        </div>
       </div>
     </div>
   );

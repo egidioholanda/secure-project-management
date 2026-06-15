@@ -122,6 +122,37 @@ export const useScheduleTasks = () => {
     }
   };
 
+  const updateMultipleTasks = async (updatedTasks: Task[]) => {
+    // Optimistic update first
+    setTasks((prev) =>
+      prev.map((t) => updatedTasks.find((u) => u.id === t.id) ?? t)
+    );
+
+    try {
+      await Promise.all(
+        updatedTasks.map((task) =>
+          supabase
+            .from("schedule_tasks")
+            .update({
+              name: task.name,
+              project_id: task.projectId || null,
+              project_name: task.projectName || null,
+              start_date: formatDateForDb(task.startDate),
+              end_date: formatDateForDb(task.endDate),
+              progress: task.progress,
+              assignee: task.assignee || null,
+              color: task.color || "#3B82F6",
+            })
+            .eq("id", task.id)
+        )
+      );
+    } catch (error) {
+      console.error("Error updating multiple tasks:", error);
+      toast.error("Erro ao atualizar tarefas em cascata");
+      fetchTasks();
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
   }, []);
@@ -131,6 +162,7 @@ export const useScheduleTasks = () => {
     loading,
     addTask,
     updateTask,
+    updateMultipleTasks,
     deleteTask,
     refetch: fetchTasks,
   };
