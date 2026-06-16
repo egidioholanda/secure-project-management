@@ -174,12 +174,8 @@ const DashboardOperacional = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard Operacional</h1>
-          <p className="text-muted-foreground mt-1">Visão geral das obras e execução em campo</p>
-        </div>
+      {/* Date */}
+      <div className="flex items-center justify-end">
         <p className="text-sm text-muted-foreground capitalize">
           {new Date().toLocaleDateString("pt-BR", {
             weekday: "long",

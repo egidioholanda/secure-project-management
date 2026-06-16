@@ -593,14 +593,8 @@ export default function Clients() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-primary" /> Clientes
-          </h1>
-          <p className="text-muted-foreground mt-1">Gerencie clientes e seus contratos de manutenção</p>
-        </div>
+      {/* Actions */}
+      <div className="flex items-center justify-end">
         <Button onClick={() => setAddClient(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Novo Cliente
         </Button>

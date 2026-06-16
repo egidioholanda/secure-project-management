@@ -354,13 +354,9 @@ const Mapa = () => {
 
       {/* ── Top bar ── */}
       <div
-        className="flex items-center justify-between gap-4 px-6 border-b border-border bg-card"
+        className="flex items-center justify-end gap-4 px-6 border-b border-border bg-card"
         style={{ height: 53 }}
       >
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold">Mapa de Projetos</h1>
-        </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           {geocoding && (
             <span className="flex items-center gap-1.5">

@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Users as UsersIcon, Shield, UserCog, Trash2, Edit, Check, X, Clock } from 'lucide-react';
+import { Plus, Search, Shield, UserCog, Trash2, Edit, Check, X, Clock } from 'lucide-react';
 import { AddUserDialog } from '@/components/Users/AddUserDialog';
 import { EditUserDialog } from '@/components/Users/EditUserDialog';
 import { DeleteUserDialog } from '@/components/Users/DeleteUserDialog';
@@ -143,16 +143,7 @@ const Users = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <UsersIcon className="w-8 h-8 text-primary" />
-            Usuários
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie os usuários do sistema
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         {isAdmin && (
           <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />

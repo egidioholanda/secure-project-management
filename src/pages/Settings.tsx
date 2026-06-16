@@ -24,14 +24,6 @@ const Settings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground mt-1">
-          Gerencie as configurações da empresa e usuários do sistema
-        </p>
-      </div>
-
       {/* Tabs */}
       <Tabs defaultValue="company" className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">

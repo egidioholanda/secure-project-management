@@ -103,14 +103,8 @@ const Schedules = () => {
 
   return (
     <div className="space-y-4 h-full flex flex-col">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">Cronogramas</h1>
-          <p className="text-muted-foreground text-sm">
-            Gantt interativo · semáforo · caminho crítico · dependências · calendário flexível
-          </p>
-        </div>
+      {/* Actions */}
+      <div className="flex items-center justify-end">
         <AddTaskDialog projects={projectsList} onAdd={addTask} />
       </div>
 

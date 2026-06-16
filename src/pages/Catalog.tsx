@@ -93,12 +93,8 @@ const Catalog = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Catálogo</h1>
-          <p className="text-muted-foreground">Gerencie produtos e serviços</p>
-        </div>
+      {/* Actions */}
+      <div className="flex items-center justify-end">
         {activeTab === "products" ? (
           <Button
             onClick={() => setIsAddProductOpen(true)}
