@@ -175,7 +175,7 @@ const Login = () => {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       className="pl-10"
-                      minLength={6}
+                      minLength={8}
                       required
                     />
                   </div>
