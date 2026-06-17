@@ -5,7 +5,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Search, AlertCircle, Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { MapPin, Search, AlertCircle, Loader2, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 
@@ -275,7 +275,15 @@ const Mapa = () => {
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoKey, setGeoKey] = useState(0);
   const didGeocode = useRef(false);
+
+  const refreshGeo = useCallback(() => {
+    localStorage.removeItem(GEO_CACHE_KEY);
+    setGeoProjects([]);
+    didGeocode.current = false;
+    setGeoKey((k) => k + 1);
+  }, []);
 
   // Filters
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
@@ -304,18 +312,18 @@ const Mapa = () => {
     const initial: GeoProject[] = [];
     const toFetch: number[] = [];
 
-    // First pass: resolve everything from cache synchronously
+    // First pass: resolve from cache synchronously (only successful geocodes are cached)
     for (let i = 0; i < projects.length; i++) {
       const p = projects[i];
       const q = geoQuery(p.address || "");
       const entry = q ? cache[q] : undefined;
-      const fresh = entry && Date.now() - entry.ts < GEO_TTL_MS;
+      const fresh = entry && entry.ok && Date.now() - entry.ts < GEO_TTL_MS;
 
       initial.push({
         ...p,
         lat: fresh ? entry!.lat : 0,
         lng: fresh ? entry!.lng : 0,
-        geocodeStatus: fresh ? (entry!.ok ? "ok" : "error") : "error",
+        geocodeStatus: fresh ? "ok" : "error",
         displayAddress: displayAddr(p.address || ""),
       });
 
@@ -339,15 +347,18 @@ const Mapa = () => {
         const q = geoQuery(p.address || "")!;
 
         const g = await geocode(q);
-        const entry: GeoEntry = { lat: g?.lat ?? 0, lng: g?.lng ?? 0, ok: !!g, ts: Date.now() };
-        cache[q] = entry;
-        cacheUpdated = true;
+
+        // Only cache successful results — failures are retried on next load
+        if (g) {
+          cache[q] = { lat: g.lat, lng: g.lng, ok: true, ts: Date.now() };
+          cacheUpdated = true;
+        }
 
         current[i] = {
           ...p,
-          lat: entry.lat,
-          lng: entry.lng,
-          geocodeStatus: entry.ok ? "ok" : "error",
+          lat: g?.lat ?? 0,
+          lng: g?.lng ?? 0,
+          geocodeStatus: g ? "ok" : "error",
           displayAddress: displayAddr(p.address || ""),
         };
 
@@ -359,7 +370,7 @@ const Mapa = () => {
       if (cacheUpdated) writeGeoCache(cache);
       setGeocoding(false);
     })();
-  }, [loading, projects]);
+  }, [loading, projects, geoKey]);
 
   const toggleStatus = useCallback((key: string) => {
     setActiveStatuses((prev) => {
@@ -438,6 +449,15 @@ const Mapa = () => {
               )}
             </>
           )}
+          <button
+            onClick={refreshGeo}
+            disabled={geocoding}
+            title="Forçar atualização das localizações"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${geocoding ? "animate-spin" : ""}`} />
+            Atualizar
+          </button>
         </div>
       </div>
 
