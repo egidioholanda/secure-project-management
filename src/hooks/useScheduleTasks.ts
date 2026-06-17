@@ -18,6 +18,7 @@ interface DbTask {
   end_date: string;
   progress: number;
   assignee: string | null;
+  team_id: string | null;
   color: string | null;
   dependencies?: string[] | null;
   created_at: string;
@@ -47,6 +48,7 @@ const mapDbToTask = (db: DbTask): Task => ({
   endDate: parseLocalDate(db.end_date),
   progress: db.progress,
   assignee: db.assignee || "",
+  teamId: db.team_id ?? null,
   color: db.color || "#3B82F6",
   dependencies: Array.isArray(db.dependencies) ? db.dependencies : [],
 });
@@ -59,6 +61,7 @@ const taskToDbPayload = (task: Task) => ({
   end_date: formatDateForDb(task.endDate),
   progress: task.progress,
   assignee: task.assignee || null,
+  team_id: task.teamId ?? null,
   color: task.color || "#3B82F6",
   dependencies: task.dependencies || [],
 });

@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   HardHat, TrendingUp, Target, FolderKanban, Package,
   Calendar, FileText, Settings, Users, Building2, Map,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -25,13 +25,14 @@ const operationalItems = [
   { icon: Map,          label: "Mapa",                  path: "/mapa" },
   { icon: Package,      label: "Catálogo",              path: "/catalogo" },
   { icon: Calendar,     label: "Cronogramas",           path: "/cronogramas" },
+  { icon: UsersRound,   label: "Equipes",               path: "/equipes" },
   { icon: FileText,     label: "Relatórios",            path: "/relatorios" },
   { icon: Building2,    label: "Clientes",              path: "/clientes" },
 ];
 
 const SUP_TECNICO_PATHS = [
   "/dashboard/operacional", "/projetos", "/mapa",
-  "/catalogo", "/cronogramas", "/relatorios", "/clientes",
+  "/catalogo", "/cronogramas", "/equipes", "/relatorios", "/clientes",
 ];
 
 function NavItem({

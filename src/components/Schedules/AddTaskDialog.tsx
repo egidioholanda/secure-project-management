@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Task } from '@/types/schedule';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Plus } from 'lucide-react';
+import { CalendarIcon, User, Flag, Plus, UsersRound } from 'lucide-react';
+import type { Team } from '@/types/teams';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 interface AddTaskDialogProps {
   projects: { id: string; name: string; color: string }[];
   onAdd: (task: Omit<Task, 'id'>) => void;
+  teams?: Team[];
 }
 
 const defaultTask = {
@@ -31,13 +33,14 @@ const defaultTask = {
   endDate: addDays(new Date(), 7),
   progress: 0,
   assignee: '',
+  teamId: null as string | null,
   projectId: '',
   projectName: '',
   color: '#3B82F6',
   isMilestone: false,
 };
 
-export const AddTaskDialog = ({ projects, onAdd }: AddTaskDialogProps) => {
+export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProps) => {
   const [open, setOpen] = useState(false);
   const [newTask, setNewTask] = useState(defaultTask);
 
@@ -188,6 +191,29 @@ export const AddTaskDialog = ({ projects, onAdd }: AddTaskDialogProps) => {
               />
             </div>
           </div>
+
+          {/* Team */}
+          {teams.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <UsersRound className="h-3.5 w-3.5 text-muted-foreground" /> Equipe
+              </Label>
+              <Select
+                value={newTask.teamId ?? '__none'}
+                onValueChange={(v) => setNewTask({ ...newTask, teamId: v === '__none' ? null : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sem equipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem equipe</SelectItem>
+                  {teams.filter((t) => t.active).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Milestone toggle */}
           <div className="flex items-center justify-between">

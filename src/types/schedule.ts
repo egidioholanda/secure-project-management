@@ -5,6 +5,7 @@ export interface Task {
   endDate: Date;
   progress: number;
   assignee?: string;
+  teamId?: string | null;
   projectId: string;
   projectName: string;
   color: string;

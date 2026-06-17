@@ -16,6 +16,7 @@ import { useScheduleTasks } from '@/hooks/useScheduleTasks';
 import { useProjects } from '@/hooks/useProjects';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCalendarConfig } from '@/hooks/useCalendarConfig';
+import { useTeams } from '@/hooks/useTeams';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 
 const Schedules = () => {
@@ -24,6 +25,7 @@ const Schedules = () => {
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const { settings: companySettings } = useCompanySettings();
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
+  const { teams } = useTeams();
   const pdfRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -105,7 +107,7 @@ const Schedules = () => {
     <div className="space-y-4 h-full flex flex-col">
       {/* Actions */}
       <div className="flex items-center justify-end">
-        <AddTaskDialog projects={projectsList} onAdd={addTask} />
+        <AddTaskDialog projects={projectsList} onAdd={addTask} teams={teams} />
       </div>
 
       {/* Summary cards */}
@@ -210,6 +212,7 @@ const Schedules = () => {
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveTask}
         onDelete={deleteTask}
+        teams={teams}
       />
 
       <div className="fixed left-[-9999px] top-0 pointer-events-none">

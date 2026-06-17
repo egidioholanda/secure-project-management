@@ -20,6 +20,7 @@ import Login from "./pages/Login";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
+import Teams from "./pages/Teams";
 import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const SUP_TECNICO_ALLOWED = [
   "/projetos",
   "/catalogo",
   "/cronogramas",
+  "/equipes",
   "/relatorios",
   "/clientes",
   "/dashboard/operacional",
@@ -206,6 +208,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Clients />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipes"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Teams />
             </AppLayout>
           </ProtectedRoute>
         }

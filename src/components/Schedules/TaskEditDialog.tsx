@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Task } from '@/types/schedule';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Trash2 } from 'lucide-react';
+import { CalendarIcon, User, Flag, Trash2, UsersRound } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { Team } from '@/types/teams';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ interface TaskEditDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  teams?: Team[];
 }
 
 export const TaskEditDialog = ({
@@ -33,6 +36,7 @@ export const TaskEditDialog = ({
   onOpenChange,
   onSave,
   onDelete,
+  teams = [],
 }: TaskEditDialogProps) => {
   const [editedTask, setEditedTask] = useState<Task | null>(null);
 
@@ -153,6 +157,29 @@ export const TaskEditDialog = ({
               />
             </div>
           </div>
+
+          {/* Team */}
+          {teams.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <UsersRound className="h-3.5 w-3.5 text-muted-foreground" /> Equipe
+              </Label>
+              <Select
+                value={editedTask.teamId ?? '__none'}
+                onValueChange={(v) => setEditedTask({ ...editedTask, teamId: v === '__none' ? null : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sem equipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem equipe</SelectItem>
+                  {teams.filter((t) => t.active).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Progress */}
           <div className="space-y-2">

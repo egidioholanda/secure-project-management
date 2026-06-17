@@ -1,4 +1,4 @@
-import { User, LogOut, Users, HardHat, TrendingUp, Target, FolderKanban, Package, Calendar, FileText, Settings, Building2, Map } from "lucide-react";
+import { User, LogOut, Users, HardHat, TrendingUp, Target, FolderKanban, Package, Calendar, FileText, Settings, Building2, Map, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -24,6 +24,7 @@ const PAGE_INFO: Record<string, { title: string; subtitle?: string; icon: React.
   "/cronogramas": { title: "Cronogramas", subtitle: "Gantt · semáforo · caminho crítico · dependências", icon: Calendar },
   "/relatorios": { title: "Relatórios", subtitle: "Gere relatórios de progresso para clientes", icon: FileText },
   "/clientes": { title: "Clientes", subtitle: "Gerencie clientes e seus contratos de manutenção", icon: Building2 },
+  "/equipes": { title: "Equipes", subtitle: "Gerencie equipes, técnicos e recursos operacionais", icon: UsersRound },
   "/usuarios": { title: "Usuários", subtitle: "Gerencie os usuários do sistema", icon: Users },
   "/configuracoes": { title: "Configurações", subtitle: "Gerencie as configurações da empresa e usuários do sistema", icon: Settings },
 };
