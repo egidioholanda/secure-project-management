@@ -97,6 +97,23 @@ function dotIcon(hex: string, active = false) {
   });
 }
 
+// ─── Geo cache ────────────────────────────────────────────────────────────────
+
+const GEO_CACHE_KEY = "secureproject:geocache_v1";
+const GEO_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+type GeoEntry = { lat: number; lng: number; ok: boolean; ts: number };
+
+function readGeoCache(): Record<string, GeoEntry> {
+  try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) ?? "{}"); }
+  catch { return {}; }
+}
+
+function writeGeoCache(cache: Record<string, GeoEntry>) {
+  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); }
+  catch { /* storage quota */ }
+}
+
 // ─── Persistent view ──────────────────────────────────────────────────────────
 
 const VIEW_KEY = "secureproject_mapa_view";
@@ -282,26 +299,64 @@ const Mapa = () => {
   useEffect(() => {
     if (loading || projects.length === 0 || didGeocode.current) return;
     didGeocode.current = true;
+
+    const cache = readGeoCache();
+    const initial: GeoProject[] = [];
+    const toFetch: number[] = [];
+
+    // First pass: resolve everything from cache synchronously
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i];
+      const q = geoQuery(p.address || "");
+      const entry = q ? cache[q] : undefined;
+      const fresh = entry && Date.now() - entry.ts < GEO_TTL_MS;
+
+      initial.push({
+        ...p,
+        lat: fresh ? entry!.lat : 0,
+        lng: fresh ? entry!.lng : 0,
+        geocodeStatus: fresh ? (entry!.ok ? "ok" : "error") : "error",
+        displayAddress: displayAddr(p.address || ""),
+      });
+
+      if (!fresh && q) toFetch.push(i);
+    }
+
+    // Render cached results immediately — map is usable right away
+    setGeoProjects(initial);
+
+    if (toFetch.length === 0) return; // all from cache, done
+
     setGeocoding(true);
+
     (async () => {
-      const out: GeoProject[] = [];
-      for (let i = 0; i < projects.length; i++) {
+      const current = [...initial];
+      let cacheUpdated = false;
+
+      for (let idx = 0; idx < toFetch.length; idx++) {
+        const i = toFetch[idx];
         const p = projects[i];
-        const q = geoQuery(p.address || "");
-        let lat = 0, lng = 0, ok = false;
-        if (q) {
-          const g = await geocode(q);
-          if (g) { lat = g.lat; lng = g.lng; ok = true; }
-          if (i < projects.length - 1) await new Promise((r) => setTimeout(r, 1100));
-        }
-        out.push({
+        const q = geoQuery(p.address || "")!;
+
+        const g = await geocode(q);
+        const entry: GeoEntry = { lat: g?.lat ?? 0, lng: g?.lng ?? 0, ok: !!g, ts: Date.now() };
+        cache[q] = entry;
+        cacheUpdated = true;
+
+        current[i] = {
           ...p,
-          lat, lng,
-          geocodeStatus: ok ? "ok" : "error",
+          lat: entry.lat,
+          lng: entry.lng,
+          geocodeStatus: entry.ok ? "ok" : "error",
           displayAddress: displayAddr(p.address || ""),
-        });
+        };
+
+        setGeoProjects([...current]); // progressive — each marker appears as it resolves
+
+        if (idx < toFetch.length - 1) await new Promise((r) => setTimeout(r, 1100));
       }
-      setGeoProjects(out);
+
+      if (cacheUpdated) writeGeoCache(cache);
       setGeocoding(false);
     })();
   }, [loading, projects]);
