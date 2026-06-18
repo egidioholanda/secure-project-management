@@ -40,31 +40,14 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
     setIsLoading(true);
 
     try {
-      // Create user via signup
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { full_name: fullName },
-        },
+      // Use Edge Function with service_role to create user without confirmation email
+      // This bypasses Supabase's email rate limit (3/h on free tier)
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, password, fullName, role },
       });
 
-      if (signUpError) throw signUpError;
-
-      if (signUpData.user) {
-        // Update the role if not 'user'
-        if (role !== 'user') {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .update({ role })
-            .eq('user_id', signUpData.user.id);
-
-          if (roleError) {
-            console.error('Error updating role:', roleError);
-          }
-        }
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'Usuário criado',
