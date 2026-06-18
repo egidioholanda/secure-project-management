@@ -74,11 +74,21 @@ serve(async (req) => {
 
     if (!newUser.user) throw new Error("Falha ao criar usuário");
 
-    // Auto-approve profile — admin created this user intentionally
-    await supabaseAdmin
+    // Auto-approve profile — admin created this user intentionally.
+    // Uses upsert so it works even if the trigger is still pending.
+    const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .update({ approval_status: "approved", approved_at: new Date().toISOString() })
-      .eq("user_id", newUser.user.id);
+      .upsert(
+        {
+          user_id: newUser.user.id,
+          email: email,
+          full_name: fullName,
+          approval_status: "approved",
+          approved_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+    if (profileError) throw profileError;
 
     // Update role if different from default 'user'
     if (newRole && newRole !== "user") {

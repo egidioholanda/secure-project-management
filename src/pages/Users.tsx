@@ -84,11 +84,14 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter((u) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(term) ||
+      u.email?.toLowerCase().includes(term)
+    );
+  });
 
   const getRoleBadge = (role: 'admin' | 'manager' | 'user' | 'sup_tecnico') => {
     const variants = {
