@@ -34,6 +34,7 @@ interface FloorPlanEditorProps {
 
 const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPlanEditorProps) => {
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -46,6 +47,22 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setCurrentPage(1);
+  };
+
+  // Extract relative storage path from any Supabase public/signed URL
+  const extractFilePath = (url: string): string | null => {
+    const match = url.match(/\/floor-plans\/(.+?)(\?|$)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  };
+
+  // Generate a signed URL (1 h) so the file loads regardless of bucket visibility
+  const getSignedUrl = async (storedUrl: string): Promise<string> => {
+    const filePath = extractFilePath(storedUrl);
+    if (!filePath) return storedUrl;
+    const { data } = await supabase.storage
+      .from("floor-plans")
+      .createSignedUrl(filePath, 3600);
+    return data?.signedUrl ?? storedUrl;
   };
 
   useEffect(() => {
@@ -65,12 +82,17 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
       if (floorPlanError) throw floorPlanError;
 
       if (floorPlanData) {
-        setFloorPlan(floorPlanData as FloorPlan);
+        const plan = floorPlanData as FloorPlan;
+        setFloorPlan(plan);
+
+        // Get a signed URL so the file loads regardless of bucket public/private setting
+        const signed = await getSignedUrl(plan.file_url);
+        setDisplayUrl(signed);
 
         const { data: devicesData, error: devicesError } = await supabase
           .from("floor_plan_devices")
           .select("*, device:devices(*)")
-          .eq("floor_plan_id", floorPlanData.id);
+          .eq("floor_plan_id", plan.id);
 
         if (devicesError) throw devicesError;
         setPlacedDevices(devicesData as PlacedDevice[]);
@@ -116,8 +138,12 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
 
       if (insertError) throw insertError;
 
-      setFloorPlan(newFloorPlan as FloorPlan);
+      const plan = newFloorPlan as FloorPlan;
+      setFloorPlan(plan);
       setPlacedDevices([]);
+
+      const signed = await getSignedUrl(plan.file_url);
+      setDisplayUrl(signed);
       toast.success("Planta baixa importada com sucesso!");
     } catch (error) {
       console.error("Error uploading floor plan:", error);
@@ -148,6 +174,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
       if (error) throw error;
 
       setFloorPlan(null);
+      setDisplayUrl(null);
       setPlacedDevices([]);
       setCurrentPage(1);
       setNumPages(1);
@@ -360,7 +387,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
 
         {/* Canvas da Planta */}
         <Card className="flex-1 overflow-auto relative bg-muted/30">
-          {floorPlan ? (
+          {floorPlan && displayUrl ? (
             <div
               ref={canvasRef}
               onClick={handleCanvasClick}
@@ -373,7 +400,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               {floorPlan.file_type === "application/pdf" ? (
                 <div className="relative">
                   <Document
-                    file={floorPlan.file_url}
+                    file={displayUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     loading={
                       <div className="flex items-center justify-center h-[600px]">
@@ -427,7 +454,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
                 </div>
               ) : (
                 <img
-                  src={floorPlan.file_url}
+                  src={displayUrl}
                   alt="Planta Baixa"
                   className="max-w-none"
                   draggable={false}
