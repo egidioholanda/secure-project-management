@@ -1,8 +1,9 @@
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ShieldAlert } from 'lucide-react';
+import { Building2, Users, ShieldAlert, Shield } from 'lucide-react';
 import { CompanySettingsTab } from '@/components/Settings/CompanySettingsTab';
 import { UsersTab } from '@/components/Settings/UsersTab';
+import { RoleProfilesTab } from '@/components/Settings/RoleProfilesTab';
 
 const Settings = () => {
   const { isAdmin } = useAuthContext();
@@ -26,7 +27,7 @@ const Settings = () => {
     <div className="space-y-6">
       {/* Tabs */}
       <Tabs defaultValue="company" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="company" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Empresa
@@ -34,6 +35,10 @@ const Settings = () => {
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Usuários
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Perfis
           </TabsTrigger>
         </TabsList>
 
@@ -43,6 +48,10 @@ const Settings = () => {
 
         <TabsContent value="users">
           <UsersTab />
+        </TabsContent>
+
+        <TabsContent value="roles">
+          <RoleProfilesTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -27,6 +27,7 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
+  role_definition_id: string | null;
   roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 

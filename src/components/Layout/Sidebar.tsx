@@ -30,10 +30,6 @@ const operationalItems = [
   { icon: Building2,    label: "Clientes",              path: "/clientes" },
 ];
 
-const SUP_TECNICO_PATHS = [
-  "/dashboard/operacional", "/projetos", "/mapa",
-  "/catalogo", "/cronogramas", "/equipes", "/relatorios", "/clientes",
-];
 
 function NavItem({
   path,
@@ -76,13 +72,13 @@ function NavItem({
 }
 
 export function Sidebar() {
-  const { isAdmin, isSupTecnico } = useAuthContext();
+  const { isAdmin, allowedPages } = useAuthContext();
   const { collapsed, toggle } = useSidebar();
 
-  const showCommercial = !isSupTecnico || isAdmin;
-  const filteredOp = isSupTecnico && !isAdmin
-    ? operationalItems.filter((i) => SUP_TECNICO_PATHS.includes(i.path))
-    : operationalItems;
+  const canAccess = (path: string) => !allowedPages || allowedPages.includes(path);
+
+  const visibleCommercial = commercialItems.filter((i) => canAccess(i.path));
+  const visibleOp = operationalItems.filter((i) => canAccess(i.path));
 
   return (
     <aside
@@ -125,7 +121,7 @@ export function Sidebar() {
 
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2">
-        {showCommercial && (
+        {visibleCommercial.length > 0 && (
           <div className="mb-3">
             {!collapsed && (
               <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 pb-1">
@@ -133,7 +129,7 @@ export function Sidebar() {
               </p>
             )}
             <div className="space-y-0.5">
-              {commercialItems.map((item) => (
+              {visibleCommercial.map((item) => (
                 <NavItem key={item.path} {...item} collapsed={collapsed} />
               ))}
             </div>
@@ -147,18 +143,18 @@ export function Sidebar() {
             </p>
           )}
           <div className="space-y-0.5">
-            {filteredOp.map((item) => (
+            {visibleOp.map((item) => (
               <NavItem key={item.path} {...item} collapsed={collapsed} />
             ))}
-            {isAdmin && (
+            {canAccess('/usuarios') && (
               <NavItem path="/usuarios" label="Usuários" icon={Users} collapsed={collapsed} />
             )}
           </div>
         </div>
       </nav>
 
-      {/* ── Configurações (admin) ── */}
-      {isAdmin && (
+      {/* ── Configurações ── */}
+      {canAccess('/configuracoes') && (
         <div className="border-t border-sidebar-border p-2 flex-shrink-0">
           <NavItem path="/configuracoes" label="Configurações" icon={Settings} collapsed={collapsed} />
         </div>

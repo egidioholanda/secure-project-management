@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,27 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
+type AppRole = 'admin' | 'manager' | 'user' | 'sup_tecnico';
+
+interface RoleDef {
+  id: string;
+  name: string;
+}
+
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+
+const SYSTEM_ROLE_MAP: Record<string, AppRole> = {
+  'Administrador': 'admin',
+  'Gerente': 'manager',
+  'Suporte Técnico': 'sup_tecnico',
+};
+
+// Fixed ID for "Usuário" system role — used as default
+const DEFAULT_ROLE_DEF_ID = '00000000-0000-0000-0003-000000000000';
 
 export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogProps) => {
   const { toast } = useToast();
@@ -33,21 +49,39 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'admin' | 'manager' | 'user' | 'sup_tecnico'>('user');
+  const [roleDefinitionId, setRoleDefinitionId] = useState<string>(DEFAULT_ROLE_DEF_ID);
+  const [roleDefs, setRoleDefs] = useState<RoleDef[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    const fetchRoleDefs = async () => {
+      setLoadingRoles(true);
+      const { data } = await (supabase as any)
+        .from('role_definitions')
+        .select('id, name')
+        .order('created_at', { ascending: true });
+      if (data) setRoleDefs(data);
+      setLoadingRoles(false);
+    };
+    fetchRoleDefs();
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Use Edge Function with service_role to create user without confirmation email
-      // This bypasses Supabase's email rate limit (3/h on free tier)
+      const selectedDef = roleDefs.find((d) => d.id === roleDefinitionId);
+      const appRole: AppRole = selectedDef
+        ? (SYSTEM_ROLE_MAP[selectedDef.name] ?? 'user')
+        : 'user';
+
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password, fullName, role },
+        body: { email, password, fullName, role: appRole, roleDefinitionId },
       });
 
       if (error) {
-        // Extract actual message from the function response body when available
         try {
           const body = await (error as any).context?.json?.();
           if (body?.error) throw new Error(body.error);
@@ -81,7 +115,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
     setEmail('');
     setPassword('');
     setFullName('');
-    setRole('user');
+    setRoleDefinitionId(DEFAULT_ROLE_DEF_ID);
   };
 
   return (
@@ -89,9 +123,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar Usuário</DialogTitle>
-          <DialogDescription>
-            Crie uma nova conta de usuário no sistema.
-          </DialogDescription>
+          <DialogDescription>Crie uma nova conta de usuário no sistema.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,16 +164,21 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Função</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
+            <Label htmlFor="role">Perfil de acesso</Label>
+            <Select
+              value={roleDefinitionId}
+              onValueChange={setRoleDefinitionId}
+              disabled={loadingRoles}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma função" />
+                <SelectValue placeholder={loadingRoles ? 'Carregando...' : 'Selecione um perfil'} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">Usuário</SelectItem>
-                <SelectItem value="sup_tecnico">Suporte Técnico</SelectItem>
-                <SelectItem value="manager">Gerente</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
+                {roleDefs.map((def) => (
+                  <SelectItem key={def.id} value={def.id}>
+                    {def.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -150,7 +187,7 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || loadingRoles}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

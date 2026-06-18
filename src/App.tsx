@@ -26,19 +26,8 @@ import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
-const SUP_TECNICO_ALLOWED = [
-  "/projetos",
-  "/catalogo",
-  "/cronogramas",
-  "/equipes",
-  "/relatorios",
-  "/clientes",
-  "/dashboard/operacional",
-  "/mapa",
-];
-
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, isAdmin, isSupTecnico, profile } = useAuthContext();
+  const { user, isLoading, profile, allowedPages } = useAuthContext();
   const location = useLocation();
 
   if (isLoading) {
@@ -57,7 +46,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <PendingApproval />;
   }
 
-  if (isSupTecnico && !isAdmin && !SUP_TECNICO_ALLOWED.includes(location.pathname)) {
+  if (allowedPages !== null && !allowedPages.includes(location.pathname)) {
     return <Navigate to="/dashboard/operacional" replace />;
   }
 

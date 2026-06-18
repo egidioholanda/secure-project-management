@@ -20,7 +20,7 @@ serve(async (req) => {
       });
     }
 
-    // Verify caller is authenticated and has admin role
+    // Verify caller is authenticated and has admin or manager role
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -48,13 +48,12 @@ serve(async (req) => {
       });
     }
 
-    // Use service_role to create user without confirmation email
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { email, password, fullName, role: newRole } = await req.json();
+    const { email, password, fullName, role: newRole, roleDefinitionId } = await req.json();
 
     if (!email || !password || !fullName) {
       return new Response(JSON.stringify({ error: "Campos obrigatórios: email, password, fullName" }), {
@@ -66,31 +65,29 @@ serve(async (req) => {
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // skip confirmation email entirely
+      email_confirm: true,
       user_metadata: { full_name: fullName },
     });
 
     if (createError) throw createError;
-
     if (!newUser.user) throw new Error("Falha ao criar usuário");
 
-    // Auto-approve profile — admin created this user intentionally.
-    // Uses upsert so it works even if the trigger is still pending.
+    // Upsert profile: auto-approve and set role_definition_id
+    const profileData: Record<string, unknown> = {
+      user_id: newUser.user.id,
+      email,
+      full_name: fullName,
+      approval_status: "approved",
+      approved_at: new Date().toISOString(),
+    };
+    if (roleDefinitionId) profileData.role_definition_id = roleDefinitionId;
+
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .upsert(
-        {
-          user_id: newUser.user.id,
-          email: email,
-          full_name: fullName,
-          approval_status: "approved",
-          approved_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
+      .upsert(profileData, { onConflict: "user_id" });
     if (profileError) throw profileError;
 
-    // Update role if different from default 'user'
+    // Keep user_roles in sync for isAdmin / isManager checks
     if (newRole && newRole !== "user") {
       await supabaseAdmin
         .from("user_roles")

@@ -12,6 +12,7 @@ interface Profile {
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
+  role_definition_id: string | null;
 }
 
 export type AppRole = 'admin' | 'manager' | 'user' | 'sup_tecnico';
@@ -32,6 +33,7 @@ interface AuthState {
   isAdmin: boolean;
   isManager: boolean;
   isSupTecnico: boolean;
+  allowedPages: string[] | null;
 }
 
 export const useAuth = () => {
@@ -44,6 +46,7 @@ export const useAuth = () => {
     isAdmin: false,
     isManager: false,
     isSupTecnico: false,
+    allowedPages: null,
   });
 
 
@@ -60,6 +63,19 @@ export const useAuth = () => {
       const isManager = roles.some((r) => r.role === 'manager');
       const isSupTecnico = roles.some((r) => r.role === 'sup_tecnico');
 
+      // Fetch page permissions from the user's role definition
+      let allowedPages: string[] | null = null;
+      const roleDefId = profile?.role_definition_id;
+      if (roleDefId) {
+        const { data: permsData } = await (supabase as any)
+          .from('role_page_permissions')
+          .select('page_slug')
+          .eq('role_id', roleDefId);
+        if (permsData) {
+          allowedPages = permsData.map((p: { page_slug: string }) => p.page_slug);
+        }
+      }
+
       setAuthState((prev) => ({
         ...prev,
         profile,
@@ -67,6 +83,7 @@ export const useAuth = () => {
         isAdmin,
         isManager,
         isSupTecnico,
+        allowedPages,
         isLoading: false,
       }));
     } catch (error) {
@@ -105,6 +122,7 @@ export const useAuth = () => {
             isAdmin: false,
             isManager: false,
             isSupTecnico: false,
+            allowedPages: null,
             isLoading: false,
           }));
         }
