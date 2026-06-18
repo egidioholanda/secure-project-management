@@ -35,6 +35,8 @@ interface FloorPlanEditorProps {
 const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPlanEditorProps) => {
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -49,25 +51,52 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
     setCurrentPage(1);
   };
 
-  // Extract relative storage path from any Supabase public/signed URL
   const extractFilePath = (url: string): string | null => {
     const match = url.match(/\/floor-plans\/(.+?)(\?|$)/);
     return match ? decodeURIComponent(match[1]) : null;
   };
 
-  // Generate a signed URL (1 h) so the file loads regardless of bucket visibility
-  const getSignedUrl = async (storedUrl: string): Promise<string> => {
+  // Download via SDK (auth token included automatically) and set display state.
+  // PDFs: stored as ArrayBuffer and passed directly to <Document> — no browser fetch needed.
+  // Images: stored as a blob URL for <img src>.
+  const loadFileForDisplay = async (storedUrl: string, fileType: string) => {
     const filePath = extractFilePath(storedUrl);
-    if (!filePath) return storedUrl;
-    const { data } = await supabase.storage
+    if (!filePath) { setDisplayUrl(storedUrl); return; }
+
+    const { data: blob, error } = await supabase.storage
       .from("floor-plans")
-      .createSignedUrl(filePath, 3600);
-    return data?.signedUrl ?? storedUrl;
+      .download(filePath);
+
+    if (error || !blob) {
+      // Fallback: try a signed URL
+      const { data: signData } = await supabase.storage
+        .from("floor-plans")
+        .createSignedUrl(filePath, 3600);
+      setDisplayUrl(signData?.signedUrl ?? storedUrl);
+      return;
+    }
+
+    if (fileType === "application/pdf") {
+      const buffer = await blob.arrayBuffer();
+      setPdfData(buffer);
+      setDisplayUrl(null);
+    } else {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      setPdfData(null);
+      setDisplayUrl(url);
+    }
   };
 
   useEffect(() => {
     loadFloorPlan();
   }, [projectId]);
+
+  // Revoke blob URL on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); };
+  }, []);
 
   const loadFloorPlan = async () => {
     try {
@@ -84,10 +113,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
       if (floorPlanData) {
         const plan = floorPlanData as FloorPlan;
         setFloorPlan(plan);
-
-        // Get a signed URL so the file loads regardless of bucket public/private setting
-        const signed = await getSignedUrl(plan.file_url);
-        setDisplayUrl(signed);
+        await loadFileForDisplay(plan.file_url, plan.file_type);
 
         const { data: devicesData, error: devicesError } = await supabase
           .from("floor_plan_devices")
@@ -141,9 +167,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
       const plan = newFloorPlan as FloorPlan;
       setFloorPlan(plan);
       setPlacedDevices([]);
-
-      const signed = await getSignedUrl(plan.file_url);
-      setDisplayUrl(signed);
+      await loadFileForDisplay(plan.file_url, plan.file_type);
       toast.success("Planta baixa importada com sucesso!");
     } catch (error) {
       console.error("Error uploading floor plan:", error);
@@ -175,6 +199,8 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
 
       setFloorPlan(null);
       setDisplayUrl(null);
+      setPdfData(null);
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
       setPlacedDevices([]);
       setCurrentPage(1);
       setNumPages(1);
@@ -387,7 +413,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
 
         {/* Canvas da Planta */}
         <Card className="flex-1 overflow-auto relative bg-muted/30">
-          {floorPlan && displayUrl ? (
+          {floorPlan && (displayUrl !== null || pdfData !== null) ? (
             <div
               ref={canvasRef}
               onClick={handleCanvasClick}
@@ -400,7 +426,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               {floorPlan.file_type === "application/pdf" ? (
                 <div className="relative">
                   <Document
-                    file={displayUrl}
+                    file={pdfData ? { data: pdfData } : (displayUrl ?? '')}
                     onLoadSuccess={onDocumentLoadSuccess}
                     loading={
                       <div className="flex items-center justify-center h-[600px]">
