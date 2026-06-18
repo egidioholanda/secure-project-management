@@ -10,7 +10,6 @@ import PlacedDeviceMarker from "./PlacedDeviceMarker";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +22,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Use locally bundled worker so script-src 'self' CSP is satisfied
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+// Vite-recommended pattern: bundles worker at same origin, satisfies CSP worker-src 'self'
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 interface FloorPlanEditorProps {
   projectId: string;
@@ -32,10 +34,10 @@ interface FloorPlanEditorProps {
   onGenerateProposal: (placedDevices: PlacedDevice[]) => void;
 }
 
-const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPlanEditorProps) => {
+const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps) => {
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
-  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -78,7 +80,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
 
     if (fileType === "application/pdf") {
       const buffer = await blob.arrayBuffer();
-      setPdfData(buffer);
+      setPdfData(new Uint8Array(buffer));
       setDisplayUrl(null);
     } else {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
@@ -426,7 +428,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
               {floorPlan.file_type === "application/pdf" ? (
                 <div className="relative">
                   <Document
-                    file={pdfData ? { data: pdfData } : (displayUrl ?? '')}
+                    file={pdfData ?? displayUrl ?? ''}
                     onLoadSuccess={onDocumentLoadSuccess}
                     loading={
                       <div className="flex items-center justify-center h-[600px]">
