@@ -35,13 +35,13 @@ serve(async (req) => {
       });
     }
 
-    const { data: roleData } = await supabaseUser
+    const { data: rolesData } = await supabaseUser
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .single();
+      .in("role", ["admin", "manager"]);
 
-    if (!roleData || !["admin", "manager"].includes(roleData.role)) {
+    if (!rolesData || rolesData.length === 0) {
       return new Response(JSON.stringify({ error: "Permissão negada" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
