@@ -135,15 +135,19 @@ export const useAuth = () => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: fullName },
-      },
+    const { data, error } = await supabase.functions.invoke('self-register', {
+      body: { email, password, fullName },
     });
-    return { error };
+
+    if (error) {
+      try {
+        const body = await (error as any).context?.json?.();
+        if (body?.error) return { error: new Error(body.error) as any };
+      } catch {}
+      return { error };
+    }
+    if (data?.error) return { error: new Error(data.error) as any };
+    return { error: null };
   };
 
   const signOut = async () => {

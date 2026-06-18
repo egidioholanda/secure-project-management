@@ -84,10 +84,12 @@ const Login = () => {
       });
     } else {
       toast({
-        title: 'Conta criada!',
-        description: 'Você já pode fazer login.',
+        title: 'Cadastro realizado!',
+        description: 'Aguarde a aprovação de um administrador para acessar o sistema.',
       });
-      navigate('/');
+      setSignupEmail('');
+      setSignupPassword('');
+      setSignupName('');
     }
     
     setIsLoading(false);
