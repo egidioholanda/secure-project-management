@@ -46,7 +46,16 @@ export const AddUserDialog = ({ open, onOpenChange, onSuccess }: AddUserDialogPr
         body: { email, password, fullName, role },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extract actual message from the function response body when available
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) throw new Error(body.error);
+        } catch (inner) {
+          if (inner instanceof Error && inner !== error) throw inner;
+        }
+        throw error;
+      }
       if (data?.error) throw new Error(data.error);
 
       toast({
