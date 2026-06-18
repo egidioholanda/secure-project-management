@@ -35,8 +35,6 @@ interface FloorPlanEditorProps {
 const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps) => {
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
-  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -51,52 +49,9 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
     setCurrentPage(1);
   };
 
-  const extractFilePath = (url: string): string | null => {
-    const match = url.match(/\/floor-plans\/(.+?)(\?|$)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
-  // Download via SDK (auth token included automatically) and set display state.
-  // PDFs: stored as ArrayBuffer and passed directly to <Document> — no browser fetch needed.
-  // Images: stored as a blob URL for <img src>.
-  const loadFileForDisplay = async (storedUrl: string, fileType: string) => {
-    const filePath = extractFilePath(storedUrl);
-    if (!filePath) { setDisplayUrl(storedUrl); return; }
-
-    const { data: blob, error } = await supabase.storage
-      .from("floor-plans")
-      .download(filePath);
-
-    if (error || !blob) {
-      // Fallback: try a signed URL
-      const { data: signData } = await supabase.storage
-        .from("floor-plans")
-        .createSignedUrl(filePath, 3600);
-      setDisplayUrl(signData?.signedUrl ?? storedUrl);
-      return;
-    }
-
-    if (fileType === "application/pdf") {
-      const buffer = await blob.arrayBuffer();
-      setPdfData(new Uint8Array(buffer));
-      setDisplayUrl(null);
-    } else {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setPdfData(null);
-      setDisplayUrl(url);
-    }
-  };
-
   useEffect(() => {
     loadFloorPlan();
   }, [projectId]);
-
-  // Revoke blob URL on unmount to avoid memory leaks
-  useEffect(() => {
-    return () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); };
-  }, []);
 
   const loadFloorPlan = async () => {
     try {
@@ -113,7 +68,7 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
       if (floorPlanData) {
         const plan = floorPlanData as FloorPlan;
         setFloorPlan(plan);
-        await loadFileForDisplay(plan.file_url, plan.file_type);
+        setDisplayUrl(plan.file_url);
 
         const { data: devicesData, error: devicesError } = await supabase
           .from("floor_plan_devices")
@@ -167,7 +122,7 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
       const plan = newFloorPlan as FloorPlan;
       setFloorPlan(plan);
       setPlacedDevices([]);
-      await loadFileForDisplay(plan.file_url, plan.file_type);
+      setDisplayUrl(plan.file_url);
       toast.success("Planta baixa importada com sucesso!");
     } catch (error) {
       console.error("Error uploading floor plan:", error);
@@ -199,8 +154,6 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
 
       setFloorPlan(null);
       setDisplayUrl(null);
-      setPdfData(null);
-      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
       setPlacedDevices([]);
       setCurrentPage(1);
       setNumPages(1);
@@ -413,7 +366,7 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
 
         {/* Canvas da Planta */}
         <Card className="flex-1 overflow-auto relative bg-muted/30">
-          {floorPlan && (displayUrl !== null || pdfData !== null) ? (
+          {floorPlan && displayUrl ? (
             <div
               ref={canvasRef}
               onClick={handleCanvasClick}
@@ -426,7 +379,7 @@ const FloorPlanEditor = ({ projectId, onGenerateProposal }: FloorPlanEditorProps
               {floorPlan.file_type === "application/pdf" ? (
                 <div className="relative">
                   <Document
-                    file={pdfData ?? displayUrl ?? ''}
+                    file={displayUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     loading={
                       <div className="flex items-center justify-center h-[600px]">
