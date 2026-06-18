@@ -72,8 +72,16 @@ serve(async (req) => {
 
     if (createError) throw createError;
 
+    if (!newUser.user) throw new Error("Falha ao criar usuário");
+
+    // Auto-approve profile — admin created this user intentionally
+    await supabaseAdmin
+      .from("profiles")
+      .update({ approval_status: "approved", approved_at: new Date().toISOString() })
+      .eq("user_id", newUser.user.id);
+
     // Update role if different from default 'user'
-    if (newRole && newRole !== "user" && newUser.user) {
+    if (newRole && newRole !== "user") {
       await supabaseAdmin
         .from("user_roles")
         .update({ role: newRole })

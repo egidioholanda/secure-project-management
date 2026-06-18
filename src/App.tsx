@@ -17,6 +17,7 @@ import Schedules from "./pages/Schedules";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
@@ -98,6 +99,7 @@ const AppRoutes = () => {
           )
         }
       />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/"
         element={<Navigate to="/dashboard/operacional" replace />}
