@@ -22,11 +22,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Vite-recommended pattern: bundles worker at same origin, satisfies CSP worker-src 'self'
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+// Worker served from /public (same origin) — satisfies CSP worker-src 'self'
+// File must match installed pdfjs-dist version (4.8.69)
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 interface FloorPlanEditorProps {
   projectId: string;
