@@ -10,6 +10,7 @@ import PlacedDeviceMarker from "./PlacedDeviceMarker";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,9 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Worker served from /public (same origin) — satisfies CSP worker-src 'self'
-// File must match installed pdfjs-dist version (4.8.69)
-pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface FloorPlanEditorProps {
   projectId: string;
