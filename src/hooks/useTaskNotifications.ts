@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays, isPast, isToday } from "date-fns";
 
-const NOTIFICATIONS_SEEN_KEY = "notifications_last_seen";
+const SEEN_KEY = "notifications_seen_count";
+const DISMISSED_KEY = "notifications_dismissed";
 
 export interface TaskNotification {
   id: string;
@@ -33,11 +34,47 @@ interface DbSchedule {
   client: { name: string } | null;
 }
 
+// Dismissed IDs are valid only for today
+const getDismissedIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return new Set();
+    const { date, ids } = JSON.parse(raw);
+    if (new Date(date).toDateString() === new Date().toDateString()) {
+      return new Set(ids as string[]);
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveDismissedIds = (ids: Set<string>) => {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify({
+    date: new Date().toISOString(),
+    ids: Array.from(ids),
+  }));
+};
+
+// Badge is suppressed when the last-seen count >= current count (same day)
+const getSeenCount = (): number => {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    if (!raw) return 0;
+    const { date, count } = JSON.parse(raw);
+    if (new Date(date).toDateString() === new Date().toDateString()) return count as number;
+    return 0;
+  } catch {
+    return 0;
+  }
+};
+
 export const useTaskNotifications = () => {
   const [tasks, setTasks] = useState<DbTask[]>([]);
   const [schedules, setSchedules] = useState<DbSchedule[]>([]);
-  const [hasBeenSeen, setHasBeenSeen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
+  const [seenCount, setSeenCount] = useState(getSeenCount);
 
   const fetchData = async () => {
     try {
@@ -56,7 +93,6 @@ export const useTaskNotifications = () => {
 
       if (tasksRes.error) throw tasksRes.error;
       setTasks(tasksRes.data || []);
-      
       if (!schedulesRes.error) {
         setSchedules((schedulesRes.data as unknown as DbSchedule[]) || []);
       }
@@ -67,32 +103,16 @@ export const useTaskNotifications = () => {
     }
   };
 
-  const checkIfSeen = useCallback(() => {
-    const lastSeen = localStorage.getItem(NOTIFICATIONS_SEEN_KEY);
-    if (lastSeen) {
-      const lastSeenDate = new Date(lastSeen);
-      const today = new Date();
-      if (lastSeenDate.toDateString() === today.toDateString()) {
-        setHasBeenSeen(true);
-      } else {
-        setHasBeenSeen(false);
-      }
-    }
-  }, []);
-
-  const markAsSeen = useCallback(() => {
-    localStorage.setItem(NOTIFICATIONS_SEEN_KEY, new Date().toISOString());
-    setHasBeenSeen(true);
-  }, []);
-
   useEffect(() => {
     fetchData();
-    checkIfSeen();
+    // Refresh dismissed IDs and seen count on mount (in case date changed)
+    setDismissedIds(getDismissedIds());
+    setSeenCount(getSeenCount());
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [checkIfSeen]);
+  }, []);
 
-  const notifications = useMemo<TaskNotification[]>(() => {
+  const allNotifications = useMemo<TaskNotification[]>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -145,17 +165,14 @@ export const useTaskNotifications = () => {
           return null;
         }
 
-        // Only show if within notification window
         if (type === "upcoming" && daysRemaining > 7) return null;
         if (type === "upcoming" && daysRemaining > 3 && !schedule.notify_7_days) return null;
-
-        const clientName = schedule.client?.name || "Cliente";
 
         return {
           id: `maint-${schedule.id}`,
           taskId: schedule.id,
           taskName: `🔧 ${schedule.title}`,
-          projectName: clientName,
+          projectName: schedule.client?.name || "Cliente",
           endDate: nextDate,
           type,
           daysRemaining,
@@ -170,9 +187,41 @@ export const useTaskNotifications = () => {
     });
   }, [tasks, schedules]);
 
+  // Visible notifications = all minus dismissed
+  const notifications = useMemo(
+    () => allNotifications.filter((n) => !dismissedIds.has(n.id)),
+    [allNotifications, dismissedIds]
+  );
+
   const overdueCount = notifications.filter((n) => n.type === "overdue").length;
   const todayCount = notifications.filter((n) => n.type === "today").length;
   const upcomingCount = notifications.filter((n) => n.type === "upcoming").length;
+  const totalCount = notifications.length;
+
+  // Badge appears when current count exceeds what was seen last time
+  const hasBeenSeen = totalCount <= seenCount;
+
+  const markAsSeen = useCallback(() => {
+    const count = totalCount;
+    localStorage.setItem(SEEN_KEY, JSON.stringify({ date: new Date().toISOString(), count }));
+    setSeenCount(count);
+  }, [totalCount]);
+
+  const dismissNotification = useCallback((id: string) => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveDismissedIds(next);
+      return next;
+    });
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    const all = new Set(allNotifications.map((n) => n.id));
+    saveDismissedIds(all);
+    setDismissedIds(all);
+    markAsSeen();
+  }, [allNotifications, markAsSeen]);
 
   return {
     notifications,
@@ -180,9 +229,11 @@ export const useTaskNotifications = () => {
     overdueCount,
     todayCount,
     upcomingCount,
-    totalCount: notifications.length,
+    totalCount,
     hasBeenSeen,
     markAsSeen,
+    dismissNotification,
+    dismissAll,
     refetch: fetchData,
   };
 };

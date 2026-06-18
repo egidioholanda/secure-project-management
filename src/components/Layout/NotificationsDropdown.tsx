@@ -1,4 +1,4 @@
-import { Bell, AlertTriangle, Clock, Calendar, UserPlus } from "lucide-react";
+import { Bell, AlertTriangle, Clock, Calendar, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,12 +13,14 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
-const NotificationItem = ({ 
-  notification, 
-  onNavigate 
-}: { 
+const NotificationItem = ({
+  notification,
+  onNavigate,
+  onDismiss,
+}: {
   notification: TaskNotification;
   onNavigate: () => void;
+  onDismiss: () => void;
 }) => {
   const getIcon = () => {
     switch (notification.type) {
@@ -54,39 +56,50 @@ const NotificationItem = ({
   };
 
   return (
-    <button
-      onClick={onNavigate}
-      className={`w-full p-3 rounded-lg border ${getBgColor()} hover:opacity-80 transition-opacity text-left`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5">{getIcon()}</div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{notification.taskName}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {notification.projectName}
-          </p>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-xs font-medium">{getMessage()}</span>
-            <span className="text-xs text-muted-foreground">
-              {format(notification.endDate, "dd/MM", { locale: ptBR })}
-            </span>
+    <div className={`relative group/item rounded-lg border ${getBgColor()}`}>
+      <button
+        onClick={onNavigate}
+        className="w-full p-3 hover:opacity-80 transition-opacity text-left"
+      >
+        <div className="flex items-start gap-3 pr-6">
+          <div className="mt-0.5">{getIcon()}</div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{notification.taskName}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {notification.projectName}
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs font-medium">{getMessage()}</span>
+              <span className="text-xs text-muted-foreground">
+                {format(notification.endDate, "dd/MM", { locale: ptBR })}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        className="absolute top-2 right-2 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10"
+        title="Dispensar"
+      >
+        <X className="h-3 w-3 text-muted-foreground" />
+      </button>
+    </div>
   );
 };
 
 export const NotificationsDropdown = () => {
   const navigate = useNavigate();
-  const { 
-    notifications, 
-    loading, 
-    overdueCount, 
-    todayCount, 
+  const {
+    notifications,
+    loading,
+    overdueCount,
+    todayCount,
     totalCount: taskTotal,
     hasBeenSeen,
-    markAsSeen 
+    markAsSeen,
+    dismissNotification,
+    dismissAll,
   } = useTaskNotifications();
   const { data: pendingUsers = [], canApprove } = usePendingUsers();
   const pendingCount = canApprove ? pendingUsers.length : 0;
@@ -127,11 +140,23 @@ export const NotificationsDropdown = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
-        <div className="p-4 border-b border-border">
-          <h3 className="font-semibold">Notificações</h3>
-          <p className="text-sm text-muted-foreground">
-            Tarefas e manutenções que precisam de atenção
-          </p>
+        <div className="p-4 border-b border-border flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-semibold">Notificações</h3>
+            <p className="text-sm text-muted-foreground">
+              Tarefas e manutenções que precisam de atenção
+            </p>
+          </div>
+          {totalCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground shrink-0 h-auto py-1 px-2"
+              onClick={dismissAll}
+            >
+              Limpar tudo
+            </Button>
+          )}
         </div>
 
         {loading ? (
@@ -191,6 +216,7 @@ export const NotificationsDropdown = () => {
                       key={notification.id}
                       notification={notification}
                       onNavigate={() => handleNavigate(notification)}
+                      onDismiss={() => dismissNotification(notification.id)}
                     />
                   ))}
               </div>
