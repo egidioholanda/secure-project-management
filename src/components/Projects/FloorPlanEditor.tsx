@@ -417,7 +417,7 @@ const FloorPlanEditor = ({ projectId, projectName, onGenerateProposal }: FloorPl
             <div
               ref={canvasRef}
               onClick={handleCanvasClick}
-              className="relative min-h-full cursor-crosshair"
+              className="relative min-h-full cursor-crosshair bg-white"
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "top left",
