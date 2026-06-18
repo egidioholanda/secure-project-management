@@ -5,8 +5,8 @@ import type { CompanySettings } from "@/hooks/useCompanySettings";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Worker served from /public — same origin, satisfies CSP worker-src 'self'
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 interface FloorPlanPDFPreviewProps {
   floorPlan: FloorPlan;
