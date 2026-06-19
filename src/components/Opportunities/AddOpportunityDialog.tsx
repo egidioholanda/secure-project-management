@@ -244,9 +244,10 @@ export function AddOpportunityDialog({
               <SelectContent>
                 <SelectItem value="prospeccao">Oportunidade</SelectItem>
                 <SelectItem value="proposta">Proposta Enviada</SelectItem>
-                <SelectItem value="negociacao">Pedido feito</SelectItem>
-                <SelectItem value="pedido_produto">Pedido feito — somente Produto</SelectItem>
-                <SelectItem value="pedido_servico">Pedido feito — somente Serviço</SelectItem>
+                <SelectItem value="pedido_cliente">Pedido Cliente Enviado</SelectItem>
+                <SelectItem value="negociacao">Pedido Comercial Criado</SelectItem>
+                <SelectItem value="pedido_produto">Pedido Comercial Criado — somente Produto</SelectItem>
+                <SelectItem value="pedido_servico">Pedido Comercial Criado — somente Serviço</SelectItem>
                 <SelectItem value="ganha">Pedido Faturado</SelectItem>
                 <SelectItem value="faturado_produto">Pedido Faturado — somente Produto</SelectItem>
                 <SelectItem value="faturado_servico">Pedido Faturado — somente Serviço</SelectItem>

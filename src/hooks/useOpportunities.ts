@@ -19,6 +19,7 @@ export interface Opportunity {
     | "prospeccao"
     | "qualificacao"
     | "proposta"
+    | "pedido_cliente"
     | "negociacao"
     | "pedido_produto"
     | "pedido_servico"

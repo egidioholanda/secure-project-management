@@ -18,10 +18,11 @@ import { cn } from "@/lib/utils";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const STAGE_CONFIG = [
-  { key: "prospeccao", matchKeys: ["prospeccao", "qualificacao"],                       label: "Oportunidade",     color: "#6366f1" },
-  { key: "proposta",   matchKeys: ["proposta"],                                          label: "Proposta Enviada", color: "#f59e0b" },
-  { key: "negociacao", matchKeys: ["negociacao", "pedido_produto", "pedido_servico"],    label: "Pedido feito",     color: "#f97316" },
-  { key: "ganha",      matchKeys: ["ganha", "faturado_produto", "faturado_servico"],     label: "Pedido Faturado",  color: "#10b981" },
+  { key: "prospeccao",     matchKeys: ["prospeccao", "qualificacao"],                     label: "Oportunidade",            color: "#6366f1" },
+  { key: "proposta",       matchKeys: ["proposta"],                                        label: "Proposta Enviada",         color: "#f59e0b" },
+  { key: "pedido_cliente", matchKeys: ["pedido_cliente"],                                  label: "Pedido Cliente Enviado",   color: "#8b5cf6" },
+  { key: "negociacao",     matchKeys: ["negociacao", "pedido_produto", "pedido_servico"],  label: "Pedido Comercial Criado",  color: "#f97316" },
+  { key: "ganha",          matchKeys: ["ganha", "faturado_produto", "faturado_servico"],   label: "Pedido Faturado",          color: "#10b981" },
 ];
 
 const TYPE_COLORS = ["#6366f1", "#3b82f6", "#f59e0b", "#f97316", "#10b981", "#ec4899", "#06b6d4"];
@@ -109,8 +110,10 @@ const DashboardComercial = () => {
 
   const pipelineValue    = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
   const wonValue         = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
-  const wonProductValue  = useMemo(() => won.reduce((s, o) => s + parseBRL(o.productValue), 0), [won]);
-  const wonServiceValue  = useMemo(() => won.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [won]);
+  const wonProductValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.productValue), 0), [won]);
+  const wonServiceValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [won]);
+  const pipelineProductValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.productValue), 0), [active]);
+  const pipelineServiceValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [active]);
   const conversionRate   = opportunities.length > 0 ? Math.round((won.length / opportunities.length) * 100) : 0;
   const ticketMedio      = won.length > 0 ? wonValue / won.length : 0;
 
@@ -242,24 +245,71 @@ const DashboardComercial = () => {
         />
       </div>
 
-      {/* ── Produto × Serviço faturado ── */}
-      {(wonProductValue > 0 || wonServiceValue > 0) && (
-        <div className="grid grid-cols-2 gap-4">
-          <KpiCard
-            icon={Package}
-            label="Faturado — Produto"
-            value={formatCurrency(wonProductValue)}
-            sub={formatCurrencyFull(wonProductValue)}
-            color="text-violet-500"
-          />
-          <KpiCard
-            icon={Wrench}
-            label="Faturado — Serviço"
-            value={formatCurrency(wonServiceValue)}
-            sub={formatCurrencyFull(wonServiceValue)}
-            color="text-blue-500"
-          />
-        </div>
+      {/* ── Receita por Componente ── */}
+      {(pipelineProductValue + pipelineServiceValue + wonProductValue + wonServiceValue) > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <Package className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Receita por Componente</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide w-32"></th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Em Venda (pipeline)
+                  </th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-8">
+                    Faturado
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                <tr>
+                  <td className="py-3 flex items-center gap-2 font-medium">
+                    <Package className="w-3.5 h-3.5 text-violet-500" />
+                    Produto
+                  </td>
+                  <td className="py-3 text-right tabular-nums text-violet-500 font-semibold">
+                    {pipelineProductValue > 0 ? formatCurrencyFull(pipelineProductValue) : "—"}
+                  </td>
+                  <td className="py-3 text-right tabular-nums text-violet-600 font-bold pl-8">
+                    {wonProductValue > 0 ? formatCurrencyFull(wonProductValue) : "—"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-3 flex items-center gap-2 font-medium">
+                    <Wrench className="w-3.5 h-3.5 text-blue-500" />
+                    Serviço
+                  </td>
+                  <td className="py-3 text-right tabular-nums text-blue-500 font-semibold">
+                    {pipelineServiceValue > 0 ? formatCurrencyFull(pipelineServiceValue) : "—"}
+                  </td>
+                  <td className="py-3 text-right tabular-nums text-blue-600 font-bold pl-8">
+                    {wonServiceValue > 0 ? formatCurrencyFull(wonServiceValue) : "—"}
+                  </td>
+                </tr>
+                <tr className="border-t-2 border-border">
+                  <td className="py-3 flex items-center gap-2 font-bold text-foreground">
+                    <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                    Total
+                  </td>
+                  <td className="py-3 text-right tabular-nums font-bold text-foreground">
+                    {(pipelineProductValue + pipelineServiceValue) > 0
+                      ? formatCurrencyFull(pipelineProductValue + pipelineServiceValue)
+                      : "—"}
+                  </td>
+                  <td className="py-3 text-right tabular-nums font-bold text-success pl-8">
+                    {(wonProductValue + wonServiceValue) > 0
+                      ? formatCurrencyFull(wonProductValue + wonServiceValue)
+                      : "—"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {/* ── Funil por Valor (hero chart) ── */}

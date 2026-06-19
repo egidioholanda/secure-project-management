@@ -23,6 +23,7 @@ interface OpportunityCardProps {
     | "prospeccao"
     | "qualificacao"
     | "proposta"
+    | "pedido_cliente"
     | "negociacao"
     | "pedido_produto"
     | "pedido_servico"
@@ -36,16 +37,17 @@ interface OpportunityCardProps {
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  prospeccao:       { label: "Oportunidade",           color: "bg-muted text-muted-foreground" },
-  qualificacao:     { label: "Oportunidade",           color: "bg-muted text-muted-foreground" },
-  proposta:         { label: "Proposta Enviada",        color: "bg-accent/10 text-accent" },
-  negociacao:       { label: "Pedido feito",            color: "bg-warning/10 text-warning" },
-  pedido_produto:   { label: "Pedido feito — Produto", color: "bg-warning/10 text-warning" },
-  pedido_servico:   { label: "Pedido feito — Serviço", color: "bg-warning/10 text-warning" },
-  ganha:            { label: "Pedido Faturado",         color: "bg-success/10 text-success" },
-  faturado_produto: { label: "Faturado — Produto",     color: "bg-success/10 text-success" },
-  faturado_servico: { label: "Faturado — Serviço",     color: "bg-success/10 text-success" },
-  perdida:          { label: "Perdida",                 color: "bg-destructive/10 text-destructive" },
+  prospeccao:       { label: "Oportunidade",                      color: "bg-muted text-muted-foreground" },
+  qualificacao:     { label: "Oportunidade",                      color: "bg-muted text-muted-foreground" },
+  proposta:         { label: "Proposta Enviada",                   color: "bg-accent/10 text-accent" },
+  pedido_cliente:   { label: "Pedido Cliente Enviado",             color: "bg-violet-500/10 text-violet-500" },
+  negociacao:       { label: "Pedido Comercial Criado",            color: "bg-warning/10 text-warning" },
+  pedido_produto:   { label: "Ped. Comercial — Produto",          color: "bg-warning/10 text-warning" },
+  pedido_servico:   { label: "Ped. Comercial — Serviço",          color: "bg-warning/10 text-warning" },
+  ganha:            { label: "Pedido Faturado",                    color: "bg-success/10 text-success" },
+  faturado_produto: { label: "Faturado — Produto",                color: "bg-success/10 text-success" },
+  faturado_servico: { label: "Faturado — Serviço",                color: "bg-success/10 text-success" },
+  perdida:          { label: "Perdida",                            color: "bg-destructive/10 text-destructive" },
 };
 
 export const OpportunityCard = ({

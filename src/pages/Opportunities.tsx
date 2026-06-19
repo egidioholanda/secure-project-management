@@ -101,10 +101,11 @@ const Opportunities = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   const statuses: Array<{ key: string; label: string; matchKeys: string[] }> = [
-    { key: "prospeccao", label: "Oportunidade",    matchKeys: ["prospeccao", "qualificacao"] },
-    { key: "proposta",   label: "Proposta Enviada", matchKeys: ["proposta"] },
-    { key: "negociacao", label: "Pedido feito",     matchKeys: ["negociacao", "pedido_produto", "pedido_servico"] },
-    { key: "ganha",      label: "Pedido Faturado",  matchKeys: ["ganha", "faturado_produto", "faturado_servico"] },
+    { key: "prospeccao",    label: "Oportunidade",          matchKeys: ["prospeccao", "qualificacao"] },
+    { key: "proposta",      label: "Proposta Enviada",       matchKeys: ["proposta"] },
+    { key: "pedido_cliente",label: "Pedido Cliente Enviado", matchKeys: ["pedido_cliente"] },
+    { key: "negociacao",    label: "Pedido Comercial Criado",matchKeys: ["negociacao", "pedido_produto", "pedido_servico"] },
+    { key: "ganha",         label: "Pedido Faturado",        matchKeys: ["ganha", "faturado_produto", "faturado_servico"] },
   ];
 
   if (loading) {
@@ -140,7 +141,7 @@ const Opportunities = () => {
       </div>
 
       {/* Kanban columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statuses.map((status) => {
           const statusOpps = opportunities.filter((opp) => status.matchKeys.includes(opp.status));
           const isOver = dragOverColumn === status.key;
