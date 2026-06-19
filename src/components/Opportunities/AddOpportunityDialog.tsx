@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,20 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-
-interface Opportunity {
-  id: string;
-  title: string;
-  client: string;
-  value: string;
-  monthlyValue: string;
-  type: string;
-  responsible: string;
-  createdAt: string;
-  status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha";
-  description?: string;
-}
+import { Opportunity } from "@/hooks/useOpportunities";
 
 interface AddOpportunityDialogProps {
   open: boolean;
@@ -39,6 +28,14 @@ interface AddOpportunityDialogProps {
   onEdit?: (opportunity: Opportunity) => void;
   editingOpportunity?: Opportunity | null;
 }
+
+const parseBRLVal = (raw: string) => {
+  if (!raw) return 0;
+  const n = parseFloat(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+};
+
+const stripPrefix = (v: string) => v.replace(/^R\$\s*/, "").trim();
 
 export function AddOpportunityDialog({
   open,
@@ -49,8 +46,8 @@ export function AddOpportunityDialog({
 }: AddOpportunityDialogProps) {
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
-  const [value, setValue] = useState("");
-  const [monthlyValue, setMonthlyValue] = useState("");
+  const [productValue, setProductValue] = useState("");
+  const [serviceValue, setServiceValue] = useState("");
   const [type, setType] = useState("");
   const [responsible, setResponsible] = useState("");
   const [status, setStatus] = useState<Opportunity["status"]>("prospeccao");
@@ -58,12 +55,26 @@ export function AddOpportunityDialog({
 
   const isEditing = !!editingOpportunity;
 
+  const totalValue = useMemo(() => {
+    const prod = parseBRLVal(productValue);
+    const serv = parseBRLVal(serviceValue);
+    if (prod > 0 || serv > 0) {
+      return (prod + serv).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+    }
+    return "";
+  }, [productValue, serviceValue]);
+
   useEffect(() => {
     if (editingOpportunity) {
       setTitle(editingOpportunity.title);
       setClient(editingOpportunity.client);
-      setValue(editingOpportunity.value.replace("R$ ", ""));
-      setMonthlyValue((editingOpportunity.monthlyValue || "").replace("R$ ", ""));
+      // Prefer split values; fall back to placing legacy value in product field
+      setProductValue(
+        editingOpportunity.productValue
+          ? stripPrefix(editingOpportunity.productValue)
+          : stripPrefix(editingOpportunity.value)
+      );
+      setServiceValue(stripPrefix(editingOpportunity.serviceValue || ""));
       setType(editingOpportunity.type);
       setResponsible(editingOpportunity.responsible);
       setStatus(editingOpportunity.status);
@@ -76,8 +87,8 @@ export function AddOpportunityDialog({
   const resetForm = () => {
     setTitle("");
     setClient("");
-    setValue("");
-    setMonthlyValue("");
+    setProductValue("");
+    setServiceValue("");
     setType("");
     setResponsible("");
     setStatus("prospeccao");
@@ -85,36 +96,40 @@ export function AddOpportunityDialog({
   };
 
   const handleSubmit = () => {
-    if (!title || !client || !value || !type || !responsible) {
+    if (!title || !client || (!productValue && !serviceValue) || !type || !responsible) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
+
+    const toValue = (raw: string) => (raw ? `R$ ${raw}` : "");
 
     if (isEditing && onEdit && editingOpportunity) {
       onEdit({
         ...editingOpportunity,
         title,
         client,
-        value: value.startsWith("R$") ? value : `R$ ${value}`,
-        monthlyValue: monthlyValue ? (monthlyValue.startsWith("R$") ? monthlyValue : `R$ ${monthlyValue}`) : "",
+        productValue: toValue(productValue),
+        serviceValue: toValue(serviceValue),
+        value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
+        monthlyValue: "",
         type,
         responsible,
         status,
         description,
       });
-      toast.success("Oportunidade atualizada com sucesso!");
     } else {
       onAdd({
         title,
         client,
-        value: `R$ ${value}`,
-        monthlyValue: monthlyValue ? `R$ ${monthlyValue}` : "",
+        productValue: toValue(productValue),
+        serviceValue: toValue(serviceValue),
+        value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
+        monthlyValue: "",
         type,
         responsible,
         status,
         description,
       });
-      toast.success("Oportunidade criada com sucesso!");
     }
 
     resetForm();
@@ -146,38 +161,52 @@ export function AddOpportunityDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="client">Cliente *</Label>
-              <Input
-                id="client"
-                placeholder="Nome do cliente"
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="value">Valor Venda (R$) *</Label>
-              <Input
-                id="value"
-                placeholder="450.000"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="client">Cliente *</Label>
+            <Input
+              id="client"
+              placeholder="Nome do cliente"
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="monthlyValue">Valor Mensal (R$)</Label>
-              <Input
-                id="monthlyValue"
-                placeholder="Ex: 1.500"
-                value={monthlyValue}
-                onChange={(e) => setMonthlyValue(e.target.value)}
-              />
+          {/* Values */}
+          <div className="space-y-3">
+            <Label>Valores *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="productValue" className="text-xs text-muted-foreground font-normal">
+                  Valor Produto (R$)
+                </Label>
+                <Input
+                  id="productValue"
+                  placeholder="Ex: 45.000"
+                  value={productValue}
+                  onChange={(e) => setProductValue(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="serviceValue" className="text-xs text-muted-foreground font-normal">
+                  Valor Serviço (R$)
+                </Label>
+                <Input
+                  id="serviceValue"
+                  placeholder="Ex: 12.000"
+                  value={serviceValue}
+                  onChange={(e) => setServiceValue(e.target.value)}
+                />
+              </div>
             </div>
+            {totalValue && (
+              <div className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <span className="text-sm font-bold text-foreground">R$ {totalValue}</span>
+              </div>
+            )}
           </div>
+
+          <Separator />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -216,7 +245,11 @@ export function AddOpportunityDialog({
                 <SelectItem value="prospeccao">Oportunidade</SelectItem>
                 <SelectItem value="proposta">Proposta Enviada</SelectItem>
                 <SelectItem value="negociacao">Pedido feito</SelectItem>
+                <SelectItem value="pedido_produto">Pedido feito — somente Produto</SelectItem>
+                <SelectItem value="pedido_servico">Pedido feito — somente Serviço</SelectItem>
                 <SelectItem value="ganha">Pedido Faturado</SelectItem>
+                <SelectItem value="faturado_produto">Pedido Faturado — somente Produto</SelectItem>
+                <SelectItem value="faturado_servico">Pedido Faturado — somente Serviço</SelectItem>
               </SelectContent>
             </Select>
           </div>

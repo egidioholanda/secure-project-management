@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import {
   DollarSign, TrendingUp, Target, Award, ArrowRight,
-  Users, LayoutGrid, Package,
+  Users, LayoutGrid, Package, Wrench,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -18,10 +18,10 @@ import { cn } from "@/lib/utils";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const STAGE_CONFIG = [
-  { key: "prospeccao", matchKeys: ["prospeccao", "qualificacao"], label: "Oportunidade",     color: "#6366f1" },
-  { key: "proposta",   matchKeys: ["proposta"],                   label: "Proposta Enviada", color: "#f59e0b" },
-  { key: "negociacao", matchKeys: ["negociacao"],                 label: "Pedido feito",     color: "#f97316" },
-  { key: "ganha",      matchKeys: ["ganha"],                      label: "Pedido Faturado",  color: "#10b981" },
+  { key: "prospeccao", matchKeys: ["prospeccao", "qualificacao"],                       label: "Oportunidade",     color: "#6366f1" },
+  { key: "proposta",   matchKeys: ["proposta"],                                          label: "Proposta Enviada", color: "#f59e0b" },
+  { key: "negociacao", matchKeys: ["negociacao", "pedido_produto", "pedido_servico"],    label: "Pedido feito",     color: "#f97316" },
+  { key: "ganha",      matchKeys: ["ganha", "faturado_produto", "faturado_servico"],     label: "Pedido Faturado",  color: "#10b981" },
 ];
 
 const TYPE_COLORS = ["#6366f1", "#3b82f6", "#f59e0b", "#f97316", "#10b981", "#ec4899", "#06b6d4"];
@@ -103,13 +103,16 @@ const DashboardComercial = () => {
 
   // ── Core aggregations ─────────────────────────────────────────────────────
 
-  const won    = useMemo(() => opportunities.filter((o) => o.status === "ganha"), [opportunities]);
-  const active = useMemo(() => opportunities.filter((o) => o.status !== "ganha"), [opportunities]);
+  const WON_STATUSES = ["ganha", "faturado_produto", "faturado_servico"];
+  const won    = useMemo(() => opportunities.filter((o) => WON_STATUSES.includes(o.status)), [opportunities]);
+  const active = useMemo(() => opportunities.filter((o) => !WON_STATUSES.includes(o.status)), [opportunities]);
 
-  const pipelineValue   = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
-  const wonValue        = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
-  const conversionRate  = opportunities.length > 0 ? Math.round((won.length / opportunities.length) * 100) : 0;
-  const ticketMedio     = won.length > 0 ? wonValue / won.length : 0;
+  const pipelineValue    = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
+  const wonValue         = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
+  const wonProductValue  = useMemo(() => won.reduce((s, o) => s + parseBRL(o.productValue), 0), [won]);
+  const wonServiceValue  = useMemo(() => won.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [won]);
+  const conversionRate   = opportunities.length > 0 ? Math.round((won.length / opportunities.length) * 100) : 0;
+  const ticketMedio      = won.length > 0 ? wonValue / won.length : 0;
 
   // ── Funnel by value ───────────────────────────────────────────────────────
 
@@ -238,6 +241,26 @@ const DashboardComercial = () => {
           color="text-violet-500"
         />
       </div>
+
+      {/* ── Produto × Serviço faturado ── */}
+      {(wonProductValue > 0 || wonServiceValue > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          <KpiCard
+            icon={Package}
+            label="Faturado — Produto"
+            value={formatCurrency(wonProductValue)}
+            sub={formatCurrencyFull(wonProductValue)}
+            color="text-violet-500"
+          />
+          <KpiCard
+            icon={Wrench}
+            label="Faturado — Serviço"
+            value={formatCurrency(wonServiceValue)}
+            sub={formatCurrencyFull(wonServiceValue)}
+            color="text-blue-500"
+          />
+        </div>
+      )}
 
       {/* ── Funil por Valor (hero chart) ── */}
       <Card className="p-6">
@@ -478,8 +501,22 @@ const DashboardComercial = () => {
                       <td className="py-3.5 pr-4 text-muted-foreground hidden lg:table-cell">
                         {opp.responsible || "—"}
                       </td>
-                      <td className="py-3.5 pr-4 text-right font-bold tabular-nums">
-                        {opp.value || "—"}
+                      <td className="py-3.5 pr-4 text-right">
+                        <p className="font-bold tabular-nums">{opp.value || "—"}</p>
+                        {(opp.productValue || opp.serviceValue) && (
+                          <div className="flex gap-2 justify-end mt-0.5">
+                            {opp.productValue && (
+                              <span className="text-xs text-violet-500 tabular-nums">
+                                P: {formatCurrency(parseBRL(opp.productValue))}
+                              </span>
+                            )}
+                            {opp.serviceValue && (
+                              <span className="text-xs text-blue-500 tabular-nums">
+                                S: {formatCurrency(parseBRL(opp.serviceValue))}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3.5 pl-4">
                         {stage && (

@@ -10,10 +10,22 @@ export interface Opportunity {
   client: string;
   value: string;
   monthlyValue: string;
+  productValue: string;
+  serviceValue: string;
   type: string;
   responsible: string;
   createdAt: string;
-  status: "prospeccao" | "qualificacao" | "proposta" | "negociacao" | "ganha";
+  status:
+    | "prospeccao"
+    | "qualificacao"
+    | "proposta"
+    | "negociacao"
+    | "pedido_produto"
+    | "pedido_servico"
+    | "ganha"
+    | "faturado_produto"
+    | "faturado_servico";
+  description?: string;
 }
 
 interface DbOpportunity {
@@ -22,6 +34,8 @@ interface DbOpportunity {
   client: string;
   value: string | null;
   monthly_value: string | null;
+  product_value: string | null;
+  service_value: string | null;
   type: string | null;
   responsible: string | null;
   status: string;
@@ -30,12 +44,30 @@ interface DbOpportunity {
   updated_at: string;
 }
 
+const parseBRL = (raw: string) => {
+  if (!raw) return 0;
+  const n = parseFloat(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+};
+
+const computeTotal = (productValue: string, serviceValue: string, fallback: string): string => {
+  const prod = parseBRL(productValue);
+  const serv = parseBRL(serviceValue);
+  if (prod > 0 || serv > 0) {
+    const total = prod + serv;
+    return `R$ ${total.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
+  }
+  return fallback;
+};
+
 const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   id: db.id,
   title: db.title,
   client: db.client,
   value: db.value || "",
   monthlyValue: db.monthly_value || "",
+  productValue: db.product_value || "",
+  serviceValue: db.service_value || "",
   type: db.type || "",
   responsible: db.responsible || "",
   createdAt: formatDistanceToNow(new Date(db.created_at), {
@@ -70,13 +102,16 @@ export const useOpportunities = () => {
     opp: Omit<Opportunity, "id" | "createdAt">
   ): Promise<Opportunity | null> => {
     try {
+      const totalValue = computeTotal(opp.productValue, opp.serviceValue, opp.value);
       const { data, error } = await supabase
         .from("opportunities")
         .insert({
           title: opp.title,
           client: opp.client,
-          value: opp.value || null,
+          value: totalValue || null,
           monthly_value: opp.monthlyValue || null,
+          product_value: opp.productValue || null,
+          service_value: opp.serviceValue || null,
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
@@ -98,13 +133,16 @@ export const useOpportunities = () => {
 
   const updateOpportunity = async (opp: Opportunity) => {
     try {
+      const totalValue = computeTotal(opp.productValue, opp.serviceValue, opp.value);
       const { error } = await supabase
         .from("opportunities")
         .update({
           title: opp.title,
           client: opp.client,
-          value: opp.value || null,
+          value: totalValue || null,
           monthly_value: opp.monthlyValue || null,
+          product_value: opp.productValue || null,
+          service_value: opp.serviceValue || null,
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
@@ -113,7 +151,7 @@ export const useOpportunities = () => {
 
       if (error) throw error;
       setOpportunities((prev) =>
-        prev.map((o) => (o.id === opp.id ? opp : o))
+        prev.map((o) => (o.id === opp.id ? { ...opp, value: totalValue } : o))
       );
       toast.success("Oportunidade atualizada com sucesso!");
     } catch (error) {

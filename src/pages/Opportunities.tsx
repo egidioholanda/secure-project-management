@@ -101,10 +101,10 @@ const Opportunities = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   const statuses: Array<{ key: string; label: string; matchKeys: string[] }> = [
-    { key: "prospeccao", label: "Oportunidade", matchKeys: ["prospeccao", "qualificacao"] },
-    { key: "proposta", label: "Proposta Enviada", matchKeys: ["proposta"] },
-    { key: "negociacao", label: "Pedido feito", matchKeys: ["negociacao"] },
-    { key: "ganha", label: "Pedido Faturado", matchKeys: ["ganha"] },
+    { key: "prospeccao", label: "Oportunidade",    matchKeys: ["prospeccao", "qualificacao"] },
+    { key: "proposta",   label: "Proposta Enviada", matchKeys: ["proposta"] },
+    { key: "negociacao", label: "Pedido feito",     matchKeys: ["negociacao", "pedido_produto", "pedido_servico"] },
+    { key: "ganha",      label: "Pedido Faturado",  matchKeys: ["ganha", "faturado_produto", "faturado_servico"] },
   ];
 
   if (loading) {
