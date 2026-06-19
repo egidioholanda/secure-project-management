@@ -73,8 +73,11 @@ export function AddOpportunityDialog({
     if (source) {
       setTitle(source.title);
       setClient(source.client);
+      const hasAnySplit = !!(source.productValue || source.serviceValue);
       setProductValue(
-        source.productValue ? stripPrefix(source.productValue) : stripPrefix(source.value)
+        source.productValue
+          ? stripPrefix(source.productValue)
+          : hasAnySplit ? "" : stripPrefix(source.value)
       );
       setServiceValue(stripPrefix(source.serviceValue || ""));
       setType(source.type);
