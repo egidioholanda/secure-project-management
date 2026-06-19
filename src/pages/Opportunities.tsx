@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityDialog";
 import { useOpportunities, Opportunity } from "@/hooks/useOpportunities";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 const Opportunities = () => {
   const navigate = useNavigate();
@@ -18,6 +19,10 @@ const Opportunities = () => {
   } = useOpportunities();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
+
+  // Drag and drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const handleAddOpportunity = async (newOpp: Omit<Opportunity, "id" | "createdAt">) => {
     await addOpportunity(newOpp);
@@ -43,7 +48,6 @@ const Opportunities = () => {
   const handleConvertToProject = (id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (opp) {
-      // Navigate to projects page with opportunity data
       const projectData = {
         name: opp.title,
         client: opp.client,
@@ -55,6 +59,46 @@ const Opportunities = () => {
       navigate("/projetos", { state: { fromOpportunity: projectData } });
     }
   };
+
+  // ── DnD handlers ──────────────────────────────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedId(id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverColumn(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, columnKey: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverColumn !== columnKey) setDragOverColumn(columnKey);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverColumn(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetColumn: { key: string; matchKeys: string[] }) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+
+    if (!draggedId) return;
+
+    const opp = opportunities.find((o) => o.id === draggedId);
+    setDraggedId(null);
+
+    if (!opp || targetColumn.matchKeys.includes(opp.status)) return;
+
+    await updateOpportunity({ ...opp, status: targetColumn.key as Opportunity["status"] });
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const statuses: Array<{ key: string; label: string; matchKeys: string[] }> = [
     { key: "prospeccao", label: "Oportunidade", matchKeys: ["prospeccao", "qualificacao"] },
@@ -95,29 +139,55 @@ const Opportunities = () => {
         </Button>
       </div>
 
-      {/* Status Columns */}
+      {/* Kanban columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
         {statuses.map((status) => {
           const statusOpps = opportunities.filter((opp) => status.matchKeys.includes(opp.status));
+          const isOver = dragOverColumn === status.key;
+
           return (
-            <div key={status.key} className="space-y-3">
+            <div
+              key={status.key}
+              className={cn(
+                "space-y-3 rounded-xl p-2 -m-2 transition-colors duration-150",
+                isOver && "bg-primary/5 ring-2 ring-primary/30 ring-inset"
+              )}
+              onDragOver={(e) => handleDragOver(e, status.key)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status)}
+            >
               <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
                 <h3 className="font-semibold text-sm">{status.label}</h3>
                 <span className="text-xs bg-background px-2 py-1 rounded-md font-medium">
                   {statusOpps.length}
                 </span>
               </div>
-              
-              <div className="space-y-3">
+
+              <div className={cn("space-y-3 min-h-[60px]", isOver && "pb-3")}>
                 {statusOpps.map((opp) => (
-                  <OpportunityCard 
-                    key={opp.id} 
-                    {...opp} 
-                    onEdit={openEditDialog}
-                    onDelete={handleDeleteOpportunity}
-                    onConvertToProject={handleConvertToProject}
-                  />
+                  <div
+                    key={opp.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, opp.id)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "cursor-grab active:cursor-grabbing transition-opacity duration-150",
+                      draggedId === opp.id && "opacity-40"
+                    )}
+                  >
+                    <OpportunityCard
+                      {...opp}
+                      onEdit={openEditDialog}
+                      onDelete={handleDeleteOpportunity}
+                      onConvertToProject={handleConvertToProject}
+                    />
+                  </div>
                 ))}
+
+                {/* Drop placeholder when dragging over an empty or non-source column */}
+                {isOver && draggedId && !statusOpps.find((o) => o.id === draggedId) && (
+                  <div className="h-16 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5" />
+                )}
               </div>
             </div>
           );
