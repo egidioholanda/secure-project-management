@@ -168,7 +168,7 @@ const Opportunities = () => {
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, status)}
             >
-              <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
+              <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg sticky top-16 z-10 shadow-sm">
                 <h3 className="font-semibold text-sm">{status.label}</h3>
                 <span className="text-xs bg-background px-2 py-1 rounded-md font-medium">
                   {statusOpps.length}
