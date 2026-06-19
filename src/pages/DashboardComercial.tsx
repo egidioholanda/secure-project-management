@@ -1,16 +1,31 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useOpportunities } from "@/hooks/useOpportunities";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
   DollarSign, TrendingUp, Target, Award, ArrowRight,
-  Users, LayoutGrid, Package, Wrench,
+  Users, LayoutGrid, Package, Wrench, Filter, X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -26,6 +41,17 @@ const STAGE_CONFIG = [
 ];
 
 const TYPE_COLORS = ["#6366f1", "#3b82f6", "#f59e0b", "#f97316", "#10b981", "#ec4899", "#06b6d4"];
+const ALL_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Sistema Integrado", "Automação"];
+
+const PERIOD_OPTIONS = [
+  { value: "all",     label: "Todos os períodos" },
+  { value: "month",   label: "Este mês" },
+  { value: "3months", label: "Últimos 3 meses" },
+  { value: "6months", label: "Últimos 6 meses" },
+  { value: "year",    label: "Este ano" },
+];
+
+const WON_STATUSES = ["ganha", "faturado_produto", "faturado_servico"];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,6 +69,15 @@ const formatCurrency = (value: number) => {
 
 const formatCurrencyFull = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+
+const getDateThreshold = (period: string): Date | null => {
+  const now = new Date();
+  if (period === "month")   return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
+  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
+  if (period === "year")    return new Date(now.getFullYear(), 0, 1);
+  return null;
+};
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -102,36 +137,73 @@ const CurrencyTooltip = ({ active, payload, label }: any) => {
 const DashboardComercial = () => {
   const { opportunities, loading } = useOpportunities();
 
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [filterPeriod, setFilterPeriod]           = useState("all");
+  const [filterTypes, setFilterTypes]             = useState<string[]>([]);
+  const [filterResponsibles, setFilterResponsibles] = useState<string[]>([]);
+  const [filterStages, setFilterStages]           = useState<string[]>([]);
+
+  const toggleArr = <T,>(arr: T[], val: T): T[] =>
+    arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
+
+  const activeFilterCount = filterTypes.length + filterResponsibles.length + filterStages.length +
+    (filterPeriod !== "all" ? 1 : 0);
+
+  const clearFilters = () => {
+    setFilterPeriod("all");
+    setFilterTypes([]);
+    setFilterResponsibles([]);
+    setFilterStages([]);
+  };
+
+  // Dynamic lists
+  const responsibleOptions = useMemo(() => {
+    const s = new Set(opportunities.map((o) => o.responsible).filter(Boolean));
+    return Array.from(s).sort();
+  }, [opportunities]);
+
+  // ── Filtered opportunities ────────────────────────────────────────────────
+  const filteredOpps = useMemo(() => {
+    const threshold = getDateThreshold(filterPeriod);
+    return opportunities.filter((o) => {
+      if (threshold && new Date(o.createdAtIso) < threshold) return false;
+      if (filterTypes.length > 0 && !filterTypes.includes(o.type)) return false;
+      if (filterResponsibles.length > 0 && !filterResponsibles.includes(o.responsible)) return false;
+      if (filterStages.length > 0) {
+        const stage = STAGE_CONFIG.find((s) => s.matchKeys.includes(o.status));
+        if (!stage || !filterStages.includes(stage.key)) return false;
+      }
+      return true;
+    });
+  }, [opportunities, filterPeriod, filterTypes, filterResponsibles, filterStages]);
+
   // ── Core aggregations ─────────────────────────────────────────────────────
 
-  const WON_STATUSES = ["ganha", "faturado_produto", "faturado_servico"];
-  const won    = useMemo(() => opportunities.filter((o) => WON_STATUSES.includes(o.status)), [opportunities]);
-  const active = useMemo(() => opportunities.filter((o) => !WON_STATUSES.includes(o.status)), [opportunities]);
+  const won    = useMemo(() => filteredOpps.filter((o) => WON_STATUSES.includes(o.status)), [filteredOpps]);
+  const active = useMemo(() => filteredOpps.filter((o) => !WON_STATUSES.includes(o.status)), [filteredOpps]);
 
-  const pipelineValue    = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
-  const wonValue         = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
+  const pipelineValue        = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
+  const wonValue             = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
   const wonProductValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.productValue), 0), [won]);
   const wonServiceValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [won]);
   const pipelineProductValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.productValue), 0), [active]);
   const pipelineServiceValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [active]);
-  const conversionRate   = opportunities.length > 0 ? Math.round((won.length / opportunities.length) * 100) : 0;
-  const ticketMedio      = won.length > 0 ? wonValue / won.length : 0;
+  const conversionRate       = filteredOpps.length > 0 ? Math.round((won.length / filteredOpps.length) * 100) : 0;
+  const ticketMedio          = won.length > 0 ? wonValue / won.length : 0;
 
   // ── Funnel by value ───────────────────────────────────────────────────────
-
   const funnelData = useMemo(() =>
     STAGE_CONFIG.map((stage) => {
-      const opps  = opportunities.filter((o) => stage.matchKeys.includes(o.status));
+      const opps  = filteredOpps.filter((o) => stage.matchKeys.includes(o.status));
       const value = opps.reduce((s, o) => s + parseBRL(o.value), 0);
       return { ...stage, count: opps.length, value };
     }),
-    [opportunities]
+    [filteredOpps]
   );
 
   const maxFunnelValue = Math.max(...funnelData.map((s) => s.value), 1);
 
   // ── By responsible ────────────────────────────────────────────────────────
-
   const responsibleData = useMemo(() => {
     const map: Record<string, number> = {};
     active.forEach((o) => {
@@ -145,10 +217,9 @@ const DashboardComercial = () => {
   }, [active]);
 
   // ── By type (pie) ─────────────────────────────────────────────────────────
-
   const typeData = useMemo(() => {
     const map: Record<string, number> = {};
-    opportunities.forEach((o) => {
+    filteredOpps.forEach((o) => {
       const t = o.type || "Outros";
       map[t] = (map[t] || 0) + 1;
     });
@@ -156,19 +227,17 @@ const DashboardComercial = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [opportunities]);
+  }, [filteredOpps]);
 
   // ── Top opportunities by value ────────────────────────────────────────────
-
   const topOpps = useMemo(() =>
-    [...opportunities]
+    [...filteredOpps]
       .sort((a, b) => parseBRL(b.value) - parseBRL(a.value))
       .slice(0, 8),
-    [opportunities]
+    [filteredOpps]
   );
 
   // ── Skeleton ──────────────────────────────────────────────────────────────
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -189,10 +258,10 @@ const DashboardComercial = () => {
     );
   }
 
-  const empty = opportunities.length === 0;
+  const empty = filteredOpps.length === 0;
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === filterPeriod)?.label;
 
   // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="space-y-6">
 
@@ -211,6 +280,125 @@ const DashboardComercial = () => {
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Button>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Period select */}
+        <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+          <SelectTrigger className="h-9 w-48 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_OPTIONS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* More filters popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 h-9">
+              <Filter className="w-3.5 h-3.5" />
+              Filtros
+              {(filterTypes.length + filterResponsibles.length + filterStages.length) > 0 && (
+                <Badge className="ml-1 h-4 px-1.5 text-xs">
+                  {filterTypes.length + filterResponsibles.length + filterStages.length}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-4" align="start">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold">Filtros</p>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1 text-muted-foreground" onClick={clearFilters}>
+                  <X className="w-3 h-3" /> Limpar todos
+                </Button>
+              )}
+            </div>
+
+            {/* Etapa */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Etapa</p>
+              {STAGE_CONFIG.map((s) => (
+                <div key={s.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`stage-${s.key}`}
+                    checked={filterStages.includes(s.key)}
+                    onCheckedChange={() => setFilterStages((p) => toggleArr(p, s.key))}
+                  />
+                  <Label htmlFor={`stage-${s.key}`} className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    {s.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            <Separator className="my-3" />
+
+            {/* Tipo */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tipo de Projeto</p>
+              {ALL_TYPES.map((t) => (
+                <div key={t} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`type-${t}`}
+                    checked={filterTypes.includes(t)}
+                    onCheckedChange={() => setFilterTypes((p) => toggleArr(p, t))}
+                  />
+                  <Label htmlFor={`type-${t}`} className="text-sm font-normal cursor-pointer">{t}</Label>
+                </div>
+              ))}
+            </div>
+
+            {responsibleOptions.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Responsável</p>
+                  {responsibleOptions.map((r) => (
+                    <div key={r} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`resp-${r}`}
+                        checked={filterResponsibles.includes(r)}
+                        onCheckedChange={() => setFilterResponsibles((p) => toggleArr(p, r))}
+                      />
+                      <Label htmlFor={`resp-${r}`} className="text-sm font-normal cursor-pointer">{r}</Label>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Active chips */}
+        {filterPeriod !== "all" && (
+          <Badge variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterPeriod("all")}>
+            {periodLabel} <X className="w-3 h-3" />
+          </Badge>
+        )}
+        {filterStages.map((k) => {
+          const s = STAGE_CONFIG.find((x) => x.key === k);
+          return s ? (
+            <Badge key={k} variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterStages((p) => p.filter((x) => x !== k))}>
+              {s.label} <X className="w-3 h-3" />
+            </Badge>
+          ) : null;
+        })}
+        {filterTypes.map((t) => (
+          <Badge key={t} variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterTypes((p) => p.filter((x) => x !== t))}>
+            {t} <X className="w-3 h-3" />
+          </Badge>
+        ))}
+        {filterResponsibles.map((r) => (
+          <Badge key={r} variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterResponsibles((p) => p.filter((x) => x !== r))}>
+            {r.split(" ")[0]} <X className="w-3 h-3" />
+          </Badge>
+        ))}
       </div>
 
       {/* ── KPI strip ── */}
@@ -233,7 +421,7 @@ const DashboardComercial = () => {
           icon={TrendingUp}
           label="Taxa de Conversão"
           value={`${conversionRate}%`}
-          sub={`${won.length} de ${opportunities.length} oportunidades`}
+          sub={`${won.length} de ${filteredOpps.length} oportunidades`}
           color="text-amber-500"
         />
         <KpiCard
@@ -257,53 +445,28 @@ const DashboardComercial = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide w-32"></th>
-                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Em Venda (pipeline)
-                  </th>
-                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-8">
-                    Faturado
-                  </th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Em Venda (pipeline)</th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-8">Faturado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 <tr>
-                  <td className="py-3 flex items-center gap-2 font-medium">
-                    <Package className="w-3.5 h-3.5 text-violet-500" />
-                    Produto
-                  </td>
-                  <td className="py-3 text-right tabular-nums text-violet-500 font-semibold">
-                    {pipelineProductValue > 0 ? formatCurrencyFull(pipelineProductValue) : "—"}
-                  </td>
-                  <td className="py-3 text-right tabular-nums text-violet-600 font-bold pl-8">
-                    {wonProductValue > 0 ? formatCurrencyFull(wonProductValue) : "—"}
-                  </td>
+                  <td className="py-3 flex items-center gap-2 font-medium"><Package className="w-3.5 h-3.5 text-violet-500" />Produto</td>
+                  <td className="py-3 text-right tabular-nums text-violet-500 font-semibold">{pipelineProductValue > 0 ? formatCurrencyFull(pipelineProductValue) : "—"}</td>
+                  <td className="py-3 text-right tabular-nums text-violet-600 font-bold pl-8">{wonProductValue > 0 ? formatCurrencyFull(wonProductValue) : "—"}</td>
                 </tr>
                 <tr>
-                  <td className="py-3 flex items-center gap-2 font-medium">
-                    <Wrench className="w-3.5 h-3.5 text-blue-500" />
-                    Serviço
-                  </td>
-                  <td className="py-3 text-right tabular-nums text-blue-500 font-semibold">
-                    {pipelineServiceValue > 0 ? formatCurrencyFull(pipelineServiceValue) : "—"}
-                  </td>
-                  <td className="py-3 text-right tabular-nums text-blue-600 font-bold pl-8">
-                    {wonServiceValue > 0 ? formatCurrencyFull(wonServiceValue) : "—"}
-                  </td>
+                  <td className="py-3 flex items-center gap-2 font-medium"><Wrench className="w-3.5 h-3.5 text-blue-500" />Serviço</td>
+                  <td className="py-3 text-right tabular-nums text-blue-500 font-semibold">{pipelineServiceValue > 0 ? formatCurrencyFull(pipelineServiceValue) : "—"}</td>
+                  <td className="py-3 text-right tabular-nums text-blue-600 font-bold pl-8">{wonServiceValue > 0 ? formatCurrencyFull(wonServiceValue) : "—"}</td>
                 </tr>
                 <tr className="border-t-2 border-border">
-                  <td className="py-3 flex items-center gap-2 font-bold text-foreground">
-                    <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
-                    Total
-                  </td>
+                  <td className="py-3 flex items-center gap-2 font-bold text-foreground"><DollarSign className="w-3.5 h-3.5 text-muted-foreground" />Total</td>
                   <td className="py-3 text-right tabular-nums font-bold text-foreground">
-                    {(pipelineProductValue + pipelineServiceValue) > 0
-                      ? formatCurrencyFull(pipelineProductValue + pipelineServiceValue)
-                      : "—"}
+                    {(pipelineProductValue + pipelineServiceValue) > 0 ? formatCurrencyFull(pipelineProductValue + pipelineServiceValue) : "—"}
                   </td>
                   <td className="py-3 text-right tabular-nums font-bold text-success pl-8">
-                    {(wonProductValue + wonServiceValue) > 0
-                      ? formatCurrencyFull(wonProductValue + wonServiceValue)
-                      : "—"}
+                    {(wonProductValue + wonServiceValue) > 0 ? formatCurrencyFull(wonProductValue + wonServiceValue) : "—"}
                   </td>
                 </tr>
               </tbody>
@@ -317,9 +480,7 @@ const DashboardComercial = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold">Funil por Valor</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Distribuição do valor total por etapa do pipeline
-            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">Distribuição do valor total por etapa do pipeline</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Total (ativo + faturado)</p>
@@ -329,7 +490,7 @@ const DashboardComercial = () => {
 
         {empty ? (
           <div className="h-40 flex items-center justify-center text-muted-foreground">
-            Nenhuma oportunidade cadastrada
+            Nenhuma oportunidade encontrada
           </div>
         ) : (
           <div className="space-y-4">
@@ -339,40 +500,25 @@ const DashboardComercial = () => {
                 : 0;
               return (
                 <div key={stage.key} className="flex items-center gap-4">
-                  {/* Label */}
-                  <div className="w-36 shrink-0 flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground leading-tight">
-                      {stage.label}
-                    </span>
+                  <div className="w-40 shrink-0 flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground leading-tight">{stage.label}</span>
                   </div>
-
-                  {/* Count badge */}
-                  <div
-                    className="w-8 shrink-0 text-center text-xs font-bold rounded-full py-0.5"
-                    style={{ backgroundColor: `${stage.color}20`, color: stage.color }}
-                  >
+                  <div className="w-8 shrink-0 text-center text-xs font-bold rounded-full py-0.5"
+                    style={{ backgroundColor: `${stage.color}20`, color: stage.color }}>
                     {stage.count}
                   </div>
-
-                  {/* Value bar */}
                   <div className="flex-1 h-9 bg-muted/50 rounded-lg overflow-hidden">
                     {stage.count === 0 ? (
                       <div className="h-full flex items-center px-3">
                         <span className="text-xs text-muted-foreground">Sem oportunidades</span>
                       </div>
                     ) : (
-                      <div
-                        className="h-full rounded-lg flex items-center px-3 transition-all duration-700"
-                        style={{ width: `${barPct}%`, backgroundColor: stage.color }}
-                      >
-                        <span className="text-white text-xs font-semibold truncate">
-                          {formatCurrency(stage.value)}
-                        </span>
+                      <div className="h-full rounded-lg flex items-center px-3 transition-all duration-700"
+                        style={{ width: `${barPct}%`, backgroundColor: stage.color }}>
+                        <span className="text-white text-xs font-semibold truncate">{formatCurrency(stage.value)}</span>
                       </div>
                     )}
                   </div>
-
-                  {/* Value label */}
                   <div className="w-20 shrink-0 text-right">
                     <p className="text-sm font-bold" style={{ color: stage.count > 0 ? stage.color : undefined }}>
                       {stage.count > 0 ? formatCurrency(stage.value) : "—"}
@@ -381,8 +527,6 @@ const DashboardComercial = () => {
                 </div>
               );
             })}
-
-            {/* Conversion rate between stages */}
             <div className="flex gap-2 pt-2 justify-center flex-wrap">
               {funnelData.slice(0, -1).map((stage, i) => {
                 const next = funnelData[i + 1];
@@ -403,93 +547,41 @@ const DashboardComercial = () => {
 
       {/* ── Por Responsável + Por Tipo ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Por Responsável */}
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-5">
             <Users className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Pipeline por Responsável</h2>
           </div>
           {responsibleData.length === 0 ? (
-            <div className="h-52 flex items-center justify-center text-muted-foreground">
-              Nenhuma oportunidade ativa
-            </div>
+            <div className="h-52 flex items-center justify-center text-muted-foreground">Nenhuma oportunidade ativa</div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={responsibleData}
-                layout="vertical"
-                margin={{ left: 0, right: 24, top: 4, bottom: 4 }}
-              >
+              <BarChart data={responsibleData} layout="vertical" margin={{ left: 0, right: 24, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  type="number"
-                  tickFormatter={(v) => formatCurrency(v)}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={60}
-                />
+                <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={60} />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Bar
-                  dataKey="value"
-                  name="Pipeline"
-                  fill="hsl(var(--primary))"
-                  radius={[0, 6, 6, 0]}
-                  maxBarSize={28}
-                />
+                <Bar dataKey="value" name="Pipeline" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </Card>
 
-        {/* Por Tipo */}
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Distribuição por Tipo</h2>
           </div>
           {typeData.length === 0 ? (
-            <div className="h-52 flex items-center justify-center text-muted-foreground">
-              Nenhuma oportunidade cadastrada
-            </div>
+            <div className="h-52 flex items-center justify-center text-muted-foreground">Nenhuma oportunidade encontrada</div>
           ) : (
             <ResponsiveContainer width="100%" height={236}>
               <PieChart>
-                <Pie
-                  data={typeData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  dataKey="value"
-                  strokeWidth={0}
-                >
-                  {typeData.map((_, i) => (
-                    <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
-                  ))}
+                <Pie data={typeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                  {typeData.map((_, i) => <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip
-                  formatter={(v: number, name: string) => [
-                    `${v} oportunidade${v !== 1 ? "s" : ""}`,
-                    name,
-                  ]}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value) => (
-                    <span className="text-sm text-foreground">{value}</span>
-                  )}
-                />
+                <Tooltip formatter={(v: number) => [`${v} oportunidade${v !== 1 ? "s" : ""}`, ""]} />
+                <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-sm text-foreground">{value}</span>} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -504,80 +596,49 @@ const DashboardComercial = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Ordenadas por valor decrescente</p>
           </div>
           <Button asChild variant="ghost" size="sm" className="gap-1 text-primary">
-            <Link to="/oportunidades">
-              Ver todas <ArrowRight className="w-3 h-3" />
-            </Link>
+            <Link to="/oportunidades">Ver todas <ArrowRight className="w-3 h-3" /></Link>
           </Button>
         </div>
 
         {empty ? (
-          <div className="py-12 text-center text-muted-foreground">
-            Nenhuma oportunidade cadastrada
-          </div>
+          <div className="py-12 text-center text-muted-foreground">Nenhuma oportunidade encontrada</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Oportunidade
-                  </th>
-                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden md:table-cell">
-                    Cliente
-                  </th>
-                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
-                    Responsável
-                  </th>
-                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Valor
-                  </th>
-                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-4">
-                    Etapa
-                  </th>
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Oportunidade</th>
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden md:table-cell">Cliente</th>
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Responsável</th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Valor</th>
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-4">Etapa</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {topOpps.map((opp, i) => {
                   const stage = STAGE_CONFIG.find((s) => s.matchKeys.includes(opp.status));
                   return (
-                    <tr key={i} className="hover:bg-muted/30 transition-colors group">
+                    <tr key={i} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3.5 pr-4">
                         <p className="font-medium leading-tight">{opp.title}</p>
                         <p className="text-xs text-muted-foreground md:hidden mt-0.5">{opp.client}</p>
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground hidden md:table-cell">
-                        {opp.client}
-                      </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground hidden lg:table-cell">
-                        {opp.responsible || "—"}
-                      </td>
+                      <td className="py-3.5 pr-4 text-muted-foreground hidden md:table-cell">{opp.client}</td>
+                      <td className="py-3.5 pr-4 text-muted-foreground hidden lg:table-cell">{opp.responsible || "—"}</td>
                       <td className="py-3.5 pr-4 text-right">
                         <p className="font-bold tabular-nums">{opp.value || "—"}</p>
                         {(opp.productValue || opp.serviceValue) && (
                           <div className="flex gap-2 justify-end mt-0.5">
-                            {opp.productValue && (
-                              <span className="text-xs text-violet-500 tabular-nums">
-                                P: {formatCurrency(parseBRL(opp.productValue))}
-                              </span>
-                            )}
-                            {opp.serviceValue && (
-                              <span className="text-xs text-blue-500 tabular-nums">
-                                S: {formatCurrency(parseBRL(opp.serviceValue))}
-                              </span>
-                            )}
+                            {opp.productValue && <span className="text-xs text-violet-500 tabular-nums">P: {formatCurrency(parseBRL(opp.productValue))}</span>}
+                            {opp.serviceValue && <span className="text-xs text-blue-500 tabular-nums">S: {formatCurrency(parseBRL(opp.serviceValue))}</span>}
                           </div>
                         )}
                       </td>
                       <td className="py-3.5 pl-4">
                         {stage && (
-                          <span
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
-                            style={{ backgroundColor: `${stage.color}18`, color: stage.color }}
-                          >
-                            <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: stage.color }}
-                            />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
+                            style={{ backgroundColor: `${stage.color}18`, color: stage.color }}>
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
                             {stage.label}
                           </span>
                         )}

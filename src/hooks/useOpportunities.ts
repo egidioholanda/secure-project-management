@@ -26,6 +26,7 @@ export interface Opportunity {
     | "ganha"
     | "faturado_produto"
     | "faturado_servico";
+  createdAtIso: string;
   description?: string;
 }
 
@@ -75,6 +76,7 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
     addSuffix: false,
     locale: ptBR,
   }),
+  createdAtIso: db.created_at,
   status: db.status as Opportunity["status"],
 });
 
