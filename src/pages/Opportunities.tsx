@@ -56,12 +56,11 @@ const Opportunities = () => {
     }
   };
 
-  const statuses = [
-    { key: "prospeccao", label: "Prospecção" },
-    { key: "qualificacao", label: "Qualificação" },
-    { key: "proposta", label: "Proposta Enviada" },
-    { key: "negociacao", label: "Negociação" },
-    { key: "ganha", label: "Ganha" },
+  const statuses: Array<{ key: string; label: string; matchKeys: string[] }> = [
+    { key: "prospeccao", label: "Oportunidade", matchKeys: ["prospeccao", "qualificacao"] },
+    { key: "proposta", label: "Proposta Enviada", matchKeys: ["proposta"] },
+    { key: "negociacao", label: "Pedido feito", matchKeys: ["negociacao"] },
+    { key: "ganha", label: "Pedido Faturado", matchKeys: ["ganha"] },
   ];
 
   if (loading) {
@@ -97,9 +96,9 @@ const Opportunities = () => {
       </div>
 
       {/* Status Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
         {statuses.map((status) => {
-          const statusOpps = opportunities.filter((opp) => opp.status === status.key);
+          const statusOpps = opportunities.filter((opp) => status.matchKeys.includes(opp.status));
           return (
             <div key={status.key} className="space-y-3">
               <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">

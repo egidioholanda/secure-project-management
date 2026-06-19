@@ -25,11 +25,11 @@ interface OpportunityCardProps {
 }
 
 const statusConfig = {
-  prospeccao: { label: "Prospecção", color: "bg-muted text-muted-foreground" },
-  qualificacao: { label: "Qualificação", color: "bg-primary/10 text-primary" },
+  prospeccao: { label: "Oportunidade", color: "bg-muted text-muted-foreground" },
+  qualificacao: { label: "Oportunidade", color: "bg-muted text-muted-foreground" },
   proposta: { label: "Proposta Enviada", color: "bg-accent/10 text-accent" },
-  negociacao: { label: "Negociação", color: "bg-warning/10 text-warning" },
-  ganha: { label: "Ganha", color: "bg-success/10 text-success" },
+  negociacao: { label: "Pedido feito", color: "bg-warning/10 text-warning" },
+  ganha: { label: "Pedido Faturado", color: "bg-success/10 text-success" },
   perdida: { label: "Perdida", color: "bg-destructive/10 text-destructive" },
 };
 

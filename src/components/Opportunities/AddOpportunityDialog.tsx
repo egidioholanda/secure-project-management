@@ -213,11 +213,10 @@ export function AddOpportunityDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="prospeccao">Prospecção</SelectItem>
-                <SelectItem value="qualificacao">Qualificação</SelectItem>
+                <SelectItem value="prospeccao">Oportunidade</SelectItem>
                 <SelectItem value="proposta">Proposta Enviada</SelectItem>
-                <SelectItem value="negociacao">Negociação</SelectItem>
-                <SelectItem value="ganha">Ganha</SelectItem>
+                <SelectItem value="negociacao">Pedido feito</SelectItem>
+                <SelectItem value="ganha">Pedido Faturado</SelectItem>
               </SelectContent>
             </Select>
           </div>

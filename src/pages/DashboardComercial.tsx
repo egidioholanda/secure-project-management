@@ -13,14 +13,14 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const STAGE_LABELS: Record<string, string> = {
-  prospeccao: "Prospecção",
-  qualificacao: "Qualificação",
+  prospeccao: "Oportunidade",
+  qualificacao: "Oportunidade",
   proposta: "Proposta",
-  negociacao: "Negociação",
-  ganha: "Ganha",
+  negociacao: "Pedido feito",
+  ganha: "Pedido Faturado",
 };
 
-const STAGE_ORDER = ["prospeccao", "qualificacao", "proposta", "negociacao", "ganha"];
+const STAGE_ORDER = ["prospeccao", "proposta", "negociacao", "ganha"];
 
 const STAGE_COLORS = ["#8b5cf6", "#3b82f6", "#f59e0b", "#f97316", "#10b981"];
 
@@ -405,7 +405,7 @@ const DashboardComercial = () => {
               </div>
               <div className="bg-primary/8 border border-primary/20 rounded-xl p-4">
                 <p className="text-2xl font-bold text-primary">{active.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Em Negociação</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Em andamento</p>
                 <p className="text-xs font-semibold text-primary mt-1">{formatCurrency(pipelineValue)}</p>
               </div>
             </div>
