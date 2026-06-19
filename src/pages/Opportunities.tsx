@@ -19,6 +19,7 @@ const Opportunities = () => {
   } = useOpportunities();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
+  const [duplicatingOpportunity, setDuplicatingOpportunity] = useState<Opportunity | null>(null);
 
   // Drag and drop state
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -40,7 +41,17 @@ const Opportunities = () => {
   const openEditDialog = (id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (opp) {
+      setDuplicatingOpportunity(null);
       setEditingOpportunity(opp);
+      setIsAddDialogOpen(true);
+    }
+  };
+
+  const openDuplicateDialog = (id: string) => {
+    const opp = opportunities.find((o) => o.id === id);
+    if (opp) {
+      setEditingOpportunity(null);
+      setDuplicatingOpportunity(opp);
       setIsAddDialogOpen(true);
     }
   };
@@ -179,6 +190,7 @@ const Opportunities = () => {
                     <OpportunityCard
                       {...opp}
                       onEdit={openEditDialog}
+                      onDuplicate={openDuplicateDialog}
                       onDelete={handleDeleteOpportunity}
                       onConvertToProject={handleConvertToProject}
                     />
@@ -199,11 +211,15 @@ const Opportunities = () => {
         open={isAddDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
-          if (!open) setEditingOpportunity(null);
+          if (!open) {
+            setEditingOpportunity(null);
+            setDuplicatingOpportunity(null);
+          }
         }}
         onAdd={handleAddOpportunity}
         onEdit={handleEditOpportunity}
         editingOpportunity={editingOpportunity}
+        duplicatingOpportunity={duplicatingOpportunity}
       />
     </div>
   );

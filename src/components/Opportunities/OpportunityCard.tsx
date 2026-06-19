@@ -1,4 +1,4 @@
-import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban, Package, Wrench } from "lucide-react";
+import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban, Package, Wrench, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,6 +32,7 @@ interface OpportunityCardProps {
     | "faturado_servico"
     | "perdida";
   onEdit?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onConvertToProject?: (id: string) => void;
 }
@@ -62,6 +63,7 @@ export const OpportunityCard = ({
   createdAt,
   status,
   onEdit,
+  onDuplicate,
   onDelete,
   onConvertToProject,
 }: OpportunityCardProps) => {
@@ -87,6 +89,10 @@ export const OpportunityCard = ({
             <DropdownMenuItem onClick={() => onEdit?.(id)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDuplicate?.(id)}>
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onConvertToProject?.(id)}>
               <FolderKanban className="w-4 h-4 mr-2" />

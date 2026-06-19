@@ -27,6 +27,7 @@ interface AddOpportunityDialogProps {
   onAdd: (opportunity: Omit<Opportunity, "id" | "createdAt">) => void;
   onEdit?: (opportunity: Opportunity) => void;
   editingOpportunity?: Opportunity | null;
+  duplicatingOpportunity?: Opportunity | null;
 }
 
 const parseBRLVal = (raw: string) => {
@@ -43,6 +44,7 @@ export function AddOpportunityDialog({
   onAdd,
   onEdit,
   editingOpportunity,
+  duplicatingOpportunity,
 }: AddOpportunityDialogProps) {
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
@@ -52,8 +54,10 @@ export function AddOpportunityDialog({
   const [responsible, setResponsible] = useState("");
   const [status, setStatus] = useState<Opportunity["status"]>("prospeccao");
   const [description, setDescription] = useState("");
+  const [originalTitle, setOriginalTitle] = useState("");
 
   const isEditing = !!editingOpportunity;
+  const isDuplicating = !!duplicatingOpportunity;
 
   const totalValue = useMemo(() => {
     const prod = parseBRLVal(productValue);
@@ -65,24 +69,23 @@ export function AddOpportunityDialog({
   }, [productValue, serviceValue]);
 
   useEffect(() => {
-    if (editingOpportunity) {
-      setTitle(editingOpportunity.title);
-      setClient(editingOpportunity.client);
-      // Prefer split values; fall back to placing legacy value in product field
+    const source = editingOpportunity ?? duplicatingOpportunity;
+    if (source) {
+      setTitle(source.title);
+      setClient(source.client);
       setProductValue(
-        editingOpportunity.productValue
-          ? stripPrefix(editingOpportunity.productValue)
-          : stripPrefix(editingOpportunity.value)
+        source.productValue ? stripPrefix(source.productValue) : stripPrefix(source.value)
       );
-      setServiceValue(stripPrefix(editingOpportunity.serviceValue || ""));
-      setType(editingOpportunity.type);
-      setResponsible(editingOpportunity.responsible);
-      setStatus(editingOpportunity.status);
-      setDescription(editingOpportunity.description || "");
+      setServiceValue(stripPrefix(source.serviceValue || ""));
+      setType(source.type);
+      setResponsible(source.responsible);
+      setStatus(source.status);
+      setDescription(source.description || "");
+      if (duplicatingOpportunity) setOriginalTitle(source.title);
     } else {
       resetForm();
     }
-  }, [editingOpportunity, open]);
+  }, [editingOpportunity, duplicatingOpportunity, open]);
 
   const resetForm = () => {
     setTitle("");
@@ -93,6 +96,7 @@ export function AddOpportunityDialog({
     setResponsible("");
     setStatus("prospeccao");
     setDescription("");
+    setOriginalTitle("");
   };
 
   const handleSubmit = () => {
@@ -101,35 +105,30 @@ export function AddOpportunityDialog({
       return;
     }
 
+    if (isDuplicating && title.trim() === originalTitle.trim()) {
+      toast.error("Já existe uma oportunidade com esse nome. Altere o título para salvar.");
+      return;
+    }
+
     const toValue = (raw: string) => (raw ? `R$ ${raw}` : "");
 
+    const payload = {
+      title,
+      client,
+      productValue: toValue(productValue),
+      serviceValue: toValue(serviceValue),
+      value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
+      monthlyValue: "",
+      type,
+      responsible,
+      status,
+      description,
+    };
+
     if (isEditing && onEdit && editingOpportunity) {
-      onEdit({
-        ...editingOpportunity,
-        title,
-        client,
-        productValue: toValue(productValue),
-        serviceValue: toValue(serviceValue),
-        value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
-        monthlyValue: "",
-        type,
-        responsible,
-        status,
-        description,
-      });
+      onEdit({ ...editingOpportunity, ...payload });
     } else {
-      onAdd({
-        title,
-        client,
-        productValue: toValue(productValue),
-        serviceValue: toValue(serviceValue),
-        value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
-        monthlyValue: "",
-        type,
-        responsible,
-        status,
-        description,
-      });
+      onAdd(payload);
     }
 
     resetForm();
@@ -141,11 +140,13 @@ export function AddOpportunityDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Editar Oportunidade" : "Nova Oportunidade"}
+            {isEditing ? "Editar Oportunidade" : isDuplicating ? "Duplicar Oportunidade" : "Nova Oportunidade"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Atualize os dados da oportunidade."
+              : isDuplicating
+              ? "Altere o título e ajuste os dados antes de salvar."
               : "Preencha os dados para criar uma nova oportunidade de negócio."}
           </DialogDescription>
         </DialogHeader>
