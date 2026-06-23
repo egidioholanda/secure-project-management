@@ -21,6 +21,7 @@ const statusConfig = {
   execution: { label: "Em Execução", color: "bg-accent/10 text-accent" },
   completed: { label: "Concluído", color: "bg-success/10 text-success" },
   onhold: { label: "Em Espera", color: "bg-warning/10 text-warning" },
+  stopped: { label: "Parado", color: "bg-red-500/10 text-red-500" },
 };
 
 const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) => {

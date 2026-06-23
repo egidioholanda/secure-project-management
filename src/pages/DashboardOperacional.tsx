@@ -30,6 +30,7 @@ const normalizeStatus = (status: string) => {
   if (["Planejamento", "planning"].includes(status)) return "planning";
   if (["Concluído", "completed", "concluido"].includes(status)) return "completed";
   if (["onhold", "Em Espera"].includes(status)) return "planning";
+  if (["stopped", "Parado"].includes(status)) return "other";
   return "other";
 };
 
