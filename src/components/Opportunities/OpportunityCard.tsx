@@ -154,11 +154,17 @@ export const OpportunityCard = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Badge variant="secondary" className={statusInfo.color}>
           {statusInfo.label}
         </Badge>
-        <span className="text-xs text-muted-foreground">{type}</span>
+        <div className="flex gap-1 flex-wrap justify-end">
+          {type
+            ? type.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                <span key={t} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{t}</span>
+              ))
+            : null}
+        </div>
       </div>
     </div>
   );

@@ -167,7 +167,10 @@ const DashboardComercial = () => {
     const threshold = getDateThreshold(filterPeriod);
     return opportunities.filter((o) => {
       if (threshold && new Date(o.createdAtIso) < threshold) return false;
-      if (filterTypes.length > 0 && !filterTypes.includes(o.type)) return false;
+      if (filterTypes.length > 0) {
+        const ptypes = o.type ? o.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+        if (!ptypes.some((t) => filterTypes.includes(t))) return false;
+      }
       if (filterResponsibles.length > 0 && !filterResponsibles.includes(o.responsible)) return false;
       if (filterStages.length > 0) {
         const stage = STAGE_CONFIG.find((s) => s.matchKeys.includes(o.status));
@@ -220,8 +223,8 @@ const DashboardComercial = () => {
   const typeData = useMemo(() => {
     const map: Record<string, number> = {};
     filteredOpps.forEach((o) => {
-      const t = o.type || "Outros";
-      map[t] = (map[t] || 0) + 1;
+      const ptypes = o.type ? o.type.split(",").map((t) => t.trim()).filter(Boolean) : ["Outros"];
+      ptypes.forEach((t) => { map[t] = (map[t] || 0) + 1; });
     });
     return Object.entries(map)
       .map(([name, value]) => ({ name, value }))
@@ -610,6 +613,7 @@ const DashboardComercial = () => {
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Oportunidade</th>
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden md:table-cell">Cliente</th>
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Responsável</th>
+                  <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Tipo</th>
                   <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Valor</th>
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-4">Etapa</th>
                 </tr>
@@ -625,6 +629,15 @@ const DashboardComercial = () => {
                       </td>
                       <td className="py-3.5 pr-4 text-muted-foreground hidden md:table-cell">{opp.client}</td>
                       <td className="py-3.5 pr-4 text-muted-foreground hidden lg:table-cell">{opp.responsible || "—"}</td>
+                      <td className="py-3.5 pr-4 hidden xl:table-cell">
+                        <div className="flex gap-1 flex-wrap">
+                          {opp.type
+                            ? opp.type.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                                <span key={t} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full whitespace-nowrap">{t}</span>
+                              ))
+                            : <span className="text-muted-foreground">—</span>}
+                        </div>
+                      </td>
                       <td className="py-3.5 pr-4 text-right">
                         <p className="font-bold tabular-nums">{opp.value || "—"}</p>
                         {(opp.productValue || opp.serviceValue) && (

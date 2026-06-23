@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const SERVICE_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Sistema Integrado", "Automação"];
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Opportunity } from "@/hooks/useOpportunities";
@@ -50,7 +53,7 @@ export function AddOpportunityDialog({
   const [client, setClient] = useState("");
   const [productValue, setProductValue] = useState("");
   const [serviceValue, setServiceValue] = useState("");
-  const [type, setType] = useState("");
+  const [types, setTypes] = useState<string[]>([]);
   const [responsible, setResponsible] = useState("");
   const [status, setStatus] = useState<Opportunity["status"]>("prospeccao");
   const [description, setDescription] = useState("");
@@ -80,7 +83,7 @@ export function AddOpportunityDialog({
           : hasAnySplit ? "" : stripPrefix(source.value)
       );
       setServiceValue(stripPrefix(source.serviceValue || ""));
-      setType(source.type);
+      setTypes(source.type ? source.type.split(",").map((t) => t.trim()).filter(Boolean) : []);
       setResponsible(source.responsible);
       setStatus(source.status);
       setDescription(source.description || "");
@@ -95,7 +98,7 @@ export function AddOpportunityDialog({
     setClient("");
     setProductValue("");
     setServiceValue("");
-    setType("");
+    setTypes([]);
     setResponsible("");
     setStatus("prospeccao");
     setDescription("");
@@ -103,7 +106,7 @@ export function AddOpportunityDialog({
   };
 
   const handleSubmit = () => {
-    if (!title || !client || (!productValue && !serviceValue) || !type || !responsible) {
+    if (!title || !client || (!productValue && !serviceValue) || types.length === 0 || !responsible) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -122,7 +125,7 @@ export function AddOpportunityDialog({
       serviceValue: toValue(serviceValue),
       value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
       monthlyValue: "",
-      type,
+      type: types.join(","),
       responsible,
       status,
       description,
@@ -212,31 +215,42 @@ export function AddOpportunityDialog({
 
           <Separator />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo *</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CFTV">CFTV</SelectItem>
-                  <SelectItem value="Controle de Acesso">Controle de Acesso</SelectItem>
-                  <SelectItem value="Alarme Perimetral">Alarme Perimetral</SelectItem>
-                  <SelectItem value="Sistema Integrado">Sistema Integrado</SelectItem>
-                  <SelectItem value="Automação">Automação</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-2">
+            <Label>Tipo de Serviço *</Label>
+            <div className="flex flex-wrap gap-2">
+              {SERVICE_TYPES.map((t) => {
+                const selected = types.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() =>
+                      setTypes((prev) =>
+                        selected ? prev.filter((x) => x !== t) : [...prev, t]
+                      )
+                    }
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                      selected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:border-muted-foreground"
+                    )}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="responsible">Responsável *</Label>
-              <Input
-                id="responsible"
-                placeholder="Nome do responsável"
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-              />
-            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="responsible">Responsável *</Label>
+            <Input
+              id="responsible"
+              placeholder="Nome do responsável"
+              value={responsible}
+              onChange={(e) => setResponsible(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
