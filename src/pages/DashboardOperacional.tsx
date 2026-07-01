@@ -26,14 +26,14 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const normalizeStatus = (status: string) => {
-  if (["Em Andamento", "in_progress", "execution"].includes(status)) return "ongoing";
+  if (["Em Andamento", "in_progress", "execution"].includes(status)) return "execution";
   if (["Planejamento", "planning"].includes(status)) return "planning";
   if (["Concluído", "completed", "concluido"].includes(status)) return "completed";
-  if (["onhold", "Em Espera"].includes(status)) return "planning";
-  if (["stopped", "Parado"].includes(status)) return "other";
-  if (["started_stopped", "Iniciado/Parado"].includes(status)) return "other";
-  if (["obra_civil", "Obra Civil"].includes(status)) return "other";
-  return "other";
+  if (["onhold", "Em Espera"].includes(status)) return "onhold";
+  if (["stopped", "Parado"].includes(status)) return "stopped";
+  if (["started_stopped", "Iniciado/Parado"].includes(status)) return "started_stopped";
+  if (["obra_civil", "Obra Civil"].includes(status)) return "obra_civil";
+  return "planning";
 };
 
 const parseDisplayDate = (dateStr: string): Date | null => {
@@ -46,12 +46,14 @@ const parseDisplayDate = (dateStr: string): Date | null => {
   return null;
 };
 
-const STATUS_PIE_COLORS = ["#3b82f6", "#f59e0b", "#10b981"];
-
-const STATUS_LABELS: Record<string, string> = {
-  ongoing: "Em Andamento",
-  planning: "Planejamento",
-  completed: "Concluído",
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  execution:       { label: "Em Execução",     color: "#3b82f6" },
+  planning:        { label: "Planejamento",    color: "#f59e0b" },
+  completed:       { label: "Concluído",       color: "#10b981" },
+  onhold:          { label: "Em Espera",       color: "#6366f1" },
+  stopped:         { label: "Parado",          color: "#ef4444" },
+  started_stopped: { label: "Iniciado/Parado", color: "#a855f7" },
+  obra_civil:      { label: "Obra Civil",      color: "#92400e" },
 };
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -150,25 +152,31 @@ const DashboardOperacional = () => {
     });
   }, [projectsWithMeta, lateOnly, nearDeadline, filterStatuses, filterManagers]);
 
-  const ongoing   = filteredProjects.filter((p) => p.normalized === "ongoing");
-  const planning  = filteredProjects.filter((p) => p.normalized === "planning");
-  const completed = filteredProjects.filter((p) => p.normalized === "completed");
-  const lateProjects = ongoing.filter((p) => p.isLate);
+  const execProjects      = filteredProjects.filter((p) => p.normalized === "execution");
+  const planProjects      = filteredProjects.filter((p) => p.normalized === "planning");
+  const onholdProjects    = filteredProjects.filter((p) => p.normalized === "onhold");
+  const stoppedProjects   = filteredProjects.filter((p) => p.normalized === "stopped" || p.normalized === "started_stopped");
+  const obraCivilProjects = filteredProjects.filter((p) => p.normalized === "obra_civil");
+  const completedProjects = filteredProjects.filter((p) => p.normalized === "completed");
+  const lateProjects      = execProjects.filter((p) => p.isLate);
 
   const avgProgressOngoing =
-    ongoing.length > 0
-      ? Math.round(ongoing.reduce((sum, p) => sum + p.avgProgress, 0) / ongoing.length)
+    execProjects.length > 0
+      ? Math.round(execProjects.reduce((sum, p) => sum + p.avgProgress, 0) / execProjects.length)
       : 0;
 
   const statusData = [
-    { name: "Em Andamento", value: ongoing.length },
-    { name: "Planejamento", value: planning.length },
-    { name: "Concluídos",   value: completed.length },
+    { name: "Em Execução",  value: execProjects.length,      color: "#3b82f6" },
+    { name: "Planejamento", value: planProjects.length,      color: "#f59e0b" },
+    { name: "Concluídos",   value: completedProjects.length, color: "#10b981" },
+    { name: "Em Espera",    value: onholdProjects.length,    color: "#6366f1" },
+    { name: "Parados",      value: stoppedProjects.length,   color: "#ef4444" },
+    { name: "Obra Civil",   value: obraCivilProjects.length, color: "#92400e" },
   ].filter((d) => d.value > 0);
 
   const managerData = useMemo(() => {
     const map: Record<string, number> = {};
-    ongoing.forEach((p) => {
+    execProjects.forEach((p) => {
       const key = p.displayManager || "Sem responsável";
       map[key] = (map[key] || 0) + 1;
     });
@@ -176,7 +184,7 @@ const DashboardOperacional = () => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
-  }, [ongoing]);
+  }, [execProjects]);
 
   const upcomingDeadlines = useMemo(() => {
     return filteredProjects
@@ -237,14 +245,17 @@ const DashboardOperacional = () => {
             {/* Situação */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Situação</p>
-              {(["ongoing", "planning", "completed"] as const).map((s) => (
-                <div key={s} className="flex items-center gap-2">
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <div key={key} className="flex items-center gap-2">
                   <Checkbox
-                    id={`status-${s}`}
-                    checked={filterStatuses.includes(s)}
-                    onCheckedChange={() => setFilterStatuses((p) => toggleArr(p, s))}
+                    id={`status-${key}`}
+                    checked={filterStatuses.includes(key)}
+                    onCheckedChange={() => setFilterStatuses((p) => toggleArr(p, key))}
                   />
-                  <Label htmlFor={`status-${s}`} className="text-sm font-normal cursor-pointer">{STATUS_LABELS[s]}</Label>
+                  <Label htmlFor={`status-${key}`} className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
+                    {cfg.label}
+                  </Label>
                 </div>
               ))}
             </div>
@@ -289,7 +300,7 @@ const DashboardOperacional = () => {
         {filterStatuses.map((s) => (
           <Badge key={s} variant="secondary" className="gap-1 cursor-pointer h-9 px-3"
             onClick={() => setFilterStatuses((p) => p.filter((x) => x !== s))}>
-            {STATUS_LABELS[s]} <X className="w-3 h-3" />
+            {STATUS_CONFIG[s]?.label ?? s} <X className="w-3 h-3" />
           </Badge>
         ))}
         {lateOnly && (
@@ -312,8 +323,8 @@ const DashboardOperacional = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Em Andamento" value={ongoing.length} icon={FolderKanban} gradient />
-        <MetricCard title="Para Iniciar" value={planning.length} icon={Clock} />
+        <MetricCard title="Em Execução" value={execProjects.length} icon={FolderKanban} gradient />
+        <MetricCard title="Para Iniciar" value={planProjects.length + onholdProjects.length} icon={Clock} />
         <MetricCard
           title="Com Atraso"
           value={lateProjects.length}
@@ -323,12 +334,30 @@ const DashboardOperacional = () => {
         />
         <MetricCard
           title="Concluídos"
-          value={completed.length}
+          value={completedProjects.length}
           icon={CheckCircle2}
-          change={ongoing.length > 0 ? `${avgProgressOngoing}% progresso médio` : undefined}
+          change={execProjects.length > 0 ? `${avgProgressOngoing}% progresso médio` : undefined}
           changeType="positive"
         />
       </div>
+
+      {/* Alert badges for stopped / obra civil */}
+      {(stoppedProjects.length > 0 || obraCivilProjects.length > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {stoppedProjects.length > 0 && (
+            <Badge className="bg-red-500/10 text-red-500 border-red-500/20 h-8 px-3 text-sm gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              {stoppedProjects.length} Parado{stoppedProjects.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
+          {obraCivilProjects.length > 0 && (
+            <Badge className="bg-amber-700/10 text-amber-700 border-amber-700/20 h-8 px-3 text-sm gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-700" />
+              {obraCivilProjects.length} Obra Civil
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -343,7 +372,7 @@ const DashboardOperacional = () => {
             <ResponsiveContainer width="100%" height={224}>
               <PieChart>
                 <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" strokeWidth={0}>
-                  {statusData.map((_, index) => <Cell key={index} fill={STATUS_PIE_COLORS[index % STATUS_PIE_COLORS.length]} />)}
+                  {statusData.map((d, index) => <Cell key={index} fill={d.color} />)}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
                 <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-sm text-foreground">{value}</span>} />
@@ -421,7 +450,7 @@ const DashboardOperacional = () => {
             Ver todos <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
-        {ongoing.length === 0 ? (
+        {execProjects.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">Nenhuma obra em andamento</div>
         ) : (
           <div className="overflow-x-auto">
@@ -436,7 +465,7 @@ const DashboardOperacional = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {ongoing.map((p, i) => (
+                {execProjects.map((p, i) => (
                   <tr key={i} className="hover:bg-muted/40 transition-colors">
                     <td className="py-3.5 pr-4">
                       <p className="font-medium leading-tight">{p.name}</p>
@@ -484,15 +513,15 @@ const DashboardOperacional = () => {
       </Card>
 
       {/* Obras para Iniciar */}
-      {planning.length > 0 && (
+      {planProjects.length > 0 && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-4 h-4 text-warning" />
             <h2 className="text-lg font-semibold">Obras para Iniciar</h2>
-            <Badge variant="secondary">{planning.length}</Badge>
+            <Badge variant="secondary">{planProjects.length}</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {planning.map((p, i) => (
+            {planProjects.map((p, i) => (
               <div key={i} className="rounded-xl border border-border bg-muted/30 p-4 flex flex-col gap-1.5 hover:bg-muted/60 transition-colors">
                 <p className="font-semibold text-sm leading-tight">{p.name}</p>
                 <p className="text-xs text-muted-foreground">{p.client}</p>
@@ -501,6 +530,81 @@ const DashboardOperacional = () => {
                     Início previsto: {p.endDate.toLocaleDateString("pt-BR")}
                   </p>
                 )}
+                {p.displayManager && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3 h-3" />{p.displayManager}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Em Espera */}
+      {onholdProjects.length > 0 && (
+        <Card className="p-6 border-indigo-500/20 bg-indigo-500/5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-3 h-3 rounded-full bg-indigo-500" />
+            <h2 className="text-lg font-semibold">Em Espera</h2>
+            <Badge variant="secondary">{onholdProjects.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {onholdProjects.map((p, i) => (
+              <div key={i} className="rounded-xl border border-indigo-500/20 bg-background p-4 flex flex-col gap-1.5">
+                <p className="font-semibold text-sm leading-tight">{p.name}</p>
+                <p className="text-xs text-muted-foreground">{p.client}</p>
+                {p.displayManager && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3 h-3" />{p.displayManager}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Obras Paradas */}
+      {stoppedProjects.length > 0 && (
+        <Card className="p-6 border-red-500/20 bg-red-500/5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-3 h-3 rounded-full bg-red-500" />
+            <h2 className="text-lg font-semibold">Obras Paradas</h2>
+            <Badge variant="secondary">{stoppedProjects.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {stoppedProjects.map((p, i) => (
+              <div key={i} className="rounded-xl border border-red-500/20 bg-background p-4 flex flex-col gap-1.5">
+                <p className="font-semibold text-sm leading-tight">{p.name}</p>
+                <p className="text-xs text-muted-foreground">{p.client}</p>
+                <span className="text-xs font-medium text-red-500 mt-1">
+                  {STATUS_CONFIG[p.normalized]?.label ?? p.normalized}
+                </span>
+                {p.displayManager && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3 h-3" />{p.displayManager}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Obra Civil */}
+      {obraCivilProjects.length > 0 && (
+        <Card className="p-6 border-amber-700/20 bg-amber-700/5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-3 h-3 rounded-full bg-amber-700" />
+            <h2 className="text-lg font-semibold">Obra Civil</h2>
+            <Badge variant="secondary">{obraCivilProjects.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {obraCivilProjects.map((p, i) => (
+              <div key={i} className="rounded-xl border border-amber-700/20 bg-background p-4 flex flex-col gap-1.5">
+                <p className="font-semibold text-sm leading-tight">{p.name}</p>
+                <p className="text-xs text-muted-foreground">{p.client}</p>
                 {p.displayManager && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <User className="w-3 h-3" />{p.displayManager}
