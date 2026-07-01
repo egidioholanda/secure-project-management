@@ -53,7 +53,8 @@ const STATUS_CONFIG: Record<string, { label: string; hex: string }> = {
   completed:      { label: "Concluído",     hex: "#10b981" },
   "Concluído":    { label: "Concluído",     hex: "#10b981" },
   onhold:         { label: "Em Espera",     hex: "#f59e0b" },
-  stopped:        { label: "Parado",        hex: "#ef4444" },
+  stopped:         { label: "Parado",          hex: "#ef4444" },
+  started_stopped: { label: "Iniciado/Parado", hex: "#a855f7" },
 };
 
 const ALL_STATUSES = [
@@ -61,7 +62,8 @@ const ALL_STATUSES = [
   { key: "execution",   label: "Em Execução",  hex: "#f97316" },
   { key: "completed",   label: "Concluído",    hex: "#10b981" },
   { key: "onhold",      label: "Em Espera",    hex: "#f59e0b" },
-  { key: "stopped",     label: "Parado",       hex: "#ef4444" },
+  { key: "stopped",         label: "Parado",          hex: "#ef4444" },
+  { key: "started_stopped", label: "Iniciado/Parado", hex: "#a855f7" },
 ];
 
 const CANONICAL: Record<string, string> = {
@@ -73,7 +75,8 @@ const CANONICAL: Record<string, string> = {
   completed:      "completed",
   "Concluído":    "completed",
   onhold:         "onhold",
-  stopped:        "stopped",
+  stopped:         "stopped",
+  started_stopped: "started_stopped",
 };
 
 function st(s: string) {

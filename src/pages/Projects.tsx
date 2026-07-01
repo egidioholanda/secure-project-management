@@ -18,7 +18,8 @@ const STATUS_OPTIONS = [
   { value: "execution", label: "Em Execução" },
   { value: "completed", label: "Concluído" },
   { value: "onhold",    label: "Em Espera" },
-  { value: "stopped",   label: "Parado" },
+  { value: "stopped",         label: "Parado" },
+  { value: "started_stopped", label: "Iniciado/Parado" },
 ];
 
 const ALL_STATUS_KEYS = STATUS_OPTIONS.map((s) => s.value);

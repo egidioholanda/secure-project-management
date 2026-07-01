@@ -302,6 +302,7 @@ const AddProjectDialog = ({
                   <SelectItem value="completed">Concluído</SelectItem>
                   <SelectItem value="onhold">Em Espera</SelectItem>
                   <SelectItem value="stopped">Parado</SelectItem>
+                  <SelectItem value="started_stopped">Iniciado/Parado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
