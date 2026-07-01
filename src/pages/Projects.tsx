@@ -215,6 +215,7 @@ const Projects = () => {
           onAddProject={handleAddOrUpdateProject}
           editingProject={editingProject}
           initialData={initialFormData}
+          existingProjects={projects}
         />
       </>
     );
@@ -404,6 +405,7 @@ const Projects = () => {
         onAddProject={handleAddOrUpdateProject}
         editingProject={editingProject}
         initialData={initialFormData}
+        existingProjects={projects}
       />
     </div>
   );

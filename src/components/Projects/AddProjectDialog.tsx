@@ -44,6 +44,7 @@ interface AddProjectDialogProps {
   onAddProject: (project: Project) => void;
   editingProject?: Project | null;
   initialData?: ProjectFormData | null;
+  existingProjects?: Project[];
 }
 
 const SEPARATOR = "|||";
@@ -73,6 +74,7 @@ const AddProjectDialog = ({
   onAddProject,
   editingProject,
   initialData,
+  existingProjects = [],
 }: AddProjectDialogProps) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -160,6 +162,17 @@ const AddProjectDialog = ({
     }
     if (!formData.city || !formData.state) {
       toast.error("Cidade e estado são obrigatórios");
+      return;
+    }
+
+    const nameTrimmed = formData.name.trim().toLowerCase();
+    const duplicate = existingProjects.find(
+      (p) =>
+        p.name.trim().toLowerCase() === nameTrimmed &&
+        p.id !== (editingProject?.id ?? "")
+    );
+    if (duplicate) {
+      toast.error("Já existe um projeto com esse nome. Escolha um nome diferente.");
       return;
     }
 
