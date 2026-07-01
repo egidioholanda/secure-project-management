@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { useScheduleTasks } from '@/hooks/useScheduleTasks';
@@ -53,9 +52,10 @@ const Schedules = () => {
   const [exporting, setExporting]         = useState(false);
   const [selectedTask, setSelectedTask]   = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [filterProject, setFilterProject] = useState<string>('all');
-  const [searchQuery, setSearchQuery]     = useState('');
+  const [filterProject, setFilterProject]   = useState<string>('all');
+  const [searchQuery, setSearchQuery]       = useState('');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
+  const [projectSearch, setProjectSearch]   = useState('');
 
   const [dateRange, setDateRange] = useState({
     start: startOfDay(subDays(new Date(), 7)),
@@ -80,6 +80,16 @@ const Schedules = () => {
     dbProjects.forEach((p) => { map[p.id] = p.status || 'planning'; });
     return map;
   }, [dbProjects]);
+
+  // Projetos filtrados pelos status ativos + texto digitado
+  const filteredProjectOptions = useMemo(() => {
+    const q = projectSearch.toLowerCase().trim();
+    return projectsList.filter((p) => {
+      const statusOk = activeStatuses.has(p.status || 'planning');
+      const nameOk   = !q || p.name.toLowerCase().includes(q);
+      return statusOk && nameOk;
+    });
+  }, [projectsList, activeStatuses, projectSearch]);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -116,10 +126,17 @@ const Schedules = () => {
     });
   };
 
+  const allStatusesSelected = activeStatuses.size === ALL_STATUS_VALUES.length;
+
+  const toggleAllStatuses = () => {
+    setActiveStatuses(allStatusesSelected ? new Set() : new Set(ALL_STATUS_VALUES));
+  };
+
   const clearFilters = () => {
     setActiveStatuses(new Set(ALL_STATUS_VALUES));
     setFilterProject('all');
     setSearchQuery('');
+    setProjectSearch('');
   };
 
   const hasActiveFilters =
@@ -293,9 +310,17 @@ const Schedules = () => {
 
                 {/* Status de Projeto */}
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Status do Projeto
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Status do Projeto
+                    </p>
+                    <button
+                      onClick={toggleAllStatuses}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {allStatusesSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </button>
+                  </div>
                   {PROJECT_STATUSES.map((s) => (
                     <div key={s.value} className="flex items-center gap-2">
                       <Checkbox
@@ -315,31 +340,60 @@ const Schedules = () => {
 
                 <Separator className="my-3" />
 
-                {/* Projeto específico */}
+                {/* Projeto específico — input com lista filtrada */}
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Projeto específico
                   </p>
-                  <Select value={filterProject} onValueChange={setFilterProject}>
-                    <SelectTrigger className="w-full h-8 text-sm">
-                      <SelectValue placeholder="Todos os projetos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os projetos</SelectItem>
-                      {projectsList.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: project.color }}
-                            />
-                            <span className="truncate">{project.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      placeholder="Buscar projeto..."
+                      value={projectSearch}
+                      onChange={(e) => setProjectSearch(e.target.value)}
+                      className="pl-8 pr-8 h-8 text-sm"
+                    />
+                    {projectSearch && (
+                      <button
+                        onClick={() => setProjectSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-0.5">
+                    <button
+                      onClick={() => { setFilterProject('all'); setProjectSearch(''); }}
+                      className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                        filterProject === 'all'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      Todos os projetos
+                    </button>
+                    {filteredProjectOptions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-2 py-1.5">Nenhum projeto encontrado</p>
+                    ) : (
+                      filteredProjectOptions.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setFilterProject(p.id); setProjectSearch(''); }}
+                          className={`w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 transition-colors ${
+                            filterProject === p.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-muted'
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                          <span className="truncate">{p.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
+
               </PopoverContent>
             </Popover>
 
