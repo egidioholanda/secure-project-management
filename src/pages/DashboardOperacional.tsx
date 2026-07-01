@@ -155,7 +155,8 @@ const DashboardOperacional = () => {
   const execProjects      = filteredProjects.filter((p) => p.normalized === "execution");
   const planProjects      = filteredProjects.filter((p) => p.normalized === "planning");
   const onholdProjects    = filteredProjects.filter((p) => p.normalized === "onhold");
-  const stoppedProjects   = filteredProjects.filter((p) => p.normalized === "stopped" || p.normalized === "started_stopped");
+  const stoppedProjects        = filteredProjects.filter((p) => p.normalized === "stopped");
+  const startedStoppedProjects = filteredProjects.filter((p) => p.normalized === "started_stopped");
   const obraCivilProjects = filteredProjects.filter((p) => p.normalized === "obra_civil");
   const completedProjects = filteredProjects.filter((p) => p.normalized === "completed");
   const lateProjects      = execProjects.filter((p) => p.isLate);
@@ -170,7 +171,8 @@ const DashboardOperacional = () => {
     { name: "Planejamento", value: planProjects.length,      color: "#f59e0b" },
     { name: "Concluídos",   value: completedProjects.length, color: "#10b981" },
     { name: "Em Espera",    value: onholdProjects.length,    color: "#6366f1" },
-    { name: "Parados",      value: stoppedProjects.length,   color: "#ef4444" },
+    { name: "Parados",          value: stoppedProjects.length,        color: "#ef4444" },
+    { name: "Iniciado/Parado",  value: startedStoppedProjects.length, color: "#a855f7" },
     { name: "Obra Civil",   value: obraCivilProjects.length, color: "#92400e" },
   ].filter((d) => d.value > 0);
 
@@ -342,12 +344,18 @@ const DashboardOperacional = () => {
       </div>
 
       {/* Alert badges for stopped / obra civil */}
-      {(stoppedProjects.length > 0 || obraCivilProjects.length > 0) && (
+      {(stoppedProjects.length > 0 || startedStoppedProjects.length > 0 || obraCivilProjects.length > 0) && (
         <div className="flex flex-wrap gap-2">
           {stoppedProjects.length > 0 && (
             <Badge className="bg-red-500/10 text-red-500 border-red-500/20 h-8 px-3 text-sm gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500" />
               {stoppedProjects.length} Parado{stoppedProjects.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
+          {startedStoppedProjects.length > 0 && (
+            <Badge className="bg-purple-500/10 text-purple-500 border-purple-500/20 h-8 px-3 text-sm gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-500" />
+              {startedStoppedProjects.length} Iniciado/Parado
             </Badge>
           )}
           {obraCivilProjects.length > 0 && (
@@ -581,6 +589,30 @@ const DashboardOperacional = () => {
                 <span className="text-xs font-medium text-red-500 mt-1">
                   {STATUS_CONFIG[p.normalized]?.label ?? p.normalized}
                 </span>
+                {p.displayManager && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3 h-3" />{p.displayManager}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Iniciado/Parado */}
+      {startedStoppedProjects.length > 0 && (
+        <Card className="p-6 border-purple-500/20 bg-purple-500/5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-3 h-3 rounded-full bg-purple-500" />
+            <h2 className="text-lg font-semibold">Iniciado/Parado</h2>
+            <Badge variant="secondary">{startedStoppedProjects.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {startedStoppedProjects.map((p, i) => (
+              <div key={i} className="rounded-xl border border-purple-500/20 bg-background p-4 flex flex-col gap-1.5">
+                <p className="font-semibold text-sm leading-tight">{p.name}</p>
+                <p className="text-xs text-muted-foreground">{p.client}</p>
                 {p.displayManager && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <User className="w-3 h-3" />{p.displayManager}
