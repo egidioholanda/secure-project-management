@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { addDays, subDays, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Filter, Download, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X } from 'lucide-react';
 import type { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
@@ -10,7 +10,13 @@ import { ScheduleSummary } from '@/components/Schedules/ScheduleSummary';
 import { CalendarConfigPopover } from '@/components/Schedules/CalendarConfigPopover';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { useScheduleTasks } from '@/hooks/useScheduleTasks';
 import { useProjects } from '@/hooks/useProjects';
@@ -18,6 +24,21 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { useTeams } from '@/hooks/useTeams';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
+
+// ─── Status options (sincronizado com Projects) ───────────────────────────────
+
+const PROJECT_STATUSES = [
+  { value: 'planning',        label: 'Planejamento' },
+  { value: 'execution',       label: 'Em Execução' },
+  { value: 'completed',       label: 'Concluído' },
+  { value: 'onhold',          label: 'Em Espera' },
+  { value: 'stopped',         label: 'Parado' },
+  { value: 'started_stopped', label: 'Iniciado/Parado' },
+];
+
+const ALL_STATUS_VALUES = PROJECT_STATUSES.map((s) => s.value);
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const Schedules = () => {
   const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask } =
@@ -27,15 +48,20 @@ const Schedules = () => {
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const { teams } = useTeams();
   const pdfRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const [exporting, setExporting]         = useState(false);
+  const [selectedTask, setSelectedTask]   = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [filterProject, setFilterProject] = useState<string>('all');
+  const [searchQuery, setSearchQuery]     = useState('');
+  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
 
   const [dateRange, setDateRange] = useState({
     start: startOfDay(subDays(new Date(), 7)),
     end: startOfDay(addDays(new Date(), 52)),
   });
+
+  // ── Derived data ──────────────────────────────────────────────────────────
 
   const projectsList = useMemo(() => {
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
@@ -43,13 +69,64 @@ const Schedules = () => {
       id: p.id,
       name: p.name,
       color: colors[idx % colors.length],
+      status: p.status,
     }));
   }, [dbProjects]);
 
+  // projectId → status lookup
+  const projectStatusMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    dbProjects.forEach((p) => { map[p.id] = p.status || 'planning'; });
+    return map;
+  }, [dbProjects]);
+
   const filteredTasks = useMemo(() => {
-    if (filterProject === 'all') return tasks;
-    return tasks.filter((task) => task.projectId === filterProject);
-  }, [tasks, filterProject]);
+    let result = tasks;
+
+    // Filter by selected project
+    if (filterProject !== 'all') {
+      result = result.filter((t) => t.projectId === filterProject);
+    }
+
+    // Filter by project status
+    if (activeStatuses.size < ALL_STATUS_VALUES.length) {
+      result = result.filter((t) => {
+        const status = projectStatusMap[t.projectId] || 'planning';
+        return activeStatuses.has(status);
+      });
+    }
+
+    // Search by task name or project name
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      result = result.filter(
+        (t) => t.name.toLowerCase().includes(q) || t.projectName.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery]);
+
+  const toggleStatus = (value: string) => {
+    setActiveStatuses((prev) => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setActiveStatuses(new Set(ALL_STATUS_VALUES));
+    setFilterProject('all');
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters =
+    activeStatuses.size < ALL_STATUS_VALUES.length || filterProject !== 'all';
+
+  const activeStatusCount = ALL_STATUS_VALUES.length - activeStatuses.size;
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleUpdateTask = async (updatedTask: Task) => updateTask(updatedTask);
 
@@ -95,6 +172,8 @@ const Schedules = () => {
   const goToToday = () =>
     setDateRange({ start: startOfDay(subDays(new Date(), 7)), end: startOfDay(addDays(new Date(), 52)) });
 
+  // ── Loading ───────────────────────────────────────────────────────────────
+
   if (loading || projectsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -102,6 +181,8 @@ const Schedules = () => {
       </div>
     );
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -112,6 +193,30 @@ const Schedules = () => {
 
       {/* Summary cards */}
       {filteredTasks.length > 0 && <ScheduleSummary tasks={filteredTasks} />}
+
+      {/* Search bar */}
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Buscar por tarefa ou projeto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredTasks.length} tarefa{filteredTasks.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
       {/* Toolbar */}
       <Card className="p-3">
@@ -155,25 +260,87 @@ const Schedules = () => {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={filterProject} onValueChange={setFilterProject}>
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder="Filtrar por projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os projetos</SelectItem>
-                  {projectsList.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.color }} />
-                        {project.name}
-                      </div>
-                    </SelectItem>
+            {/* Status filter popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={hasActiveFilters ? 'border-primary text-primary gap-2' : 'gap-2'}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                  {activeStatusCount > 0 && (
+                    <Badge className="h-4 px-1.5 text-xs ml-1">{activeStatusCount}</Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-4" align="end">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold">Filtros</p>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1 text-muted-foreground"
+                      onClick={clearFilters}
+                    >
+                      <X className="w-3 h-3" /> Limpar
+                    </Button>
+                  )}
+                </div>
+
+                {/* Status de Projeto */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Status do Projeto
+                  </p>
+                  {PROJECT_STATUSES.map((s) => (
+                    <div key={s.value} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`status-${s.value}`}
+                        checked={activeStatuses.has(s.value)}
+                        onCheckedChange={() => toggleStatus(s.value)}
+                      />
+                      <Label
+                        htmlFor={`status-${s.value}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {s.label}
+                      </Label>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+
+                <Separator className="my-3" />
+
+                {/* Projeto específico */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Projeto específico
+                  </p>
+                  <Select value={filterProject} onValueChange={setFilterProject}>
+                    <SelectTrigger className="w-full h-8 text-sm">
+                      <SelectValue placeholder="Todos os projetos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os projetos</SelectItem>
+                      {projectsList.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: project.color }}
+                            />
+                            <span className="truncate">{project.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             <CalendarConfigPopover config={calendarConfig} onChange={updateCalendarConfig} />
 
@@ -190,6 +357,36 @@ const Schedules = () => {
           </div>
         </div>
       </Card>
+
+      {/* Active filter chips */}
+      {(hasActiveFilters || searchQuery) && (
+        <div className="flex flex-wrap gap-2 items-center">
+          {filterProject !== 'all' && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() => setFilterProject('all')}
+            >
+              {filterLabel} <X className="w-3 h-3" />
+            </Badge>
+          )}
+          {ALL_STATUS_VALUES
+            .filter((v) => !activeStatuses.has(v))
+            .map((v) => {
+              const s = PROJECT_STATUSES.find((x) => x.value === v);
+              return s ? (
+                <Badge
+                  key={v}
+                  variant="secondary"
+                  className="gap-1 cursor-pointer opacity-60"
+                  onClick={() => toggleStatus(v)}
+                >
+                  Excluindo: {s.label} <X className="w-3 h-3" />
+                </Badge>
+              ) : null;
+            })}
+        </div>
+      )}
 
       {/* Gantt */}
       <div className="flex-1 min-h-[500px]">
