@@ -23,6 +23,7 @@ const statusConfig = {
   onhold: { label: "Em Espera", color: "bg-warning/10 text-warning" },
   stopped: { label: "Parado", color: "bg-red-500/10 text-red-500" },
   started_stopped: { label: "Iniciado/Parado", color: "bg-purple-500/10 text-purple-500" },
+  obra_civil: { label: "Obra Civil", color: "bg-amber-700/10 text-amber-700" },
 };
 
 const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) => {

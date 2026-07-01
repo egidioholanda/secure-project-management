@@ -34,6 +34,7 @@ const PROJECT_STATUSES = [
   { value: 'onhold',          label: 'Em Espera' },
   { value: 'stopped',         label: 'Parado' },
   { value: 'started_stopped', label: 'Iniciado/Parado' },
+  { value: 'obra_civil',      label: 'Obra Civil' },
 ];
 
 const ALL_STATUS_VALUES = PROJECT_STATUSES.map((s) => s.value);

@@ -303,6 +303,7 @@ const AddProjectDialog = ({
                   <SelectItem value="onhold">Em Espera</SelectItem>
                   <SelectItem value="stopped">Parado</SelectItem>
                   <SelectItem value="started_stopped">Iniciado/Parado</SelectItem>
+                  <SelectItem value="obra_civil">Obra Civil</SelectItem>
                 </SelectContent>
               </Select>
             </div>
