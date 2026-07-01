@@ -30,6 +30,7 @@ interface GanttChartProps {
   startDate: Date;
   endDate: Date;
   calendarConfig?: CalendarConfig;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 export const GanttChart = ({
@@ -42,6 +43,7 @@ export const GanttChart = ({
   startDate,
   endDate,
   calendarConfig = DEFAULT_CALENDAR_CONFIG,
+  onReorder,
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [linkingState, setLinkingState] = useState<LinkingState | null>(null);
@@ -141,6 +143,7 @@ export const GanttChart = ({
           milestoneTasks={milestoneTasks}
           selectedTaskId={dragState.taskId}
           onTaskSelect={onTaskClick}
+          onReorder={onReorder}
         />
 
         {/* Chart area */}

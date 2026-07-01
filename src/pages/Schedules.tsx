@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { addDays, subDays, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X } from 'lucide-react';
 import type { Task } from '@/types/schedule';
@@ -56,6 +56,12 @@ const Schedules = () => {
   const [searchQuery, setSearchQuery]       = useState('');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
+  const [taskOrder, setTaskOrder]           = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('secureproject:taskOrder');
+    if (saved) { try { setTaskOrder(JSON.parse(saved)); } catch {} }
+  }, []);
 
   const [dateRange, setDateRange] = useState({
     start: startOfDay(subDays(new Date(), 7)),
@@ -117,6 +123,21 @@ const Schedules = () => {
 
     return result;
   }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery]);
+
+  const orderedTasks = useMemo(() => {
+    if (taskOrder.length === 0) return filteredTasks;
+    const orderMap = new Map(taskOrder.map((id, i) => [id, i]));
+    return [...filteredTasks].sort((a, b) => {
+      const ia = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
+      const ib = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
+      return ia - ib;
+    });
+  }, [filteredTasks, taskOrder]);
+
+  const handleReorder = (orderedIds: string[]) => {
+    setTaskOrder(orderedIds);
+    localStorage.setItem('secureproject:taskOrder', JSON.stringify(orderedIds));
+  };
 
   const toggleStatus = (value: string) => {
     setActiveStatuses((prev) => {
@@ -446,7 +467,7 @@ const Schedules = () => {
       {/* Gantt */}
       <div className="flex-1 min-h-[500px]">
         <GanttChart
-          tasks={filteredTasks}
+          tasks={orderedTasks}
           onUpdateTask={handleUpdateTask}
           onUpdateMultiple={handleUpdateMultiple}
           onAddDependency={(sourceId, targetId) => addDependency(sourceId, targetId, calendarConfig)}
@@ -455,6 +476,7 @@ const Schedules = () => {
           startDate={dateRange.start}
           endDate={dateRange.end}
           calendarConfig={calendarConfig}
+          onReorder={handleReorder}
         />
       </div>
 
@@ -470,7 +492,7 @@ const Schedules = () => {
       <div className="fixed left-[-9999px] top-0 pointer-events-none">
         <SchedulePDFPreview
           ref={pdfRef}
-          tasks={filteredTasks}
+          tasks={orderedTasks}
           startDate={dateRange.start}
           endDate={dateRange.end}
           companySettings={companySettings}
