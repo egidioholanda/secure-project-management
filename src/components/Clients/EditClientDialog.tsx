@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClients, Client } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
+import { useClientGroups, GERAL_GROUP_ID } from "@/hooks/useClientGroups";
 
 interface Props {
   open: boolean;
@@ -18,7 +19,8 @@ interface Props {
 export function EditClientDialog({ open, onOpenChange, client }: Props) {
   const { updateClient } = useClients();
   const { projects } = useProjects();
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { groups } = useClientGroups();
+  const { register, handleSubmit, reset, setValue, watch } = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function EditClientDialog({ open, onOpenChange, client }: Props) {
       setValue("address", client.address || "");
       setValue("project_id", client.project_id || "none");
       setValue("notes", client.notes || "");
+      setValue("client_group_id", client.client_group_id || GERAL_GROUP_ID);
     }
   }, [open, client]);
 
@@ -47,6 +50,7 @@ export function EditClientDialog({ open, onOpenChange, client }: Props) {
         address: data.address || null,
         project_id: data.project_id && data.project_id !== "none" ? data.project_id : null,
         notes: data.notes || null,
+        client_group_id: data.client_group_id || GERAL_GROUP_ID,
       });
       onOpenChange(false);
     } finally {
@@ -96,6 +100,22 @@ export function EditClientDialog({ open, onOpenChange, client }: Props) {
                   <SelectItem value="none">Nenhum</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Grupo de Clientes</Label>
+              <Select
+                value={watch("client_group_id") || GERAL_GROUP_ID}
+                onValueChange={(v) => setValue("client_group_id", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

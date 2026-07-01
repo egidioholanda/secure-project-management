@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, MaintenanceOrder } from "@/hooks/useClients";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
@@ -22,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt, Eye
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt, Eye, FolderOpen
 } from "lucide-react";
 import ProposalEditor from "@/components/Projects/ProposalEditor";
 
@@ -572,7 +573,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
 }
 
 export default function Clients() {
-  const { clients, isLoading, deleteClient } = useClients();
+  const { allowedClientGroupIds, isAdmin } = useAuthContext();
+  const { clients, isLoading, deleteClient } = useClients(isAdmin ? null : allowedClientGroupIds);
   const [addClient, setAddClient] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [editClientInList, setEditClientInList] = useState<Client | null>(null);
@@ -634,9 +636,15 @@ export default function Clients() {
       </div>
 
       {/* Lista */}
+      {!isLoading && clients.length === 0 && !isAdmin && allowedClientGroupIds?.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          Seu perfil não tem acesso a nenhum grupo de clientes.
+          Entre em contato com o administrador.
+        </div>
+      )}
       {isLoading ? (
         <div className="text-center py-16 text-muted-foreground">Carregando...</div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !(allowedClientGroupIds?.length === 0 && !isAdmin) ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Nenhum cliente encontrado</p>
@@ -681,6 +689,12 @@ export default function Clients() {
                       {client.project?.name && (
                         <div className="flex items-center gap-1 text-xs text-primary">
                           <FileText className="w-3 h-3" /> {client.project.name}
+                        </div>
+                      )}
+                      {client.client_group?.name && client.client_group.name !== 'Geral' && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <FolderOpen className="w-3 h-3" />
+                          {client.client_group.name}
                         </div>
                       )}
                     </div>

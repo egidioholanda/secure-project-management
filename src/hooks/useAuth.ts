@@ -34,6 +34,7 @@ interface AuthState {
   isManager: boolean;
   isSupTecnico: boolean;
   allowedPages: string[] | null;
+  allowedClientGroupIds: string[] | null;
 }
 
 export const useAuth = () => {
@@ -47,6 +48,7 @@ export const useAuth = () => {
     isManager: false,
     isSupTecnico: false,
     allowedPages: null,
+    allowedClientGroupIds: null,
   });
 
 
@@ -76,6 +78,18 @@ export const useAuth = () => {
         }
       }
 
+      // Fetch client group permissions
+      let allowedClientGroupIds: string[] | null = null;
+      if (roleDefId) {
+        const { data: groupPermsData } = await (supabase as any)
+          .from('role_client_group_permissions')
+          .select('client_group_id')
+          .eq('role_id', roleDefId);
+        if (groupPermsData) {
+          allowedClientGroupIds = groupPermsData.map((p: { client_group_id: string }) => p.client_group_id);
+        }
+      }
+
       setAuthState((prev) => ({
         ...prev,
         profile,
@@ -84,6 +98,7 @@ export const useAuth = () => {
         isManager,
         isSupTecnico,
         allowedPages,
+        allowedClientGroupIds,
         isLoading: false,
       }));
     } catch (error) {
@@ -123,6 +138,7 @@ export const useAuth = () => {
             isManager: false,
             isSupTecnico: false,
             allowedPages: null,
+            allowedClientGroupIds: null,
             isLoading: false,
           }));
         }

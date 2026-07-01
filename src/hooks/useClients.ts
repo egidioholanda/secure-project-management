@@ -12,6 +12,8 @@ export interface Client {
   address: string | null;
   project_id: string | null;
   notes: string | null;
+  client_group_id: string | null;
+  client_group?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
   project?: { name: string } | null;
@@ -51,24 +53,36 @@ export interface MaintenanceOrder {
   photos?: { id: string; url: string; caption: string | null }[];
 }
 
-export function useClients() {
+export function useClients(allowedClientGroupIds?: string[] | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", allowedClientGroupIds ?? "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Se array vazio (perfil sem grupos), retorna lista vazia imediatamente
+      if (allowedClientGroupIds !== null && allowedClientGroupIds !== undefined && allowedClientGroupIds.length === 0) {
+        return [];
+      }
+
+      let query = (supabase as any)
         .from("clients")
-        .select("*, project:projects!clients_project_id_fkey(name)")
+        .select("*, project:projects!clients_project_id_fkey(name), client_group:client_groups(id, name)")
         .order("name");
+
+      // Filtrar por grupos permitidos (null = sem filtro = admin)
+      if (allowedClientGroupIds !== null && allowedClientGroupIds !== undefined && allowedClientGroupIds.length > 0) {
+        query = query.in("client_group_id", allowedClientGroupIds);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as unknown as Client[];
     },
   });
 
   const createClient = useMutation({
-    mutationFn: async (client: Omit<Client, "id" | "created_at" | "updated_at" | "project">) => {
+    mutationFn: async (client: Omit<Client, "id" | "created_at" | "updated_at" | "project" | "client_group">) => {
       const { data, error } = await supabase.from("clients").insert(client).select().single();
       if (error) throw error;
       return data;

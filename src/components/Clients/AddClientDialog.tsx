@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
+import { useClientGroups, GERAL_GROUP_ID } from "@/hooks/useClientGroups";
 
 interface Props {
   open: boolean;
@@ -17,6 +18,7 @@ interface Props {
 export function AddClientDialog({ open, onOpenChange }: Props) {
   const { createClient } = useClients();
   const { projects } = useProjects();
+  const { groups } = useClientGroups();
   const { register, handleSubmit, reset, setValue, watch } = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,6 +34,7 @@ export function AddClientDialog({ open, onOpenChange }: Props) {
         address: data.address || null,
         project_id: data.project_id && data.project_id !== "none" ? data.project_id : null,
         notes: data.notes || null,
+        client_group_id: data.client_group_id || GERAL_GROUP_ID,
       });
       reset();
       onOpenChange(false);
@@ -82,6 +85,22 @@ export function AddClientDialog({ open, onOpenChange }: Props) {
                   <SelectItem value="none">Nenhum</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Grupo de Clientes</Label>
+              <Select
+                defaultValue={GERAL_GROUP_ID}
+                onValueChange={(v) => setValue("client_group_id", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
