@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityDialog";
 import { useOpportunities, Opportunity } from "@/hooks/useOpportunities";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ const Opportunities = () => {
     addOpportunity,
     updateOpportunity,
     deleteOpportunity,
-  } = useOpportunities();
+  } = useOpportunities(useAuthContext().allowedClientIds);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);

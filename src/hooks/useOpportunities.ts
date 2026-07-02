@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -8,6 +8,7 @@ export interface Opportunity {
   id: string;
   title: string;
   client: string;
+  clientId?: string | null;
   value: string;
   monthlyValue: string;
   productValue: string;
@@ -34,6 +35,7 @@ interface DbOpportunity {
   id: string;
   title: string;
   client: string;
+  client_id: string | null;
   value: string | null;
   monthly_value: string | null;
   product_value: string | null;
@@ -66,6 +68,7 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   id: db.id,
   title: db.title,
   client: db.client,
+  clientId: db.client_id ?? null,
   value: db.value || "",
   monthlyValue: db.monthly_value || "",
   productValue: db.product_value || "",
@@ -80,9 +83,16 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   status: db.status as Opportunity["status"],
 });
 
-export const useOpportunities = () => {
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+export const useOpportunities = (allowedClientIds?: string[] | null) => {
+  const [allOpportunities, setAllOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const opportunities = useMemo(() => {
+    if (allowedClientIds === null || allowedClientIds === undefined) return allOpportunities;
+    return allOpportunities.filter(
+      (o) => !o.clientId || allowedClientIds.includes(o.clientId)
+    );
+  }, [allOpportunities, allowedClientIds]);
 
   const fetchOpportunities = async () => {
     try {
@@ -92,7 +102,7 @@ export const useOpportunities = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOpportunities((data || []).map((d: any) => mapDbToOpportunity(d)));
+      setAllOpportunities((data || []).map((d: any) => mapDbToOpportunity(d)));
     } catch (error) {
       console.error("Error fetching opportunities:", error);
       toast.error("Erro ao carregar oportunidades");
@@ -124,7 +134,7 @@ export const useOpportunities = () => {
 
       if (error) throw error;
       const newOpp = mapDbToOpportunity(data as any);
-      setOpportunities((prev) => [newOpp, ...prev]);
+      setAllOpportunities((prev) => [newOpp, ...prev]);
       toast.success("Oportunidade criada com sucesso!");
       return newOpp;
     } catch (error) {
@@ -153,7 +163,7 @@ export const useOpportunities = () => {
         .eq("id", opp.id);
 
       if (error) throw error;
-      setOpportunities((prev) =>
+      setAllOpportunities((prev) =>
         prev.map((o) => (o.id === opp.id ? { ...opp, value: totalValue } : o))
       );
       toast.success("Oportunidade atualizada com sucesso!");
@@ -170,7 +180,7 @@ export const useOpportunities = () => {
         .delete()
         .eq("id", id);
       if (error) throw error;
-      setOpportunities((prev) => prev.filter((o) => o.id !== id));
+      setAllOpportunities((prev) => prev.filter((o) => o.id !== id));
       toast.success("Oportunidade excluída com sucesso!");
     } catch (error) {
       console.error("Error deleting opportunity:", error);

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useScheduleTasks } from "@/hooks/useScheduleTasks";
 import { MetricCard } from "@/components/Dashboard/MetricCard";
 import { Card } from "@/components/ui/card";
@@ -81,7 +82,8 @@ const ManagerTooltip = ({ active, payload }: any) => {
 };
 
 const DashboardOperacional = () => {
-  const { projects, loading: loadingProjects } = useProjects();
+  const { allowedClientIds } = useAuthContext();
+  const { projects, loading: loadingProjects } = useProjects(allowedClientIds);
   const { tasks, loading: loadingTasks } = useScheduleTasks();
 
   // ── Filter state ──────────────────────────────────────────────────────────

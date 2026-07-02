@@ -8,6 +8,7 @@ import AddProjectDialog, { ProjectFormData } from "@/components/Projects/AddProj
 import ProjectCard from "@/components/Projects/ProjectCard";
 import ProjectDetailView from "@/components/Projects/ProjectDetailView";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuthContext } from "@/contexts/AuthContext";
 import type { Project } from "@/types/project";
 import { cn } from "@/lib/utils";
 
@@ -92,7 +93,8 @@ function ProjectListRow({
 
 const Projects = () => {
   const location = useLocation();
-  const { projects, loading, addProject, updateProject, deleteProject } = useProjects();
+  const { allowedClientIds } = useAuthContext();
+  const { projects, loading, addProject, updateProject, deleteProject } = useProjects(allowedClientIds);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);

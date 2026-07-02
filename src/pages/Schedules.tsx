@@ -22,6 +22,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { useTeams } from '@/hooks/useTeams';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 
 // ─── Status options (sincronizado com Projects) ───────────────────────────────
@@ -43,7 +44,8 @@ const ALL_STATUS_VALUES = PROJECT_STATUSES.map((s) => s.value);
 const Schedules = () => {
   const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask } =
     useScheduleTasks();
-  const { projects: dbProjects, loading: projectsLoading } = useProjects();
+  const { allowedClientIds } = useAuthContext();
+  const { projects: dbProjects, loading: projectsLoading } = useProjects(allowedClientIds);
   const { settings: companySettings } = useCompanySettings();
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const { teams } = useTeams();
@@ -98,8 +100,19 @@ const Schedules = () => {
     });
   }, [projectsList, activeStatuses, projectSearch]);
 
+  // Set of project IDs allowed by the client group filter
+  const allowedProjectIds = useMemo(
+    () => new Set(dbProjects.map((p) => p.id)),
+    [dbProjects]
+  );
+
   const filteredTasks = useMemo(() => {
     let result = tasks;
+
+    // Restrict to projects the user has access to (via client groups)
+    if (allowedClientIds !== null) {
+      result = result.filter((t) => allowedProjectIds.has(t.projectId));
+    }
 
     // Filter by selected project
     if (filterProject !== 'all') {
@@ -128,7 +141,7 @@ const Schedules = () => {
     }
 
     return result;
-  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam]);
+  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, allowedClientIds, allowedProjectIds]);
 
   const orderedTasks = useMemo(() => {
     if (taskOrder.length === 0) return filteredTasks;

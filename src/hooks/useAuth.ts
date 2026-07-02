@@ -35,6 +35,7 @@ interface AuthState {
   isSupTecnico: boolean;
   allowedPages: string[] | null;
   allowedClientGroupIds: string[] | null;
+  allowedClientIds: string[] | null;
 }
 
 export const useAuth = () => {
@@ -49,6 +50,7 @@ export const useAuth = () => {
     isSupTecnico: false,
     allowedPages: null,
     allowedClientGroupIds: null,
+    allowedClientIds: null,
   });
 
 
@@ -90,6 +92,20 @@ export const useAuth = () => {
         }
       }
 
+      // Derive allowed client IDs from allowed client group IDs
+      let allowedClientIds: string[] | null = null;
+      if (allowedClientGroupIds !== null) {
+        if (allowedClientGroupIds.length === 0) {
+          allowedClientIds = [];
+        } else {
+          const { data: clientsData } = await supabase
+            .from('clients')
+            .select('id')
+            .in('client_group_id', allowedClientGroupIds as any);
+          allowedClientIds = (clientsData || []).map((c: { id: string }) => c.id);
+        }
+      }
+
       setAuthState((prev) => ({
         ...prev,
         profile,
@@ -99,6 +115,7 @@ export const useAuth = () => {
         isSupTecnico,
         allowedPages,
         allowedClientGroupIds,
+        allowedClientIds,
         isLoading: false,
       }));
     } catch (error) {
@@ -139,6 +156,7 @@ export const useAuth = () => {
             isSupTecnico: false,
             allowedPages: null,
             allowedClientGroupIds: null,
+            allowedClientIds: null,
             isLoading: false,
           }));
         }

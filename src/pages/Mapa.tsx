@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -278,7 +279,8 @@ const DEFAULT_VIEW: SavedView = { center: [-14.235, -51.925], zoom: 4 };
 
 const Mapa = () => {
   const savedView = loadView() ?? DEFAULT_VIEW;
-  const { projects, loading } = useProjects();
+  const { allowedClientIds } = useAuthContext();
+  const { projects, loading } = useProjects(allowedClientIds);
   const [geoProjects, setGeoProjects] = useState<GeoProject[]>([]);
   const [geocoding, setGeocoding] = useState(false);
   const [search, setSearch] = useState("");

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Project } from "@/types/project";
 import { toast } from "sonner";
@@ -61,9 +61,16 @@ export const linkProjectToClient = async (projectId: string, clientId: string | 
   if (error) throw error;
 };
 
-export const useProjects = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+export const useProjects = (allowedClientIds?: string[] | null) => {
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const projects = useMemo(() => {
+    // null = admin/unrestricted → show everything
+    if (allowedClientIds === null || allowedClientIds === undefined) return allProjects;
+    // empty array = no clients allowed → show only projects without a client
+    return allProjects.filter((p) => !p.clientId || allowedClientIds.includes(p.clientId));
+  }, [allProjects, allowedClientIds]);
 
   const fetchProjects = async () => {
     try {
@@ -73,7 +80,7 @@ export const useProjects = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setProjects((data || []).map(mapDbToProject));
+      setAllProjects((data || []).map(mapDbToProject));
     } catch (error) {
       console.error("Error fetching projects:", error);
       toast.error("Erro ao carregar projetos");
@@ -103,7 +110,7 @@ export const useProjects = () => {
 
       if (error) throw error;
       const newProject = mapDbToProject(data);
-      setProjects((prev) => [newProject, ...prev]);
+      setAllProjects((prev) => [newProject, ...prev]);
       toast.success("Projeto criado com sucesso!");
       return newProject;
     } catch (error) {
@@ -131,7 +138,7 @@ export const useProjects = () => {
         .eq("id", project.id);
 
       if (error) throw error;
-      setProjects((prev) =>
+      setAllProjects((prev) =>
         prev.map((p) => (p.id === project.id ? project : p))
       );
       toast.success("Projeto atualizado com sucesso!");
@@ -145,7 +152,7 @@ export const useProjects = () => {
     try {
       const { error } = await supabase.from("projects").delete().eq("id", id);
       if (error) throw error;
-      setProjects((prev) => prev.filter((p) => p.id !== id));
+      setAllProjects((prev) => prev.filter((p) => p.id !== id));
       toast.success("Projeto excluído com sucesso!");
     } catch (error) {
       console.error("Error deleting project:", error);

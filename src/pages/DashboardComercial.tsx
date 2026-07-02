@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useOpportunities } from "@/hooks/useOpportunities";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -135,7 +136,8 @@ const CurrencyTooltip = ({ active, payload, label }: any) => {
 // ── Main component ────────────────────────────────────────────────────────────
 
 const DashboardComercial = () => {
-  const { opportunities, loading } = useOpportunities();
+  const { allowedClientIds } = useAuthContext();
+  const { opportunities, loading } = useOpportunities(allowedClientIds);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterPeriod, setFilterPeriod]           = useState("all");
