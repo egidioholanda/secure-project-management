@@ -1,4 +1,4 @@
-import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban, Package, Wrench, Copy } from "lucide-react";
+import { MoreVertical, Clock, DollarSign, User, Pencil, Trash2, FolderKanban, Package, Wrench, Copy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +19,8 @@ interface OpportunityCardProps {
   type: string;
   responsible: string;
   createdAt: string;
+  createdAtIso: string;
+  clientGroupName?: string | null;
   status:
     | "prospeccao"
     | "qualificacao"
@@ -51,6 +53,11 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   perdida:          { label: "Perdida",                            color: "bg-destructive/10 text-destructive" },
 };
 
+function fmtDate(iso: string) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
+
 export const OpportunityCard = ({
   id,
   title,
@@ -60,7 +67,8 @@ export const OpportunityCard = ({
   serviceValue,
   type,
   responsible,
-  createdAt,
+  createdAtIso,
+  clientGroupName,
   status,
   onEdit,
   onDuplicate,
@@ -73,15 +81,15 @@ export const OpportunityCard = ({
   return (
     <div className="bg-card rounded-lg border border-border p-4 hover:shadow-card transition-all duration-300 cursor-pointer group">
       <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h3 className="font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors leading-tight">
             {title}
           </h3>
-          <p className="text-sm text-muted-foreground">{client}</p>
+          <p className="text-sm text-muted-foreground truncate">{client}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -145,13 +153,21 @@ export const OpportunityCard = ({
           )
         )}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <User className="w-4 h-4" />
-          <span>{responsible}</span>
+          <User className="w-4 h-4 shrink-0" />
+          <span className="truncate">{responsible}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>{createdAt}</span>
+          <Clock className="w-4 h-4 shrink-0" />
+          <span>{fmtDate(createdAtIso)}</span>
         </div>
+        {clientGroupName && (
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium truncate">
+              {clientGroupName}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-2 flex-wrap">

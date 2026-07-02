@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Filter, Loader2, X } from "lucide-react";
+import { Plus, Filter, Loader2, X, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,75 +8,168 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityDialog";
 import { useOpportunities, Opportunity } from "@/hooks/useOpportunities";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const ALL_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Sistema Integrado", "Automação"];
 
+const PERIOD_OPTIONS = [
+  { value: "all",     label: "Todos os períodos" },
+  { value: "today",   label: "Hoje" },
+  { value: "week",    label: "Esta semana" },
+  { value: "month",   label: "Este mês" },
+  { value: "3months", label: "Últimos 3 meses" },
+  { value: "6months", label: "Últimos 6 meses" },
+  { value: "year",    label: "Este ano" },
+];
+
+function getDateThreshold(period: string): Date | null {
+  const now = new Date();
+  if (period === "today")   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === "week")    { const d = new Date(now); d.setDate(d.getDate() - 7); return d; }
+  if (period === "month")   return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
+  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
+  if (period === "year")    return new Date(now.getFullYear(), 0, 1);
+  return null;
+}
+
+function parseBRLVal(raw: string) {
+  if (!raw) return 0;
+  const n = parseFloat(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
 const Opportunities = () => {
   const navigate = useNavigate();
+  const { allowedClientGroupIds } = useAuthContext();
   const {
     opportunities,
     loading,
     addOpportunity,
     updateOpportunity,
     deleteOpportunity,
-  } = useOpportunities(useAuthContext().allowedClientGroupIds);
+  } = useOpportunities(allowedClientGroupIds);
+
+  const { groups } = useClientGroups();
+  const groupMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    groups.forEach((g) => { m[g.id] = g.name; });
+    return m;
+  }, [groups]);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
   const [duplicatingOpportunity, setDuplicatingOpportunity] = useState<Opportunity | null>(null);
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterTypes, setFilterTypes] = useState<string[]>([]);
+  // ── Filters ───────────────────────────────────────────────────────────────
+  const [searchTerm, setSearchTerm]             = useState("");
+  const [filterTypes, setFilterTypes]           = useState<string[]>([]);
   const [filterResponsibles, setFilterResponsibles] = useState<string[]>([]);
+  const [filterGroups, setFilterGroups]         = useState<string[]>([]);
+  const [filterPeriod, setFilterPeriod]         = useState("all");
+  const [filterDateFrom, setFilterDateFrom]     = useState("");
+  const [filterDateTo, setFilterDateTo]         = useState("");
+  const [filterValueMin, setFilterValueMin]     = useState("");
+  const [filterValueMax, setFilterValueMax]     = useState("");
 
   // Drag and drop state
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [draggedId, setDraggedId]             = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn]   = useState<string | null>(null);
 
-  // Dynamic responsible list from data
+  // Dynamic lists from data
   const responsibleOptions = useMemo(() => {
     const set = new Set(opportunities.map((o) => o.responsible).filter(Boolean));
     return Array.from(set).sort();
   }, [opportunities]);
 
-  const activeFilterCount = filterTypes.length + filterResponsibles.length;
+  const groupOptions = useMemo(() => {
+    const ids = new Set(opportunities.map((o) => o.clientGroupId).filter(Boolean) as string[]);
+    return Array.from(ids).map((id) => ({ id, name: groupMap[id] || id })).filter((g) => g.name);
+  }, [opportunities, groupMap]);
 
-  const toggleType = (type: string) =>
-    setFilterTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
+  const hasDateFilter = filterDateFrom || filterDateTo;
 
-  const toggleResponsible = (r: string) =>
-    setFilterResponsibles((prev) =>
-      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
-    );
+  const activeFilterCount =
+    filterTypes.length +
+    filterResponsibles.length +
+    filterGroups.length +
+    (filterPeriod !== "all" ? 1 : 0) +
+    (hasDateFilter ? 1 : 0) +
+    (filterValueMin || filterValueMax ? 1 : 0);
+
+  const toggleArr = (arr: string[], val: string) =>
+    arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
   const clearFilters = () => {
     setFilterTypes([]);
     setFilterResponsibles([]);
+    setFilterGroups([]);
+    setFilterPeriod("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterValueMin("");
+    setFilterValueMax("");
   };
 
   // Filtered opportunities
   const filteredOpportunities = useMemo(() => {
     const term = searchTerm.toLowerCase();
+    const threshold = filterPeriod !== "all" ? getDateThreshold(filterPeriod) : null;
+
     return opportunities.filter((opp) => {
+      // Search
       if (term && !opp.title.toLowerCase().includes(term) && !opp.client.toLowerCase().includes(term))
         return false;
-      if (filterTypes.length > 0 && !filterTypes.includes(opp.type)) return false;
-      if (filterResponsibles.length > 0 && !filterResponsibles.includes(opp.responsible)) return false;
+
+      // Type (handles comma-separated multi-type)
+      if (filterTypes.length > 0) {
+        const ptypes = opp.type ? opp.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+        if (!ptypes.some((t) => filterTypes.includes(t))) return false;
+      }
+
+      // Responsible
+      if (filterResponsibles.length > 0 && !filterResponsibles.includes(opp.responsible))
+        return false;
+
+      // Group
+      if (filterGroups.length > 0) {
+        if (!opp.clientGroupId || !filterGroups.includes(opp.clientGroupId)) return false;
+      }
+
+      // Period (quick preset)
+      if (threshold && new Date(opp.createdAtIso) < threshold) return false;
+
+      // Custom date range
+      if (filterDateFrom && new Date(opp.createdAtIso) < new Date(filterDateFrom)) return false;
+      if (filterDateTo && new Date(opp.createdAtIso) > new Date(filterDateTo + "T23:59:59")) return false;
+
+      // Value range
+      if (filterValueMin || filterValueMax) {
+        const v = parseBRLVal(opp.value);
+        if (filterValueMin && v < parseBRLVal(filterValueMin)) return false;
+        if (filterValueMax && v > parseBRLVal(filterValueMax)) return false;
+      }
+
       return true;
     });
-  }, [opportunities, searchTerm, filterTypes, filterResponsibles]);
+  }, [opportunities, searchTerm, filterTypes, filterResponsibles, filterGroups,
+      filterPeriod, filterDateFrom, filterDateTo, filterValueMin, filterValueMax]);
 
   const handleAddOpportunity = async (newOpp: Omit<Opportunity, "id" | "createdAt">) => {
     await addOpportunity(newOpp);
@@ -152,14 +245,10 @@ const Opportunities = () => {
   const handleDrop = async (e: React.DragEvent, targetColumn: { key: string; matchKeys: string[] }) => {
     e.preventDefault();
     setDragOverColumn(null);
-
     if (!draggedId) return;
-
     const opp = opportunities.find((o) => o.id === draggedId);
     setDraggedId(null);
-
     if (!opp || targetColumn.matchKeys.includes(opp.status)) return;
-
     await updateOpportunity({ ...opp, status: targetColumn.key as Opportunity["status"] });
   };
 
@@ -180,6 +269,8 @@ const Opportunities = () => {
       </div>
     );
   }
+
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === filterPeriod)?.label;
 
   return (
     <div className="space-y-6">
@@ -214,7 +305,7 @@ const Opportunities = () => {
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-4" align="end">
+          <PopoverContent className="w-80 p-4 max-h-[80vh] overflow-y-auto" align="end">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold">Filtros</p>
               {activeFilterCount > 0 && (
@@ -230,7 +321,87 @@ const Opportunities = () => {
               )}
             </div>
 
-            {/* Tipo */}
+            {/* ── Período ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Período
+              </p>
+              <Select value={filterPeriod} onValueChange={(v) => { setFilterPeriod(v); if (v !== "all") { setFilterDateFrom(""); setFilterDateTo(""); } }}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator className="my-3" />
+
+            {/* ── Intervalo de datas ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5" />
+                Intervalo de datas
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">De</Label>
+                  <Input
+                    type="date"
+                    className="h-8 text-xs"
+                    value={filterDateFrom}
+                    onChange={(e) => { setFilterDateFrom(e.target.value); setFilterPeriod("all"); }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Até</Label>
+                  <Input
+                    type="date"
+                    className="h-8 text-xs"
+                    value={filterDateTo}
+                    onChange={(e) => { setFilterDateTo(e.target.value); setFilterPeriod("all"); }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator className="my-3" />
+
+            {/* ── Intervalo de valor ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Valor total (R$)
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Mínimo</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    className="h-8 text-xs"
+                    value={filterValueMin}
+                    onChange={(e) => setFilterValueMin(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Máximo</Label>
+                  <Input
+                    type="number"
+                    placeholder="∞"
+                    className="h-8 text-xs"
+                    value={filterValueMax}
+                    onChange={(e) => setFilterValueMax(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator className="my-3" />
+
+            {/* ── Tipo ── */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Tipo de Projeto
@@ -240,7 +411,7 @@ const Opportunities = () => {
                   <Checkbox
                     id={`type-${type}`}
                     checked={filterTypes.includes(type)}
-                    onCheckedChange={() => toggleType(type)}
+                    onCheckedChange={() => setFilterTypes((p) => toggleArr(p, type))}
                   />
                   <Label htmlFor={`type-${type}`} className="text-sm font-normal cursor-pointer">
                     {type}
@@ -249,6 +420,31 @@ const Opportunities = () => {
               ))}
             </div>
 
+            {/* ── Grupo ── */}
+            {groupOptions.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Grupo de Clientes
+                  </p>
+                  {groupOptions.map((g) => (
+                    <div key={g.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`group-${g.id}`}
+                        checked={filterGroups.includes(g.id)}
+                        onCheckedChange={() => setFilterGroups((p) => toggleArr(p, g.id))}
+                      />
+                      <Label htmlFor={`group-${g.id}`} className="text-sm font-normal cursor-pointer">
+                        {g.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ── Responsável ── */}
             {responsibleOptions.length > 0 && (
               <>
                 <Separator className="my-3" />
@@ -261,7 +457,7 @@ const Opportunities = () => {
                       <Checkbox
                         id={`resp-${r}`}
                         checked={filterResponsibles.includes(r)}
-                        onCheckedChange={() => toggleResponsible(r)}
+                        onCheckedChange={() => setFilterResponsibles((p) => toggleArr(p, r))}
                       />
                       <Label htmlFor={`resp-${r}`} className="text-sm font-normal cursor-pointer">
                         {r}
@@ -275,18 +471,38 @@ const Opportunities = () => {
         </Popover>
 
         {/* Active filter chips */}
-        {filterTypes.map((t) => (
-          <Badge key={t} variant="secondary" className="gap-1 cursor-pointer" onClick={() => toggleType(t)}>
-            {t}
+        {filterPeriod !== "all" && (
+          <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setFilterPeriod("all")}>
+            {periodLabel} <X className="w-3 h-3" />
+          </Badge>
+        )}
+        {hasDateFilter && (
+          <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}>
+            <CalendarDays className="w-3 h-3" />
+            {filterDateFrom && filterDateTo ? `${filterDateFrom} → ${filterDateTo}` : filterDateFrom || filterDateTo}
             <X className="w-3 h-3" />
+          </Badge>
+        )}
+        {filterTypes.map((t) => (
+          <Badge key={t} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setFilterTypes((p) => p.filter((x) => x !== t))}>
+            {t} <X className="w-3 h-3" />
+          </Badge>
+        ))}
+        {filterGroups.map((id) => (
+          <Badge key={id} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setFilterGroups((p) => p.filter((x) => x !== id))}>
+            {groupMap[id] || id} <X className="w-3 h-3" />
           </Badge>
         ))}
         {filterResponsibles.map((r) => (
-          <Badge key={r} variant="secondary" className="gap-1 cursor-pointer" onClick={() => toggleResponsible(r)}>
-            {r.split(" ")[0]}
-            <X className="w-3 h-3" />
+          <Badge key={r} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setFilterResponsibles((p) => p.filter((x) => x !== r))}>
+            {r.split(" ")[0]} <X className="w-3 h-3" />
           </Badge>
         ))}
+        {(filterValueMin || filterValueMax) && (
+          <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setFilterValueMin(""); setFilterValueMax(""); }}>
+            R$ {filterValueMin || "0"} – {filterValueMax || "∞"} <X className="w-3 h-3" />
+          </Badge>
+        )}
       </div>
 
       {/* Kanban columns */}
@@ -327,6 +543,7 @@ const Opportunities = () => {
                   >
                     <OpportunityCard
                       {...opp}
+                      clientGroupName={opp.clientGroupId ? groupMap[opp.clientGroupId] || null : null}
                       onEdit={openEditDialog}
                       onDuplicate={openDuplicateDialog}
                       onDelete={handleDeleteOpportunity}
