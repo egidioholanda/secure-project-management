@@ -44,8 +44,8 @@ const ALL_STATUS_VALUES = PROJECT_STATUSES.map((s) => s.value);
 const Schedules = () => {
   const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask } =
     useScheduleTasks();
-  const { allowedClientIds } = useAuthContext();
-  const { projects: dbProjects, loading: projectsLoading } = useProjects(allowedClientIds);
+  const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
+  const { projects: dbProjects, loading: projectsLoading } = useProjects(allowedClientIds, allowedClientGroupIds);
   const { settings: companySettings } = useCompanySettings();
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const { teams } = useTeams();

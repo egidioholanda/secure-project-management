@@ -82,8 +82,8 @@ const ManagerTooltip = ({ active, payload }: any) => {
 };
 
 const DashboardOperacional = () => {
-  const { allowedClientIds } = useAuthContext();
-  const { projects, loading: loadingProjects } = useProjects(allowedClientIds);
+  const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
+  const { projects, loading: loadingProjects } = useProjects(allowedClientIds, allowedClientGroupIds);
   const { tasks, loading: loadingTasks } = useScheduleTasks();
 
   // ── Filter state ──────────────────────────────────────────────────────────

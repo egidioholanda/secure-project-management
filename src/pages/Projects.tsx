@@ -93,8 +93,8 @@ function ProjectListRow({
 
 const Projects = () => {
   const location = useLocation();
-  const { allowedClientIds } = useAuthContext();
-  const { projects, loading, addProject, updateProject, deleteProject } = useProjects(allowedClientIds);
+  const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
+  const { projects, loading, addProject, updateProject, deleteProject } = useProjects(allowedClientIds, allowedClientGroupIds);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);

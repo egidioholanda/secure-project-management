@@ -279,8 +279,8 @@ const DEFAULT_VIEW: SavedView = { center: [-14.235, -51.925], zoom: 4 };
 
 const Mapa = () => {
   const savedView = loadView() ?? DEFAULT_VIEW;
-  const { allowedClientIds } = useAuthContext();
-  const { projects, loading } = useProjects(allowedClientIds);
+  const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
+  const { projects, loading } = useProjects(allowedClientIds, allowedClientGroupIds);
   const [geoProjects, setGeoProjects] = useState<GeoProject[]>([]);
   const [geocoding, setGeocoding] = useState(false);
   const [search, setSearch] = useState("");

@@ -63,16 +63,24 @@ export const linkProjectToClient = async (projectId: string, clientId: string | 
   if (error) throw error;
 };
 
-export const useProjects = (allowedClientIds?: string[] | null) => {
+export const useProjects = (allowedClientIds?: string[] | null, allowedClientGroupIds?: string[] | null) => {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   const projects = useMemo(() => {
     // null = admin/unrestricted → show everything
     if (allowedClientIds === null || allowedClientIds === undefined) return allProjects;
-    // empty array = no clients allowed → show only projects without a client
-    return allProjects.filter((p) => !p.clientId || allowedClientIds.includes(p.clientId));
-  }, [allProjects, allowedClientIds]);
+    return allProjects.filter((p) => {
+      // Tem cliente vinculado → filtra por clientId
+      if (p.clientId) return allowedClientIds.includes(p.clientId);
+      // Sem cliente mas tem grupo → filtra por grupo
+      if (p.clientGroupId && allowedClientGroupIds != null) {
+        return allowedClientGroupIds.includes(p.clientGroupId);
+      }
+      // Sem cliente e sem grupo → oculta para usuários restritos
+      return false;
+    });
+  }, [allProjects, allowedClientIds, allowedClientGroupIds]);
 
   const fetchProjects = async () => {
     try {
