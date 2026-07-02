@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import Teams from "./pages/Teams";
 import PendingApproval from "./pages/PendingApproval";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +64,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         className="pt-16 p-6 transition-all duration-300"
         style={{ marginLeft: collapsed ? 64 : 256 }}
       >
-        <div className="max-w-7xl mx-auto">{children}</div>
+        <div className="max-w-7xl mx-auto">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
     </div>
   );
