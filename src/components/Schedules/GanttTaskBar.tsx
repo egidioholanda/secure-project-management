@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Task } from '@/types/schedule';
@@ -33,6 +33,21 @@ export const GanttTaskBar = ({
   const today = useMemo(() => new Date(), []);
   const status = useMemo(() => getTaskStatus(task, today), [task, today]);
   const colors = STATUS_COLORS[status];
+
+  // Track mousedown position in capture phase so stopPropagation on inner divs
+  // doesn't hide it — lets us distinguish a real click from the end of a drag.
+  const mouseDownPos = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; };
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
+  }, []);
+
+  const handleClick = (e: React.MouseEvent) => {
+    const dx = e.clientX - mouseDownPos.current.x;
+    const dy = e.clientY - mouseDownPos.current.y;
+    if (Math.hypot(dx, dy) < 5) onClick();
+  };
 
   const offsetDays = differenceInDays(task.startDate, startDate);
   const durationDays = Math.max(1, differenceInDays(task.endDate, task.startDate) + 1);
@@ -89,7 +104,7 @@ export const GanttTaskBar = ({
               backgroundColor: colors.bg,
               border: `2px solid ${colors.border}`,
             }}
-            onClick={onClick}
+            onClick={handleClick}
           >
             {/* Resize handle — left */}
             <div
