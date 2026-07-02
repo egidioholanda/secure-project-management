@@ -56,6 +56,7 @@ const Schedules = () => {
   const [searchQuery, setSearchQuery]       = useState('');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
+  const [filterTeam, setFilterTeam]         = useState<string>('all');
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
 
   useEffect(() => {
@@ -121,8 +122,13 @@ const Schedules = () => {
       );
     }
 
+    // Filter by team
+    if (filterTeam !== 'all') {
+      result = result.filter((t) => t.teamId === filterTeam);
+    }
+
     return result;
-  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery]);
+  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam]);
 
   const orderedTasks = useMemo(() => {
     if (taskOrder.length === 0) return filteredTasks;
@@ -158,10 +164,11 @@ const Schedules = () => {
     setFilterProject('all');
     setSearchQuery('');
     setProjectSearch('');
+    setFilterTeam('all');
   };
 
   const hasActiveFilters =
-    activeStatuses.size < ALL_STATUS_VALUES.length || filterProject !== 'all';
+    activeStatuses.size < ALL_STATUS_VALUES.length || filterProject !== 'all' || filterTeam !== 'all';
 
   const activeStatusCount = ALL_STATUS_VALUES.length - activeStatuses.size;
 
@@ -415,6 +422,42 @@ const Schedules = () => {
                   </div>
                 </div>
 
+                {teams.length > 0 && (
+                  <>
+                    <Separator className="my-3" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Equipe
+                      </p>
+                      <div className="max-h-36 overflow-y-auto space-y-0.5">
+                        <button
+                          onClick={() => setFilterTeam('all')}
+                          className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                            filterTeam === 'all'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          Todas as equipes
+                        </button>
+                        {teams.filter((t) => t.active).map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => setFilterTeam(t.id)}
+                            className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                              filterTeam === t.id
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
               </PopoverContent>
             </Popover>
 
@@ -461,6 +504,16 @@ const Schedules = () => {
                 </Badge>
               ) : null;
             })}
+          {filterTeam !== 'all' && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() => setFilterTeam('all')}
+            >
+              Equipe: {teams.find((t) => t.id === filterTeam)?.name ?? filterTeam}{' '}
+              <X className="w-3 h-3" />
+            </Badge>
+          )}
         </div>
       )}
 
