@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -48,7 +48,7 @@ export const ClientGroupsTab = () => {
   const [deleteTarget, setDeleteTarget] = useState<ClientGroup | null>(null);
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [savingRole, setSavingRole] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
 
   const fetchRolesAndPermissions = async () => {
     const [rolesRes, permsRes] = await Promise.all([
@@ -131,21 +131,26 @@ export const ClientGroupsTab = () => {
     });
   };
 
-  const saveRolePermissions = async (roleId: string, groupIds: string[]) => {
-    setSavingRole(roleId);
+  const saveAllPermissions = async () => {
+    setSavingAll(true);
     try {
-      await (supabase as any).from('role_client_group_permissions').delete().eq('role_id', roleId);
-      if (groupIds.length > 0) {
-        await (supabase as any).from('role_client_group_permissions').insert(
-          groupIds.map((gid) => ({ role_id: roleId, client_group_id: gid }))
-        );
-      }
+      await Promise.all(
+        roles.map(async (role) => {
+          const groupIds = Array.from(permissions.get(role.id) || []);
+          await (supabase as any).from('role_client_group_permissions').delete().eq('role_id', role.id);
+          if (groupIds.length > 0) {
+            await (supabase as any).from('role_client_group_permissions').insert(
+              groupIds.map((gid) => ({ role_id: role.id, client_group_id: gid }))
+            );
+          }
+        })
+      );
       await fetchRolesAndPermissions();
       toast({ title: 'Permissões salvas!' });
     } catch {
       toast({ title: 'Erro ao salvar permissões', variant: 'destructive' });
     } finally {
-      setSavingRole(null);
+      setSavingAll(false);
     }
   };
 
@@ -227,7 +232,6 @@ export const ClientGroupsTab = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {roles.map((role) => {
             const roleGroups = permissions.get(role.id) || new Set<string>();
-            const selectedGroupIds = Array.from(roleGroups);
 
             return (
               <Card key={role.id}>
@@ -240,7 +244,7 @@ export const ClientGroupsTab = () => {
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pb-2 space-y-2">
+                <CardContent className="pb-3 space-y-2">
                   {groups.map((group) => (
                     <div key={group.id} className="flex items-center gap-3">
                       <Checkbox
@@ -263,18 +267,15 @@ export const ClientGroupsTab = () => {
                     <p className="text-xs text-muted-foreground">Nenhum grupo criado ainda.</p>
                   )}
                 </CardContent>
-                <CardFooter className="pt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => saveRolePermissions(role.id, selectedGroupIds)}
-                    disabled={savingRole === role.id}
-                  >
-                    {savingRole === role.id ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </CardFooter>
               </Card>
             );
           })}
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button onClick={saveAllPermissions} disabled={savingAll}>
+            {savingAll ? 'Salvando...' : 'Salvar Permissões'}
+          </Button>
         </div>
       </div>
 
