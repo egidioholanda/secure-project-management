@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useClientGroups } from "@/hooks/useClientGroups";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 import type { Project } from "@/types/project";
 export type { Project };
@@ -79,6 +80,10 @@ const AddProjectDialog = ({
   existingProjects = [],
 }: AddProjectDialogProps) => {
   const { groups } = useClientGroups();
+  const { allowedClientGroupIds } = useAuthContext();
+  const visibleGroups = allowedClientGroupIds === null
+    ? groups
+    : groups.filter((g) => allowedClientGroupIds.includes(g.id));
   const [formData, setFormData] = useState({
     name: "",
     client: "",
@@ -249,7 +254,7 @@ const AddProjectDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Sem grupo</SelectItem>
-                  {groups.map((g) => (
+                  {visibleGroups.map((g) => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>

@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Opportunity } from "@/hooks/useOpportunities";
 import { useClientGroups } from "@/hooks/useClientGroups";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 interface AddOpportunityDialogProps {
   open: boolean;
@@ -51,6 +52,10 @@ export function AddOpportunityDialog({
   duplicatingOpportunity,
 }: AddOpportunityDialogProps) {
   const { groups } = useClientGroups();
+  const { allowedClientGroupIds } = useAuthContext();
+  const visibleGroups = allowedClientGroupIds === null
+    ? groups
+    : groups.filter((g) => allowedClientGroupIds.includes(g.id));
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
   const [clientGroupId, setClientGroupId] = useState<string | null>(null);
@@ -195,7 +200,7 @@ export function AddOpportunityDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Sem grupo</SelectItem>
-                {groups.map((g) => (
+                {visibleGroups.map((g) => (
                   <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                 ))}
               </SelectContent>
