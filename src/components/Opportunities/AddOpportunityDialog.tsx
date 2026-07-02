@@ -149,7 +149,7 @@ export function AddOpportunityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Oportunidade" : isDuplicating ? "Duplicar Oportunidade" : "Nova Oportunidade"}
@@ -163,7 +163,7 @@ export function AddOpportunityDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="overflow-y-auto flex-1 space-y-4 py-4 pr-1">
           <div className="space-y-2">
             <Label htmlFor="title">Título *</Label>
             <Input
@@ -309,7 +309,7 @@ export function AddOpportunityDialog({
           </div>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 pt-2 border-t border-border">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
