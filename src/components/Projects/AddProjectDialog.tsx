@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useClientGroups } from "@/hooks/useClientGroups";
 
 import type { Project } from "@/types/project";
 export type { Project };
@@ -28,6 +29,7 @@ export interface ProjectFormData {
   value: string;
   responsible?: string;
   opportunityId?: string;
+  clientGroupId?: string | null;
 }
 
 const SERVICE_TYPES = [
@@ -76,6 +78,7 @@ const AddProjectDialog = ({
   initialData,
   existingProjects = [],
 }: AddProjectDialogProps) => {
+  const { groups } = useClientGroups();
   const [formData, setFormData] = useState({
     name: "",
     client: "",
@@ -89,6 +92,7 @@ const AddProjectDialog = ({
     city: "",
     state: "",
     opportunityId: "",
+    clientGroupId: null as string | null,
   });
 
   useEffect(() => {
@@ -107,6 +111,7 @@ const AddProjectDialog = ({
         city,
         state,
         opportunityId: "",
+        clientGroupId: editingProject.clientGroupId ?? null,
       });
     } else if (initialData) {
       setFormData({
@@ -122,6 +127,7 @@ const AddProjectDialog = ({
         city: "",
         state: "",
         opportunityId: initialData.opportunityId || "",
+        clientGroupId: initialData.clientGroupId ?? null,
       });
     } else {
       setFormData({
@@ -137,6 +143,7 @@ const AddProjectDialog = ({
         city: "",
         state: "",
         opportunityId: "",
+        clientGroupId: null,
       });
     }
   }, [editingProject, initialData, open]);
@@ -188,6 +195,7 @@ const AddProjectDialog = ({
       value: formData.value,
       address: composeAddress(formData.street, formData.city, formData.state),
       opportunityId: formData.opportunityId || undefined,
+      clientGroupId: formData.clientGroupId || null,
     };
 
     onAddProject(project);
@@ -225,6 +233,27 @@ const AddProjectDialog = ({
                 onChange={(e) => set("client", e.target.value)}
                 placeholder="Nome do cliente"
               />
+            </div>
+
+            {/* Grupo de Clientes */}
+            <div>
+              <Label htmlFor="clientGroup">Grupo de Clientes</Label>
+              <Select
+                value={formData.clientGroupId ?? "__none__"}
+                onValueChange={(v) =>
+                  setFormData((prev) => ({ ...prev, clientGroupId: v === "__none__" ? null : v }))
+                }
+              >
+                <SelectTrigger id="clientGroup">
+                  <SelectValue placeholder="Sem grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem grupo</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Tipos de serviço */}

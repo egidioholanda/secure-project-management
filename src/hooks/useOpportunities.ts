@@ -9,6 +9,7 @@ export interface Opportunity {
   title: string;
   client: string;
   clientId?: string | null;
+  clientGroupId?: string | null;
   value: string;
   monthlyValue: string;
   productValue: string;
@@ -36,6 +37,7 @@ interface DbOpportunity {
   title: string;
   client: string;
   client_id: string | null;
+  client_group_id: string | null;
   value: string | null;
   monthly_value: string | null;
   product_value: string | null;
@@ -69,6 +71,7 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   title: db.title,
   client: db.client,
   clientId: db.client_id ?? null,
+  clientGroupId: db.client_group_id ?? null,
   value: db.value || "",
   monthlyValue: db.monthly_value || "",
   productValue: db.product_value || "",
@@ -83,16 +86,16 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   status: db.status as Opportunity["status"],
 });
 
-export const useOpportunities = (allowedClientIds?: string[] | null) => {
+export const useOpportunities = (allowedClientGroupIds?: string[] | null) => {
   const [allOpportunities, setAllOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
 
   const opportunities = useMemo(() => {
-    if (allowedClientIds === null || allowedClientIds === undefined) return allOpportunities;
+    if (allowedClientGroupIds === null || allowedClientGroupIds === undefined) return allOpportunities;
     return allOpportunities.filter(
-      (o) => !o.clientId || allowedClientIds.includes(o.clientId)
+      (o) => !o.clientGroupId || allowedClientGroupIds.includes(o.clientGroupId)
     );
-  }, [allOpportunities, allowedClientIds]);
+  }, [allOpportunities, allowedClientGroupIds]);
 
   const fetchOpportunities = async () => {
     try {
@@ -128,6 +131,7 @@ export const useOpportunities = (allowedClientIds?: string[] | null) => {
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
+          client_group_id: opp.clientGroupId || null,
         } as any)
         .select()
         .single();
@@ -159,6 +163,7 @@ export const useOpportunities = (allowedClientIds?: string[] | null) => {
           type: opp.type || null,
           responsible: opp.responsible || null,
           status: opp.status,
+          client_group_id: opp.clientGroupId || null,
         } as any)
         .eq("id", opp.id);
 

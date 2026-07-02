@@ -11,6 +11,7 @@ export interface Project {
   address?: string;
   opportunityId?: string;
   clientId?: string | null;
+  clientGroupId?: string | null;
 }
 
 export interface DeviceCategory {

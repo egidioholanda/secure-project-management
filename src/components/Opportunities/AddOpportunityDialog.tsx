@@ -23,6 +23,7 @@ const SERVICE_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Siste
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Opportunity } from "@/hooks/useOpportunities";
+import { useClientGroups } from "@/hooks/useClientGroups";
 
 interface AddOpportunityDialogProps {
   open: boolean;
@@ -49,8 +50,10 @@ export function AddOpportunityDialog({
   editingOpportunity,
   duplicatingOpportunity,
 }: AddOpportunityDialogProps) {
+  const { groups } = useClientGroups();
   const [title, setTitle] = useState("");
   const [client, setClient] = useState("");
+  const [clientGroupId, setClientGroupId] = useState<string | null>(null);
   const [productValue, setProductValue] = useState("");
   const [serviceValue, setServiceValue] = useState("");
   const [types, setTypes] = useState<string[]>([]);
@@ -76,6 +79,7 @@ export function AddOpportunityDialog({
     if (source) {
       setTitle(source.title);
       setClient(source.client);
+      setClientGroupId(source.clientGroupId ?? null);
       const hasAnySplit = !!(source.productValue || source.serviceValue);
       setProductValue(
         source.productValue
@@ -96,6 +100,7 @@ export function AddOpportunityDialog({
   const resetForm = () => {
     setTitle("");
     setClient("");
+    setClientGroupId(null);
     setProductValue("");
     setServiceValue("");
     setTypes([]);
@@ -121,6 +126,7 @@ export function AddOpportunityDialog({
     const payload = {
       title,
       client,
+      clientGroupId: clientGroupId || null,
       productValue: toValue(productValue),
       serviceValue: toValue(serviceValue),
       value: totalValue ? `R$ ${totalValue}` : toValue(productValue),
@@ -176,6 +182,24 @@ export function AddOpportunityDialog({
               value={client}
               onChange={(e) => setClient(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="clientGroup">Grupo de Clientes</Label>
+            <Select
+              value={clientGroupId ?? "__none__"}
+              onValueChange={(v) => setClientGroupId(v === "__none__" ? null : v)}
+            >
+              <SelectTrigger id="clientGroup">
+                <SelectValue placeholder="Selecione um grupo (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sem grupo</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Values */}

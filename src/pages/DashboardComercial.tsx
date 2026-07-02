@@ -136,8 +136,8 @@ const CurrencyTooltip = ({ active, payload, label }: any) => {
 // ── Main component ────────────────────────────────────────────────────────────
 
 const DashboardComercial = () => {
-  const { allowedClientIds } = useAuthContext();
-  const { opportunities, loading } = useOpportunities(allowedClientIds);
+  const { allowedClientGroupIds } = useAuthContext();
+  const { opportunities, loading } = useOpportunities(allowedClientGroupIds);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterPeriod, setFilterPeriod]           = useState("all");

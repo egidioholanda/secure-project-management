@@ -16,6 +16,7 @@ interface DbProject {
   description: string | null;
   opportunity_id: string | null;
   client_id: string | null;
+  client_group_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +55,7 @@ const mapDbToProject = (db: DbProject): Project => ({
   address: db.description || "",
   opportunityId: db.opportunity_id || undefined,
   clientId: db.client_id,
+  clientGroupId: db.client_group_id,
 });
 
 export const linkProjectToClient = async (projectId: string, clientId: string | null) => {
@@ -104,6 +106,7 @@ export const useProjects = (allowedClientIds?: string[] | null) => {
           value: project.value || null,
           description: project.address || null,
           opportunity_id: project.opportunityId || null,
+          client_group_id: project.clientGroupId || null,
         })
         .select()
         .single();
@@ -134,6 +137,7 @@ export const useProjects = (allowedClientIds?: string[] | null) => {
           manager: project.manager || null,
           value: project.value || null,
           description: project.address || null,
+          client_group_id: project.clientGroupId || null,
         })
         .eq("id", project.id);
 

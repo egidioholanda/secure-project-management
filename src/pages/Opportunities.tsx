@@ -28,7 +28,7 @@ const Opportunities = () => {
     addOpportunity,
     updateOpportunity,
     deleteOpportunity,
-  } = useOpportunities(useAuthContext().allowedClientIds);
+  } = useOpportunities(useAuthContext().allowedClientGroupIds);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
@@ -119,6 +119,7 @@ const Opportunities = () => {
         value: opp.value,
         responsible: opp.responsible,
         opportunityId: opp.id,
+        clientGroupId: opp.clientGroupId ?? null,
       };
       navigate("/projetos", { state: { fromOpportunity: projectData } });
     }

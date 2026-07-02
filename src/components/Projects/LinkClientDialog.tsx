@@ -62,6 +62,7 @@ export function LinkClientDialog({ open, onOpenChange, project, onLinked }: Prop
         address: address || null,
         project_id: project.id,
         notes: null,
+        client_group_id: project.clientGroupId || null,
       });
       await linkProjectToClient(project.id, created.id);
       toast.success("Cliente criado e projeto vinculado");
