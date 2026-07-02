@@ -65,8 +65,8 @@ const Schedules = () => {
   }, []);
 
   const [dateRange, setDateRange] = useState({
-    start: startOfDay(subDays(new Date(), 7)),
-    end: startOfDay(addDays(new Date(), 52)),
+    start: startOfDay(subDays(new Date(), 60)),
+    end: startOfDay(addDays(new Date(), 90)),
   });
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ const Schedules = () => {
   };
 
   const goToToday = () =>
-    setDateRange({ start: startOfDay(subDays(new Date(), 7)), end: startOfDay(addDays(new Date(), 52)) });
+    setDateRange({ start: startOfDay(subDays(new Date(), 60)), end: startOfDay(addDays(new Date(), 90)) });
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
