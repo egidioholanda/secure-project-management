@@ -81,11 +81,19 @@ export const GanttSidebar = ({
 
   return (
     <div className="w-80 flex-shrink-0 border-r border-border bg-card">
-      {/* Header — must match GanttHeader height exactly: 98px */}
+      {/* Header — mirrors GanttHeader 3-row structure for pixel-perfect alignment */}
       <div className="sticky top-0 z-20 bg-card border-b border-border">
-        <div className="h-[98px] flex items-end pb-2 px-4 bg-muted/50 border-b border-border">
+        {/* Row 1: mirrors month row (py-1.5 + text-sm = 32px + border) */}
+        <div className="border-b border-border px-4 py-1.5 bg-muted/50">
           <span className="text-sm font-semibold text-foreground">Tarefas</span>
         </div>
+        {/* Row 2: mirrors day row (py-1 + 2× text-xs = 40px + border) */}
+        <div className="border-b border-border px-4 py-1">
+          <div className="text-xs invisible select-none" aria-hidden="true">·</div>
+          <div className="text-xs invisible select-none" aria-hidden="true">·</div>
+        </div>
+        {/* Row 3: mirrors milestone row (h-8 = 32px) */}
+        <div className="h-8 bg-muted/20 border-b border-border" />
       </div>
 
       {/* Milestones */}
