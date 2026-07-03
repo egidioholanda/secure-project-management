@@ -48,6 +48,19 @@ export const TaskEditDialog = ({
 
   if (!editedTask) return null;
 
+  const handleTeamChange = (v: string) => {
+    const teamId = v === '__none' ? null : v;
+    let assignee = editedTask.assignee || '';
+    if (teamId) {
+      const team = teams.find((t) => t.id === teamId);
+      const responsavel = team?.members?.find((m) => m.role === 'responsavel');
+      if (responsavel) {
+        assignee = responsavel.profile?.full_name || responsavel.profile?.email || assignee;
+      }
+    }
+    setEditedTask({ ...editedTask, teamId, assignee });
+  };
+
   const handleSave = () => {
     if (editedTask) {
       onSave(editedTask);
@@ -166,7 +179,7 @@ export const TaskEditDialog = ({
               </Label>
               <Select
                 value={editedTask.teamId ?? '__none'}
-                onValueChange={(v) => setEditedTask({ ...editedTask, teamId: v === '__none' ? null : v })}
+                onValueChange={handleTeamChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sem equipe" />

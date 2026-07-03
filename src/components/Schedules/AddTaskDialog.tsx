@@ -72,6 +72,19 @@ export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProp
     }
   };
 
+  const handleTeamChange = (v: string) => {
+    const teamId = v === '__none' ? null : v;
+    let assignee = newTask.assignee;
+    if (teamId) {
+      const team = teams.find((t) => t.id === teamId);
+      const responsavel = team?.members?.find((m) => m.role === 'responsavel');
+      if (responsavel) {
+        assignee = responsavel.profile?.full_name || responsavel.profile?.email || assignee;
+      }
+    }
+    setNewTask({ ...newTask, teamId, assignee });
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -200,7 +213,7 @@ export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProp
               </Label>
               <Select
                 value={newTask.teamId ?? '__none'}
-                onValueChange={(v) => setNewTask({ ...newTask, teamId: v === '__none' ? null : v })}
+                onValueChange={handleTeamChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sem equipe" />
