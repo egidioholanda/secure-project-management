@@ -153,6 +153,12 @@ const Schedules = () => {
     });
   }, [filteredTasks, taskOrder]);
 
+  const visibleProjectCount = useMemo(
+    () => new Set(filteredTasks.map((t) => t.projectId)).size,
+    [filteredTasks]
+  );
+  const totalProjectCount = dbProjects.length;
+
   const handleReorder = (orderedIds: string[]) => {
     setTaskOrder(orderedIds);
     localStorage.setItem('secureproject:taskOrder', JSON.stringify(orderedIds));
@@ -272,9 +278,15 @@ const Schedules = () => {
             </button>
           )}
         </div>
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {filteredTasks.length} tarefa{filteredTasks.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-3 whitespace-nowrap">
+          <span className="text-sm text-muted-foreground">
+            {filteredTasks.length} tarefa{filteredTasks.length !== 1 ? 's' : ''}
+          </span>
+          <span className="text-muted-foreground/40">·</span>
+          <span className={`text-sm font-medium ${visibleProjectCount < totalProjectCount ? 'text-warning' : 'text-success'}`}>
+            {visibleProjectCount}/{totalProjectCount} projeto{totalProjectCount !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Toolbar */}
