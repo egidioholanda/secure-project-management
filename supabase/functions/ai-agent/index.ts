@@ -479,13 +479,31 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Read active AI config for this user (RLS enforced via supabaseUser)
-    const { data: aiConfig, error: configError } = await supabaseUser
+    // Read active AI config — first try the user's own key, then fall back to
+    // any active key (allows admin-configured shared key for all users)
+    let aiConfig = null;
+    let configError = null;
+
+    const ownResult = await supabaseUser
       .from("ai_settings")
       .select("provider, model, api_key")
       .eq("user_id", user.id)
       .eq("active", true)
       .maybeSingle();
+
+    if (ownResult.data) {
+      aiConfig = ownResult.data;
+    } else {
+      // Fall back to any active key visible to this user (policy allows reading active keys)
+      const sharedResult = await supabaseUser
+        .from("ai_settings")
+        .select("provider, model, api_key")
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
+      aiConfig = sharedResult.data;
+      configError = sharedResult.error;
+    }
 
     if (configError || !aiConfig) {
       return new Response(
