@@ -24,6 +24,7 @@ import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
+import { AIAssistant } from '@/components/AIAssistant';
 
 // ─── Status options (sincronizado com Projects) ───────────────────────────────
 
@@ -42,7 +43,7 @@ const ALL_STATUS_VALUES = PROJECT_STATUSES.map((s) => s.value);
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Schedules = () => {
-  const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask } =
+  const { tasks, loading, addTask, updateTask, updateMultipleTasks, addDependency, removeDependency, deleteTask, refetch: refetchTasks } =
     useScheduleTasks();
   const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
   const { projects: dbProjects, loading: projectsLoading } = useProjects(allowedClientIds, allowedClientGroupIds);
@@ -577,6 +578,11 @@ const Schedules = () => {
           filterLabel={filterLabel}
         />
       </div>
+
+      <AIAssistant
+        context={{ tasks, projects: projectsList, teams }}
+        onMutation={refetchTasks}
+      />
     </div>
   );
 };
