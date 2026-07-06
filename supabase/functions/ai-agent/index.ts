@@ -186,9 +186,15 @@ async function executeTool(
 
 // ─── Build system prompt ───────────────────────────────────────────────────────
 
-// deno-lint-ignore no-explicit-any
-function buildSystemPrompt(context: { tasks: any[]; projects: any[]; teams: any[] }): string {
+function buildSystemPrompt(
+  // deno-lint-ignore no-explicit-any
+  context: { tasks: any[]; projects: any[]; teams: any[] },
+  companyContext: string
+): string {
   const today = new Date().toLocaleDateString("pt-BR");
+  const contextSection = companyContext.trim()
+    ? `\nCONTEXTO DA EMPRESA:\n${companyContext.trim()}\n`
+    : "";
   return `Você é um assistente especialista em gestão de cronogramas, alocação de recursos e gerenciamento de equipes da plataforma Secure Project Management.
 
 Você tem acesso ao contexto atual via ferramentas e pode criar e editar tarefas diretamente no sistema.
@@ -199,7 +205,7 @@ REGRAS:
 - Ao criar ou editar tarefas, confirme as ações realizadas de forma objetiva
 - Responda sempre em português brasileiro
 - Seja direto e prático — o usuário está em contexto operacional
-
+${contextSection}
 RESUMO DO ESTADO ATUAL (${today}):
 - ${context.tasks.length} tarefa(s) no cronograma
 - ${context.projects.length} projeto(s) ativo(s)
@@ -522,7 +528,15 @@ serve(async (req) => {
       });
     }
 
-    const systemPrompt = buildSystemPrompt(context);
+    // Load company context (best-effort — empty string if not configured)
+    const { data: aiContextRow } = await supabaseUser
+      .from("ai_context")
+      .select("content")
+      .limit(1)
+      .maybeSingle();
+    const companyContext = aiContextRow?.content ?? "";
+
+    const systemPrompt = buildSystemPrompt(context, companyContext);
     const { provider, model, api_key } = aiConfig;
 
     let result: { reply: string; mutations: boolean };

@@ -6,13 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { BrainCircuit, Plus, Trash2, CheckCircle2, Loader2, Eye, EyeOff, Zap } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { BrainCircuit, Plus, Trash2, CheckCircle2, Loader2, Eye, EyeOff, Zap, BookText } from 'lucide-react';
 import {
   useAISettings,
   PROVIDER_LABELS,
   PROVIDER_MODELS,
   type AIProvider,
 } from '@/hooks/useAISettings';
+import { useAIContext } from '@/hooks/useAIContext';
 import { toast } from 'sonner';
 
 const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
@@ -32,12 +34,14 @@ const defaultForm = {
 
 export const AISettingsTab = () => {
   const { settings, loading, addSetting, activateSetting, deleteSetting, testConnection } = useAISettings();
+  const { context, loading: contextLoading, saving: contextSaving, saveContext } = useAIContext();
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [contextText, setContextText] = useState<string | null>(null);
 
   const handleProviderChange = (provider: AIProvider) => {
     setForm((prev) => ({ ...prev, provider, model: PROVIDER_MODELS[provider][0] }));
@@ -184,6 +188,52 @@ export const AISettingsTab = () => {
               <Plus className="w-4 h-4" />
               Adicionar chave
             </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Company context */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BookText className="w-4 h-4 text-primary" />
+            Contexto da empresa
+          </CardTitle>
+          <CardDescription>
+            Informações sobre sua empresa, metodologia e padrões que o assistente usará em todas
+            as respostas. Exemplos: tipo de negócio, nomenclatura das equipes, processos internos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {contextLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Carregando...</span>
+            </div>
+          ) : (
+            <>
+              <Textarea
+                placeholder={`Exemplo:\nNossa empresa instala sistemas de segurança eletrônica (CFTV, alarme, controle de acesso).\nEquipes organizadas por especialidade. Sprints de 2 semanas.\nSempre verificar disponibilidade da equipe antes de criar tarefas.`}
+                rows={6}
+                className="text-sm resize-none font-mono"
+                value={contextText ?? context?.content ?? ''}
+                onChange={(e) => setContextText(e.target.value)}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Este texto é acrescentado ao prompt do assistente em cada conversa.
+                </p>
+                <Button
+                  size="sm"
+                  disabled={contextSaving || contextText === null}
+                  onClick={() => contextText !== null && saveContext(contextText).then(() => setContextText(null))}
+                  className="gap-2"
+                >
+                  {contextSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Salvar contexto
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
