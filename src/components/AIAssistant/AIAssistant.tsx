@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { BrainCircuit, X, Send, Loader2, Trash2 } from 'lucide-react';
+import { BrainCircuit, Send, Loader2, Trash2 } from 'lucide-react';
 import { useAIAgent } from '@/hooks/useAIAgent';
 import { cn } from '@/lib/utils';
 
@@ -103,14 +103,6 @@ export const AIAssistant = ({ context, onMutation }: AIAssistantProps) => {
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground"
-                onClick={() => setOpen(false)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
             </div>
           </SheetHeader>
 
