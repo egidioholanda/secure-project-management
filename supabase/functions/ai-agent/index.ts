@@ -12,7 +12,7 @@ const corsHeaders = {
 const TOOLS: Anthropic.Tool[] = [
   {
     name: "list_tasks",
-    description: "Lista as tarefas do cronograma. Retorna todas ou filtra por projeto.",
+    description: "Lista as tarefas do cronograma. Retorna todas ou filtra por projeto. IMPORTANTE: cada tarefa possui o campo `display_name` no formato \"[Nome do Projeto] Nome da Tarefa\" — SEMPRE use esse campo ao citar qualquer tarefa para o usuário. Nunca mencione uma tarefa sem o nome do projeto.",
     input_schema: {
       type: "object",
       properties: {
@@ -100,9 +100,14 @@ async function executeTool(
 
   switch (name) {
     case "list_tasks": {
-      let tasks = context.tasks;
-      if (input.projectId) tasks = tasks.filter((t: { projectId: string }) => t.projectId === input.projectId);
-      return tasks;
+      // deno-lint-ignore no-explicit-any
+      let tasks: any[] = context.tasks;
+      if (input.projectId) tasks = tasks.filter((t) => t.projectId === input.projectId);
+      // Inject display_name so the model always has project context pre-formatted
+      return tasks.map((t) => ({
+        ...t,
+        display_name: `[${t.projectName || t.project_name || "Sem projeto"}] ${t.name}`,
+      }));
     }
 
     case "list_projects":
@@ -200,6 +205,9 @@ function buildSystemPrompt(
 Você tem acesso ao contexto atual via ferramentas e pode criar e editar tarefas diretamente no sistema.
 
 REGRAS:
+- OBRIGATÓRIO: ao citar qualquer tarefa use SEMPRE o campo display_name no formato "[Projeto] Tarefa". Nunca mencione uma tarefa pelo nome isolado — tarefas com o mesmo nome existem em projetos diferentes.
+  Errado: "Infraestrutura está 20% concluída"
+  Correto: "[CFTV Base Operacional] Infraestrutura está 20% concluída"
 - Sempre use list_projects e list_teams antes de criar tarefas para obter os IDs corretos
 - Ao detectar problemas (sobreposições, atrasos, responsáveis ausentes), informe proativamente
 - Ao criar ou editar tarefas, confirme as ações realizadas de forma objetiva
