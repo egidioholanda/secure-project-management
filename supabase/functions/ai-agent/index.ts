@@ -151,7 +151,12 @@ async function executeTool(
 
     case "analyze_workload": {
       const issues: string[] = [];
-      const tasksByTeam: Record<string, typeof context.tasks> = {};
+      // deno-lint-ignore no-explicit-any
+      const tasksByTeam: Record<string, any[]> = {};
+
+      // deno-lint-ignore no-explicit-any
+      const taskLabel = (t: any) =>
+        `[${t.projectName || t.project_name || "Sem projeto"}] ${t.name}`;
 
       for (const task of context.tasks) {
         if (task.teamId) {
@@ -159,15 +164,16 @@ async function executeTool(
           tasksByTeam[task.teamId].push(task);
         }
         if (!task.assignee || task.assignee === "") {
-          issues.push(`Tarefa "${task.name}" não tem responsável definido.`);
+          issues.push(`Tarefa ${taskLabel(task)} não tem responsável definido.`);
         }
         if (task.endDate && task.endDate < today && task.progress < 100) {
-          issues.push(`Tarefa "${task.name}" está vencida (término: ${task.endDate}) com ${task.progress}% de progresso.`);
+          issues.push(`Tarefa ${taskLabel(task)} está vencida (término: ${task.endDate}) com ${task.progress}% de progresso.`);
         }
       }
 
       for (const [teamId, teamTasks] of Object.entries(tasksByTeam)) {
-        const team = context.teams.find((t: { id: string; name: string }) => t.id === teamId);
+        // deno-lint-ignore no-explicit-any
+        const team = context.teams.find((t: any) => t.id === teamId);
         const teamName = team?.name ?? teamId;
         for (let i = 0; i < teamTasks.length; i++) {
           for (let j = i + 1; j < teamTasks.length; j++) {
@@ -175,7 +181,7 @@ async function executeTool(
             const b = teamTasks[j];
             const overlap = a.startDate <= b.endDate && b.startDate <= a.endDate;
             if (overlap) {
-              issues.push(`Equipe "${teamName}" tem sobreposição entre "${a.name}" e "${b.name}".`);
+              issues.push(`[ALERTA DE SOBREPOSIÇÃO] Equipe "${teamName}" tem conflito entre ${taskLabel(a)} e ${taskLabel(b)}.`);
             }
           }
         }
