@@ -24,6 +24,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { useTeams } from '@/hooks/useTeams';
+import { useClientGroups } from '@/hooks/useClientGroups';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 import { AIAssistant } from '@/components/AIAssistant';
@@ -52,6 +53,7 @@ const Schedules = () => {
   const { settings: companySettings } = useCompanySettings();
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const { teams } = useTeams();
+  const { groups: clientGroups } = useClientGroups();
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const [exporting, setExporting]         = useState(false);
@@ -62,8 +64,9 @@ const Schedules = () => {
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
   const [filterTeam, setFilterTeam]         = useState<string>('all');
-  const [filterDateStart, setFilterDateStart] = useState<Date | null>(null);
-  const [filterDateEnd, setFilterDateEnd]     = useState<Date | null>(null);
+  const [filterDateStart, setFilterDateStart]       = useState<Date | null>(null);
+  const [filterDateEnd, setFilterDateEnd]           = useState<Date | null>(null);
+  const [filterClientGroup, setFilterClientGroup]   = useState<string>('all');
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
 
   useEffect(() => {
@@ -112,6 +115,11 @@ const Schedules = () => {
     [dbProjects]
   );
 
+  const projectClientGroupMap = useMemo(
+    () => new Map(dbProjects.map((p) => [p.id, p.clientGroupId ?? null])),
+    [dbProjects]
+  );
+
   const filteredTasks = useMemo(() => {
     let result = tasks;
 
@@ -146,6 +154,13 @@ const Schedules = () => {
       result = result.filter((t) => t.teamId === filterTeam);
     }
 
+    // Filter by client group
+    if (filterClientGroup !== 'all') {
+      result = result.filter(
+        (t) => projectClientGroupMap.get(t.projectId) === filterClientGroup
+      );
+    }
+
     // Filter by date range — show tasks that overlap with the selected period
     if (filterDateStart || filterDateEnd) {
       result = result.filter((t) => {
@@ -156,7 +171,7 @@ const Schedules = () => {
     }
 
     return result;
-  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, filterDateStart, filterDateEnd, allowedClientIds, allowedProjectIds]);
+  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, filterClientGroup, filterDateStart, filterDateEnd, allowedClientIds, allowedProjectIds, projectClientGroupMap]);
 
   const orderedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -208,12 +223,14 @@ const Schedules = () => {
     setFilterTeam('all');
     setFilterDateStart(null);
     setFilterDateEnd(null);
+    setFilterClientGroup('all');
   };
 
   const hasActiveFilters =
     activeStatuses.size < ALL_STATUS_VALUES.length ||
     filterProject !== 'all' ||
     filterTeam !== 'all' ||
+    filterClientGroup !== 'all' ||
     filterDateStart !== null ||
     filterDateEnd !== null;
 
@@ -509,6 +526,43 @@ const Schedules = () => {
                             }`}
                           >
                             {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Client group filter */}
+                {clientGroups.length > 0 && (
+                  <>
+                    <Separator className="my-3" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Grupo de Clientes
+                      </p>
+                      <div className="max-h-36 overflow-y-auto space-y-0.5">
+                        <button
+                          onClick={() => setFilterClientGroup('all')}
+                          className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                            filterClientGroup === 'all'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          Todos os grupos
+                        </button>
+                        {clientGroups.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => setFilterClientGroup(g.id)}
+                            className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
+                              filterClientGroup === g.id
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            {g.name}
                           </button>
                         ))}
                       </div>
