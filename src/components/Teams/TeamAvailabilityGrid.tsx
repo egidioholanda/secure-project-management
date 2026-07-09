@@ -118,8 +118,10 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
                         ${isSameDay(day, today) ? 'border-l-2 border-l-primary' : ''}`}
                       title={
                         busy
-                          ? dayTasks.map((t) => `${t.name}${t.projectName ? ` (${t.projectName})` : ''}`).join('\n') +
-                            (onDayClick ? '\n→ Ver no cronograma' : '')
+                          ? dayTasks.map((t) =>
+                              `${t.name}${t.projectName ? ` (${t.projectName})` : ''} — ${t.progress ?? 0}%`
+                            ).join('\n') +
+                            (onDayClick ? '\n→ Clique para ver no cronograma' : '')
                           : undefined
                       }
                       onClick={clickable ? () => onDayClick(day) : undefined}
