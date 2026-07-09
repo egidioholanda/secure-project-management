@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,12 +41,19 @@ interface RawTask {
 }
 
 const Teams = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') ?? 'equipes';
   const {
     teams, resources, isLoading,
     createTeam, updateTeam, deleteTeam, toggleTeamActive,
     addMember, removeMember, changeMemberRole,
     createResource, updateResource, deleteResource,
   } = useTeams();
+
+  const handleAvailabilityDayClick = useCallback((day: Date) => {
+    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
+  }, [navigate]);
 
   const [scheduleTasks, setScheduleTasks] = useState<RawTask[]>([]);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
@@ -99,7 +108,7 @@ const Teams = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <Tabs defaultValue="equipes">
+      <Tabs defaultValue={initialTab}>
         <div className="flex items-center justify-end gap-3 flex-wrap">
           <TabsList>
             <TabsTrigger value="equipes" className="gap-1.5">
@@ -269,7 +278,7 @@ const Teams = () => {
               Próximos 30 dias — blocos indicam tarefas do cronograma vinculadas à equipe.
             </p>
           </div>
-          <TeamAvailabilityGrid teams={teams} tasks={mappedTasks} />
+          <TeamAvailabilityGrid teams={teams} tasks={mappedTasks} onDayClick={handleAvailabilityDayClick} />
         </TabsContent>
       </Tabs>
 

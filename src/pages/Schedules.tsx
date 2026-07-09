@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { addDays, subDays, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X, CalendarIcon } from 'lucide-react';
@@ -64,21 +65,44 @@ const Schedules = () => {
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
   const [filterTeam, setFilterTeam]         = useState<string>('all');
-  const [filterDateStart, setFilterDateStart]       = useState<Date | null>(null);
-  const [filterDateEnd, setFilterDateEnd]           = useState<Date | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filterDateStart, setFilterDateStart]       = useState<Date | null>(() => {
+    const d = searchParams.get('date');
+    if (!d) return null;
+    const parsed = new Date(d + 'T00:00:00');
+    return isNaN(parsed.getTime()) ? null : parsed;
+  });
+  const [filterDateEnd, setFilterDateEnd]           = useState<Date | null>(() => {
+    const d = searchParams.get('date');
+    if (!d) return null;
+    const parsed = new Date(d + 'T00:00:00');
+    return isNaN(parsed.getTime()) ? null : parsed;
+  });
   const [filterClientGroup, setFilterClientGroup]   = useState<string>('all');
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState(() => {
+    const d = searchParams.get('date');
+    if (d) {
+      const parsed = new Date(d + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) {
+        return { start: startOfDay(subDays(parsed, 30)), end: startOfDay(addDays(parsed, 60)) };
+      }
+    }
+    return { start: startOfDay(subDays(new Date(), 60)), end: startOfDay(addDays(new Date(), 90)) };
+  });
+
+  // Clear the ?date= param from URL after applying it on first render
+  useEffect(() => {
+    if (searchParams.has('date')) {
+      setSearchParams({}, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Only used as tiebreaker for same-date tasks; clear any stale full-order snapshots
     const saved = localStorage.getItem('secureproject:taskOrder');
     if (saved) { try { setTaskOrder(JSON.parse(saved)); } catch {} }
   }, []);
-
-  const [dateRange, setDateRange] = useState({
-    start: startOfDay(subDays(new Date(), 60)),
-    end: startOfDay(addDays(new Date(), 90)),
-  });
 
   // ── Derived data ──────────────────────────────────────────────────────────
 

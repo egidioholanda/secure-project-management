@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useScheduleTasks } from "@/hooks/useScheduleTasks";
@@ -24,7 +24,9 @@ import {
   FolderKanban, Clock, AlertTriangle, CheckCircle2,
   CalendarDays, User, TrendingUp, ArrowRight, Filter, X, Users,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import TeamAvailabilityGrid from "@/components/Teams/TeamAvailabilityGrid";
 import { cn } from "@/lib/utils";
 
 const normalizeStatus = (status: string) => {
@@ -83,10 +85,15 @@ const ManagerTooltip = ({ active, payload }: any) => {
 };
 
 const DashboardOperacional = () => {
+  const navigate = useNavigate();
   const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
   const { projects, loading: loadingProjects } = useProjects(allowedClientIds, allowedClientGroupIds);
   const { tasks, loading: loadingTasks } = useScheduleTasks();
   const { teams } = useTeams();
+
+  const handleAvailabilityDayClick = useCallback((day: Date) => {
+    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
+  }, [navigate]);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterStatuses, setFilterStatuses]   = useState<string[]>([]);
@@ -739,6 +746,36 @@ const DashboardOperacional = () => {
               </div>
             ))}
           </div>
+        </Card>
+      )}
+
+      {/* Team Availability */}
+      {teams.filter((t) => t.active).length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-semibold">Disponibilidade das Equipes</h2>
+            </div>
+            <Link to="/equipes?tab=disponibilidade" className="text-sm text-primary hover:underline flex items-center gap-1">
+              Ver tela completa <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Próximos 30 dias — clique em um dia ocupado para ver no cronograma
+          </p>
+          <TeamAvailabilityGrid
+            teams={teams}
+            tasks={tasks.map((t) => ({
+              id: t.id,
+              name: t.name,
+              startDate: t.startDate,
+              endDate: t.endDate,
+              team_id: t.teamId ?? null,
+              projectName: t.projectName,
+            }))}
+            onDayClick={handleAvailabilityDayClick}
+          />
         </Card>
       )}
 

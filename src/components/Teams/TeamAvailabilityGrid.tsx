@@ -17,11 +17,12 @@ interface ScheduleTask {
 interface Props {
   teams: Team[];
   tasks: ScheduleTask[];
+  onDayClick?: (day: Date) => void;
 }
 
 const DAYS_AHEAD = 30;
 
-const TeamAvailabilityGrid = ({ teams, tasks }: Props) => {
+const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
   const today = startOfDay(new Date());
   const days = useMemo(
     () => eachDayOfInterval({ start: today, end: addDays(today, DAYS_AHEAD - 1) }),
@@ -103,19 +104,23 @@ const TeamAvailabilityGrid = ({ teams, tasks }: Props) => {
                   const busy = dayTasks.length > 0;
                   const weekend = isWeekend(day);
 
+                  const clickable = busy && !!onDayClick;
                   return (
                     <div
                       key={day.toISOString()}
                       className={`w-8 h-8 flex-shrink-0 flex items-center justify-center
                         border-r border-b border-border/30 relative group/cell
                         ${weekend ? 'bg-muted/30' : ''}
-                        ${busy ? 'bg-primary/15 cursor-pointer' : ''}
+                        ${busy ? 'bg-primary/15' : ''}
+                        ${clickable ? 'cursor-pointer hover:bg-primary/30 transition-colors' : ''}
                         ${isSameDay(day, today) ? 'border-l-2 border-l-primary' : ''}`}
                       title={
                         busy
-                          ? dayTasks.map((t) => `${t.name}${t.projectName ? ` (${t.projectName})` : ''}`).join('\n')
+                          ? dayTasks.map((t) => `${t.name}${t.projectName ? ` (${t.projectName})` : ''}`).join('\n') +
+                            (onDayClick ? '\n→ Ver no cronograma' : '')
                           : undefined
                       }
+                      onClick={clickable ? () => onDayClick(day) : undefined}
                     >
                       {busy && (
                         <div className="w-5 h-5 rounded-sm bg-primary/80 flex items-center justify-center">
