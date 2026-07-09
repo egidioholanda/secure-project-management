@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { addDays, subDays, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X } from 'lucide-react';
+import { addDays, subDays, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X, CalendarIcon } from 'lucide-react';
 import type { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
@@ -16,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useScheduleTasks } from '@/hooks/useScheduleTasks';
 import { useProjects } from '@/hooks/useProjects';
@@ -60,6 +62,8 @@ const Schedules = () => {
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
   const [filterTeam, setFilterTeam]         = useState<string>('all');
+  const [filterDateStart, setFilterDateStart] = useState<Date | null>(null);
+  const [filterDateEnd, setFilterDateEnd]     = useState<Date | null>(null);
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
 
   useEffect(() => {
@@ -142,8 +146,17 @@ const Schedules = () => {
       result = result.filter((t) => t.teamId === filterTeam);
     }
 
+    // Filter by date range — show tasks that overlap with the selected period
+    if (filterDateStart || filterDateEnd) {
+      result = result.filter((t) => {
+        const afterStart = !filterDateStart || t.endDate >= filterDateStart;
+        const beforeEnd  = !filterDateEnd   || t.startDate <= filterDateEnd;
+        return afterStart && beforeEnd;
+      });
+    }
+
     return result;
-  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, allowedClientIds, allowedProjectIds]);
+  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, filterDateStart, filterDateEnd, allowedClientIds, allowedProjectIds]);
 
   const orderedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -193,10 +206,21 @@ const Schedules = () => {
     setSearchQuery('');
     setProjectSearch('');
     setFilterTeam('all');
+    setFilterDateStart(null);
+    setFilterDateEnd(null);
   };
 
   const hasActiveFilters =
-    activeStatuses.size < ALL_STATUS_VALUES.length || filterProject !== 'all' || filterTeam !== 'all';
+    activeStatuses.size < ALL_STATUS_VALUES.length ||
+    filterProject !== 'all' ||
+    filterTeam !== 'all' ||
+    filterDateStart !== null ||
+    filterDateEnd !== null;
+
+  const applyMonthPreset = (date: Date) => {
+    setFilterDateStart(startOfMonth(date));
+    setFilterDateEnd(endOfMonth(date));
+  };
 
   const activeStatusCount = ALL_STATUS_VALUES.length - activeStatuses.size;
 
@@ -491,6 +515,95 @@ const Schedules = () => {
                     </div>
                   </>
                 )}
+
+                {/* Date range filter */}
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Período
+                    </p>
+                    {(filterDateStart || filterDateEnd) && (
+                      <button
+                        onClick={() => { setFilterDateStart(null); setFilterDateEnd(null); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Month quick presets */}
+                  <div className="flex flex-wrap gap-1">
+                    {[-1, 0, 1, 2].map((offset) => {
+                      const d = addMonths(new Date(), offset);
+                      const label = format(d, "MMM/yy", { locale: ptBR });
+                      const isActive =
+                        filterDateStart?.getTime() === startOfMonth(d).getTime() &&
+                        filterDateEnd?.getTime() === endOfMonth(d).getTime();
+                      return (
+                        <button
+                          key={offset}
+                          onClick={() => isActive
+                            ? (setFilterDateStart(null), setFilterDateEnd(null))
+                            : applyMonthPreset(d)
+                          }
+                          className={`px-2 py-1 rounded text-xs border transition-colors capitalize ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-border hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom range pickers */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">De</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
+                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                            {filterDateStart ? format(filterDateStart, "dd/MM/yy") : 'Início'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateStart ?? undefined}
+                            onSelect={(d) => setFilterDateStart(d ?? null)}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Até</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
+                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                            {filterDateEnd ? format(filterDateEnd, "dd/MM/yy") : 'Fim'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateEnd ?? undefined}
+                            onSelect={(d) => setFilterDateEnd(d ?? null)}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </div>
 
               </PopoverContent>
             </Popover>
