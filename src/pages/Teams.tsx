@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,8 @@ import {
   Users, Plus, Wrench, Car, Package2, LayoutGrid, Loader2,
 } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
+import { useProjects } from '@/hooks/useProjects';
+import { useAuthContext } from '@/contexts/AuthContext';
 import TeamCard from '@/components/Teams/TeamCard';
 import AddTeamDialog from '@/components/Teams/AddTeamDialog';
 import AddMemberDialog from '@/components/Teams/AddMemberDialog';
@@ -46,12 +48,15 @@ const Teams = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') ?? 'equipes';
+  const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
   const {
     teams, resources, isLoading,
     createTeam, updateTeam, deleteTeam, toggleTeamActive,
     addMember, removeMember, changeMemberRole,
     createResource, updateResource, deleteResource,
   } = useTeams();
+  const { projects } = useProjects(allowedClientIds, allowedClientGroupIds);
+  const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
 
   const handleAvailabilityDayClick = useCallback((day: Date) => {
     navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
@@ -73,15 +78,21 @@ const Teams = () => {
       .then(({ data }) => setScheduleTasks((data as RawTask[]) ?? []));
   }, [teams]);
 
-  const mappedTasks = scheduleTasks.map((t) => ({
-    id: t.id,
-    name: t.name,
-    startDate: new Date(t.start_date + 'T00:00:00'),
-    endDate: new Date(t.end_date + 'T00:00:00'),
-    team_id: t.team_id,
-    projectName: t.project_name ?? '',
-    progress: t.progress ?? 0,
-  }));
+  const mappedTasks = useMemo(
+    () =>
+      scheduleTasks
+        .filter((t) => t.project_id && validProjectIds.has(t.project_id))
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          startDate: new Date(t.start_date + 'T00:00:00'),
+          endDate: new Date(t.end_date + 'T00:00:00'),
+          team_id: t.team_id,
+          projectName: t.project_name ?? '',
+          progress: t.progress ?? 0,
+        })),
+    [scheduleTasks, validProjectIds],
+  );
 
   const filteredResources = resources.filter((r) => {
     if (resourceFilter === 'all') return true;
