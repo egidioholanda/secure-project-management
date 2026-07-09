@@ -37,6 +37,7 @@ interface RawTask {
   start_date: string;
   end_date: string;
   team_id: string | null;
+  project_id: string | null;
   project_name: string | null;
   progress: number;
 }
@@ -67,7 +68,7 @@ const Teams = () => {
   useEffect(() => {
     supabase
       .from('schedule_tasks')
-      .select('id, name, start_date, end_date, team_id, project_name, progress')
+      .select('id, name, start_date, end_date, team_id, project_name, progress, project_id, projects!inner(id)')
       .not('team_id', 'is', null)
       .then(({ data }) => setScheduleTasks((data as RawTask[]) ?? []));
   }, [teams]);

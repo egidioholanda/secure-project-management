@@ -95,6 +95,8 @@ const DashboardOperacional = () => {
     navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
   }, [navigate]);
 
+  const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterStatuses, setFilterStatuses]   = useState<string[]>([]);
   const [filterManagers, setFilterManagers]   = useState<string[]>([]);
@@ -766,15 +768,17 @@ const DashboardOperacional = () => {
           </p>
           <TeamAvailabilityGrid
             teams={teams}
-            tasks={tasks.map((t) => ({
-              id: t.id,
-              name: t.name,
-              startDate: t.startDate,
-              endDate: t.endDate,
-              team_id: t.teamId ?? null,
-              projectName: t.projectName,
-              progress: t.progress ?? 0,
-            }))}
+            tasks={tasks
+              .filter((t) => validProjectIds.has(t.projectId))
+              .map((t) => ({
+                id: t.id,
+                name: t.name,
+                startDate: t.startDate,
+                endDate: t.endDate,
+                team_id: t.teamId ?? null,
+                projectName: t.projectName,
+                progress: t.progress ?? 0,
+              }))}
             onDayClick={handleAvailabilityDayClick}
           />
         </Card>
