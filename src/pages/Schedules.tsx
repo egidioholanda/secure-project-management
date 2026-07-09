@@ -408,9 +408,9 @@ const Schedules = () => {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="end">
+              <PopoverContent className="w-72 p-0 flex flex-col overflow-hidden" style={{ maxHeight: 'min(600px, 80vh)' }} align="end">
                 {/* Sticky header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-popover z-10">
+                <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b bg-popover">
                   <p className="text-sm font-semibold">Filtros</p>
                   {hasActiveFilters && (
                     <Button
@@ -424,7 +424,7 @@ const Schedules = () => {
                   )}
                 </div>
                 {/* Scrollable body */}
-                <div className="max-h-[70vh] overflow-y-auto p-4 space-y-0">
+                <div className="flex-1 overflow-y-auto p-4 space-y-0 min-h-0">
 
                 {/* Status de Projeto */}
                 <div className="space-y-2">
