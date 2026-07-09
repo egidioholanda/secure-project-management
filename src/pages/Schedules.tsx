@@ -63,6 +63,7 @@ const Schedules = () => {
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
 
   useEffect(() => {
+    // Only used as tiebreaker for same-date tasks; clear any stale full-order snapshots
     const saved = localStorage.getItem('secureproject:taskOrder');
     if (saved) { try { setTaskOrder(JSON.parse(saved)); } catch {} }
   }, []);
@@ -145,12 +146,19 @@ const Schedules = () => {
   }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, allowedClientIds, allowedProjectIds]);
 
   const orderedTasks = useMemo(() => {
-    if (taskOrder.length === 0) return filteredTasks;
-    const orderMap = new Map(taskOrder.map((id, i) => [id, i]));
     return [...filteredTasks].sort((a, b) => {
-      const ia = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
-      const ib = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
-      return ia - ib;
+      const startDiff = a.startDate.getTime() - b.startDate.getTime();
+      if (startDiff !== 0) return startDiff;
+      const endDiff = a.endDate.getTime() - b.endDate.getTime();
+      if (endDiff !== 0) return endDiff;
+      // Same dates: preserve drag-and-drop order as tiebreaker
+      if (taskOrder.length > 0) {
+        const orderMap = new Map(taskOrder.map((id, i) => [id, i]));
+        const ia = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
+        const ib = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
+        return ia - ib;
+      }
+      return 0;
     });
   }, [filteredTasks, taskOrder]);
 
