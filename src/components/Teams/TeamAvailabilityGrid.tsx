@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { addDays, format, startOfDay, isSameDay, isWeekend, eachDayOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
-import { CalendarCheck, CalendarX } from 'lucide-react';
+import { CalendarCheck } from 'lucide-react';
 import type { Team } from '@/types/teams';
 
 interface ScheduleTask {
@@ -21,7 +20,23 @@ interface Props {
   onDayClick?: (day: Date) => void;
 }
 
+type CellVariant = 'none' | 'green' | 'blue' | 'red';
+
 const DAYS_AHEAD = 30;
+
+const CELL_BG: Record<CellVariant, string> = {
+  none: '',
+  green: 'bg-green-500/15',
+  blue: 'bg-primary/15',
+  red: 'bg-red-500/15',
+};
+
+const CIRCLE_BG: Record<CellVariant, string> = {
+  none: '',
+  green: 'bg-green-500/80',
+  blue: 'bg-primary/80',
+  red: 'bg-red-500/80',
+};
 
 const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
   const today = startOfDay(new Date());
@@ -32,15 +47,29 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
 
   const activeTeams = teams.filter((t) => t.active);
 
+  // Includes ALL tasks (completed + active) — no progress filter here
   const getTasksForTeamOnDay = (teamId: string, day: Date) =>
     tasks.filter(
       (t) =>
         t.team_id === teamId &&
-        (t.progress ?? 0) < 100 &&
         !isWeekend(day) &&
         startOfDay(t.startDate) <= day &&
         startOfDay(t.endDate) >= day,
     );
+
+  const getCellVariant = (dayTasks: ScheduleTask[]): CellVariant => {
+    if (dayTasks.length === 0) return 'none';
+    // Red: any incomplete task whose deadline is today or already past
+    const hasOverdue = dayTasks.some(
+      (t) => (t.progress ?? 0) < 100 && startOfDay(t.endDate) <= today,
+    );
+    if (hasOverdue) return 'red';
+    // Blue: any incomplete task with a future deadline
+    const hasActive = dayTasks.some((t) => (t.progress ?? 0) < 100);
+    if (hasActive) return 'blue';
+    // Green: all tasks are complete
+    return 'green';
+  };
 
   if (activeTeams.length === 0) {
     return (
@@ -103,34 +132,44 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
                 {/* Day cells */}
                 {days.map((day) => {
                   const dayTasks = getTasksForTeamOnDay(team.id, day);
-                  const busy = dayTasks.length > 0;
+                  const variant = getCellVariant(dayTasks);
+                  const count = dayTasks.length;
                   const weekend = isWeekend(day);
+                  const clickable = count > 0 && !!onDayClick;
 
-                  const clickable = busy && !!onDayClick;
+                  const tooltipLines = dayTasks.map((t) => {
+                    const pct = t.progress ?? 0;
+                    const status =
+                      pct >= 100
+                        ? '✓ Concluída'
+                        : startOfDay(t.endDate) <= today
+                          ? '⚠ Atrasada'
+                          : `${pct}% — no prazo`;
+                    return `${t.name}${t.projectName ? ` (${t.projectName})` : ''} — ${status}`;
+                  });
+                  if (clickable) tooltipLines.push('→ Clique para ver no cronograma');
+
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`w-8 h-8 flex-shrink-0 flex items-center justify-center
-                        border-r border-b border-border/30 relative group/cell
-                        ${weekend ? 'bg-muted/30' : ''}
-                        ${busy ? 'bg-primary/15' : ''}
-                        ${clickable ? 'cursor-pointer hover:bg-primary/30 transition-colors' : ''}
-                        ${isSameDay(day, today) ? 'border-l-2 border-l-primary' : ''}`}
-                      title={
-                        busy
-                          ? dayTasks.map((t) =>
-                              `${t.name}${t.projectName ? ` (${t.projectName})` : ''} — ${t.progress ?? 0}%`
-                            ).join('\n') +
-                            (onDayClick ? '\n→ Clique para ver no cronograma' : '')
-                          : undefined
-                      }
-                      onClick={clickable ? () => onDayClick(day) : undefined}
+                      className={[
+                        'w-8 h-8 flex-shrink-0 flex items-center justify-center',
+                        'border-r border-b border-border/30',
+                        weekend ? 'bg-muted/30' : '',
+                        CELL_BG[variant],
+                        clickable ? 'cursor-pointer hover:brightness-90 transition-all' : '',
+                        isSameDay(day, today) ? 'border-l-2 border-l-primary' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      title={tooltipLines.length ? tooltipLines.join('\n') : undefined}
+                      onClick={clickable ? () => onDayClick!(day) : undefined}
                     >
-                      {busy && (
-                        <div className="w-5 h-5 rounded-sm bg-primary/80 flex items-center justify-center">
-                          <span className="text-[9px] text-primary-foreground font-bold">
-                            {dayTasks.length}
-                          </span>
+                      {count > 0 && (
+                        <div
+                          className={`w-5 h-5 rounded-sm flex items-center justify-center ${CIRCLE_BG[variant]}`}
+                        >
+                          <span className="text-[9px] text-white font-bold">{count}</span>
                         </div>
                       )}
                     </div>
@@ -142,10 +181,22 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-5 mt-4 text-xs text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded-sm bg-green-500/80" />
+            <span>Concluída</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-4 rounded-sm bg-primary/80" />
-            <span>Ocupado (número = tarefas)</span>
+            <span>Em andamento (no prazo)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded-sm bg-red-500/80" />
+            <span>Atrasada</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold bg-primary/80 text-white rounded-sm w-4 h-4 flex items-center justify-center">3</span>
+            <span>Número = sobreposição de tarefas</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-4 rounded-sm bg-muted/30" />
