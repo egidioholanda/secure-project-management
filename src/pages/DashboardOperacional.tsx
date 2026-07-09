@@ -773,6 +773,7 @@ const DashboardOperacional = () => {
               endDate: t.endDate,
               team_id: t.teamId ?? null,
               projectName: t.projectName,
+              progress: t.progress ?? 0,
             }))}
             onDayClick={handleAvailabilityDayClick}
           />

@@ -12,6 +12,7 @@ interface ScheduleTask {
   endDate: Date;
   team_id?: string | null;
   projectName?: string;
+  progress?: number;
 }
 
 interface Props {
@@ -35,6 +36,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
     tasks.filter(
       (t) =>
         t.team_id === teamId &&
+        (t.progress ?? 0) < 100 &&
         !isWeekend(day) &&
         startOfDay(t.startDate) <= day &&
         startOfDay(t.endDate) >= day,
