@@ -59,7 +59,7 @@ const Schedules = () => {
   const [exporting, setExporting]         = useState(false);
   const [selectedTask, setSelectedTask]   = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [filterProject, setFilterProject]   = useState<string>('all');
+  const [filterProjects, setFilterProjects] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery]       = useState('');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
@@ -129,8 +129,8 @@ const Schedules = () => {
     }
 
     // Filter by selected project
-    if (filterProject !== 'all') {
-      result = result.filter((t) => t.projectId === filterProject);
+    if (filterProjects.size > 0) {
+      result = result.filter((t) => filterProjects.has(t.projectId));
     }
 
     // Filter by project status
@@ -171,7 +171,7 @@ const Schedules = () => {
     }
 
     return result;
-  }, [tasks, filterProject, activeStatuses, projectStatusMap, searchQuery, filterTeam, filterClientGroup, filterDateStart, filterDateEnd, allowedClientIds, allowedProjectIds, projectClientGroupMap]);
+  }, [tasks, filterProjects, activeStatuses, projectStatusMap, searchQuery, filterTeam, filterClientGroup, filterDateStart, filterDateEnd, allowedClientIds, allowedProjectIds, projectClientGroupMap]);
 
   const orderedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -217,7 +217,7 @@ const Schedules = () => {
 
   const clearFilters = () => {
     setActiveStatuses(new Set(ALL_STATUS_VALUES));
-    setFilterProject('all');
+    setFilterProjects(new Set());
     setSearchQuery('');
     setProjectSearch('');
     setFilterTeam('all');
@@ -228,11 +228,19 @@ const Schedules = () => {
 
   const hasActiveFilters =
     activeStatuses.size < ALL_STATUS_VALUES.length ||
-    filterProject !== 'all' ||
+    filterProjects.size > 0 ||
     filterTeam !== 'all' ||
     filterClientGroup !== 'all' ||
     filterDateStart !== null ||
     filterDateEnd !== null;
+
+  const toggleFilterProject = (id: string) => {
+    setFilterProjects((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const applyMonthPreset = (date: Date) => {
     setFilterDateStart(startOfMonth(date));
@@ -262,9 +270,13 @@ const Schedules = () => {
   };
 
   const filterLabel = useMemo(() => {
-    if (filterProject === 'all') return 'Todos os projetos';
-    return projectsList.find((p) => p.id === filterProject)?.name || 'Todos os projetos';
-  }, [filterProject, projectsList]);
+    if (filterProjects.size === 0) return 'Todos os projetos';
+    if (filterProjects.size === 1) {
+      const id = [...filterProjects][0];
+      return projectsList.find((p) => p.id === id)?.name || 'Todos os projetos';
+    }
+    return `${filterProjects.size} projetos`;
+  }, [filterProjects, projectsList]);
 
   const handleExportPDF = async () => {
     if (!pdfRef.current) return;
@@ -396,8 +408,9 @@ const Schedules = () => {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-4" align="end">
-                <div className="flex items-center justify-between mb-3">
+              <PopoverContent className="w-72 p-0" align="end">
+                {/* Sticky header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-popover z-10">
                   <p className="text-sm font-semibold">Filtros</p>
                   {hasActiveFilters && (
                     <Button
@@ -410,6 +423,8 @@ const Schedules = () => {
                     </Button>
                   )}
                 </div>
+                {/* Scrollable body */}
+                <div className="max-h-[70vh] overflow-y-auto p-4 space-y-0">
 
                 {/* Status de Projeto */}
                 <div className="space-y-2">
@@ -443,11 +458,21 @@ const Schedules = () => {
 
                 <Separator className="my-3" />
 
-                {/* Projeto específico — input com lista filtrada */}
+                {/* Projetos — multi-seleção */}
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Projeto específico
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Projetos
+                    </p>
+                    {filterProjects.size > 0 && (
+                      <button
+                        onClick={() => { setFilterProjects(new Set()); setProjectSearch(''); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Limpar ({filterProjects.size})
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                     <Input
@@ -465,33 +490,24 @@ const Schedules = () => {
                       </button>
                     )}
                   </div>
-                  <div className="max-h-36 overflow-y-auto space-y-0.5">
-                    <button
-                      onClick={() => { setFilterProject('all'); setProjectSearch(''); }}
-                      className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors ${
-                        filterProject === 'all'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      Todos os projetos
-                    </button>
+                  <div className="space-y-0.5">
                     {filteredProjectOptions.length === 0 ? (
                       <p className="text-xs text-muted-foreground px-2 py-1.5">Nenhum projeto encontrado</p>
                     ) : (
                       filteredProjectOptions.map((p) => (
-                        <button
+                        <div
                           key={p.id}
-                          onClick={() => { setFilterProject(p.id); setProjectSearch(''); }}
-                          className={`w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 transition-colors ${
-                            filterProject === p.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted'
-                          }`}
+                          className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer"
+                          onClick={() => toggleFilterProject(p.id)}
                         >
+                          <Checkbox
+                            checked={filterProjects.has(p.id)}
+                            onCheckedChange={() => toggleFilterProject(p.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                          <span className="truncate">{p.name}</span>
-                        </button>
+                          <span className="text-sm truncate flex-1">{p.name}</span>
+                        </div>
                       ))
                     )}
                   </div>
@@ -659,6 +675,7 @@ const Schedules = () => {
                   </div>
                 </div>
 
+                </div> {/* end scrollable body */}
               </PopoverContent>
             </Popover>
 
@@ -681,14 +698,31 @@ const Schedules = () => {
       {/* Active filter chips */}
       {(hasActiveFilters || searchQuery) && (
         <div className="flex flex-wrap gap-2 items-center">
-          {filterProject !== 'all' && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer"
-              onClick={() => setFilterProject('all')}
-            >
-              {filterLabel} <X className="w-3 h-3" />
-            </Badge>
+          {filterProjects.size > 0 && (
+            filterProjects.size === 1 ? (
+              <Badge
+                variant="secondary"
+                className="gap-1 cursor-pointer"
+                onClick={() => setFilterProjects(new Set())}
+              >
+                {filterLabel} <X className="w-3 h-3" />
+              </Badge>
+            ) : (
+              [...filterProjects].map((id) => {
+                const proj = projectsList.find((p) => p.id === id);
+                return proj ? (
+                  <Badge
+                    key={id}
+                    variant="secondary"
+                    className="gap-1 cursor-pointer"
+                    onClick={() => toggleFilterProject(id)}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: proj.color }} />
+                    {proj.name} <X className="w-3 h-3" />
+                  </Badge>
+                ) : null;
+              })
+            )
           )}
           {ALL_STATUS_VALUES
             .filter((v) => !activeStatuses.has(v))
