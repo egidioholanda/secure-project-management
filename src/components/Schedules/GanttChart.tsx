@@ -134,6 +134,17 @@ export const GanttChart = ({
     [displayRows],
   );
 
+  // Map from task ID to its actual Y centre in the chart (accounts for project header rows)
+  const taskYOffsets = useMemo((): Map<string, number> => {
+    const map = new Map<string, number>();
+    displayRows.forEach((row, idx) => {
+      if (row.type === 'task') {
+        map.set(row.task.id, (idx + 0.5) * ROW_HEIGHT);
+      }
+    });
+    return map;
+  }, [displayRows]);
+
   const totalChartHeight = displayRows.length * ROW_HEIGHT;
 
   // ─── Drag event listeners ──────────────────────────────────────────────────
@@ -250,6 +261,7 @@ export const GanttChart = ({
             {/* Dependency arrows — only for visible tasks */}
             <DependencyArrows
               tasks={visibleTasks}
+              taskYOffsets={taskYOffsets}
               startDate={startDate}
               dayWidth={DAY_WIDTH}
               totalWidth={totalChartWidth}

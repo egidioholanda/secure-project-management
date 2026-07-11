@@ -16,6 +16,7 @@ interface Arrow {
 
 interface DependencyArrowsProps {
   tasks: Task[];
+  taskYOffsets: Map<string, number>;
   startDate: Date;
   dayWidth: number;
   totalWidth: number;
@@ -45,6 +46,7 @@ const buildArrowPath = (sx: number, sy: number, tx: number, ty: number): string 
 
 export const DependencyArrows = ({
   tasks,
+  taskYOffsets,
   startDate,
   dayWidth,
   totalWidth,
@@ -55,16 +57,18 @@ export const DependencyArrows = ({
 
   const arrows = useMemo<Arrow[]>(() => {
     const result: Arrow[] = [];
-    tasks.forEach((task, taskIdx) => {
+    tasks.forEach((task) => {
       if (!task.dependencies?.length) return;
+      const ty = taskYOffsets.get(task.id);
+      if (ty === undefined) return;
       const target = getBarGeometry(task, startDate, dayWidth);
-      const ty = (taskIdx + 0.5) * ROW_HEIGHT;
 
       task.dependencies.forEach((depId) => {
-        const srcIdx = tasks.findIndex((t) => t.id === depId);
-        if (srcIdx < 0) return;
-        const src = getBarGeometry(tasks[srcIdx], startDate, dayWidth);
-        const sy = (srcIdx + 0.5) * ROW_HEIGHT;
+        const srcTask = tasks.find((t) => t.id === depId);
+        if (!srcTask) return;
+        const sy = taskYOffsets.get(depId);
+        if (sy === undefined) return;
+        const src = getBarGeometry(srcTask, startDate, dayWidth);
         const id = `${depId}→${task.id}`;
         result.push({
           id,
