@@ -27,6 +27,7 @@ import { useCalendarConfig } from '@/hooks/useCalendarConfig';
 import { useTeams } from '@/hooks/useTeams';
 import { useClientGroups } from '@/hooks/useClientGroups';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useContractClients } from '@/hooks/useClients';
 import { exportScheduleToPDF } from '@/utils/exportSchedulePDF';
 import { AIAssistant } from '@/components/AIAssistant';
 
@@ -55,6 +56,7 @@ const Schedules = () => {
   const { config: calendarConfig, updateConfig: updateCalendarConfig } = useCalendarConfig();
   const { teams } = useTeams();
   const { groups: clientGroups } = useClientGroups();
+  const { data: contractClients = [] } = useContractClients(allowedClientGroupIds);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const [exporting, setExporting]         = useState(false);
@@ -133,11 +135,12 @@ const Schedules = () => {
     });
   }, [projectsList, activeStatuses, projectSearch]);
 
-  // Set of project IDs allowed by the client group filter
-  const allowedProjectIds = useMemo(
-    () => new Set(dbProjects.map((p) => p.id)),
-    [dbProjects]
-  );
+  // Set of project IDs + contract client IDs allowed for this user
+  const allowedProjectIds = useMemo(() => {
+    const ids = new Set(dbProjects.map((p) => p.id));
+    contractClients.forEach((c) => ids.add(c.id));
+    return ids;
+  }, [dbProjects, contractClients]);
 
   const projectClientGroupMap = useMemo(
     () => new Map(dbProjects.map((p) => [p.id, p.clientGroupId ?? null])),
@@ -339,7 +342,7 @@ const Schedules = () => {
     <div className="space-y-4 h-full flex flex-col">
       {/* Actions */}
       <div className="flex items-center justify-end">
-        <AddTaskDialog projects={projectsList} onAdd={addTask} teams={teams} />
+        <AddTaskDialog projects={projectsList} contractClients={contractClients} onAdd={addTask} teams={teams} />
       </div>
 
       {/* Summary cards */}

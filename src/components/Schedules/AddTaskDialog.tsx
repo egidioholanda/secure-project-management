@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Task } from '@/types/schedule';
 import { format, addDays, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Plus, UsersRound, Clock } from 'lucide-react';
+import { CalendarIcon, User, Flag, Plus, UsersRound, Clock, Wrench } from 'lucide-react';
 import type { Team } from '@/types/teams';
 import {
   Dialog,
@@ -21,8 +21,13 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
+const CONTRACT_CLIENT_COLOR = '#8B5CF6';
+
+type SourceType = 'project' | 'client';
+
 interface AddTaskDialogProps {
   projects: { id: string; name: string; color: string }[];
+  contractClients?: { id: string; name: string }[];
   onAdd: (task: Omit<Task, 'id'>) => void;
   teams?: Team[];
 }
@@ -43,11 +48,12 @@ const defaultTask = {
   isMilestone: false,
 };
 
-export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProps) => {
+export const AddTaskDialog = ({ projects, contractClients = [], onAdd, teams = [] }: AddTaskDialogProps) => {
   const [open, setOpen] = useState(false);
   const [newTask, setNewTask] = useState(defaultTask);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [durationUnit, setDurationUnit] = useState<'days' | 'hours'>('days');
+  const [sourceType, setSourceType] = useState<SourceType>('project');
 
   const durationToDays = (value: number, unit: 'days' | 'hours') =>
     unit === 'days' ? value - 1 : Math.max(0, Math.ceil(value / HOURS_PER_DAY) - 1);
@@ -76,33 +82,42 @@ export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProp
     setNewTask((prev) => ({ ...prev, endDate: date }));
   };
 
+  const handleSourceTypeChange = (type: SourceType) => {
+    setSourceType(type);
+    setNewTask((prev) => ({ ...prev, projectId: '', projectName: '' }));
+  };
+
   const handleAdd = () => {
     if (!newTask.name || !newTask.projectId) return;
-    
-    const project = projects.find((p) => p.id === newTask.projectId);
-    if (!project) return;
 
-    onAdd({
-      ...newTask,
-      projectName: project.name,
-      color: project.color,
-    });
-    
+    if (sourceType === 'project') {
+      const project = projects.find((p) => p.id === newTask.projectId);
+      if (!project) return;
+      onAdd({ ...newTask, projectName: project.name, color: project.color });
+    } else {
+      const client = contractClients.find((c) => c.id === newTask.projectId);
+      if (!client) return;
+      onAdd({ ...newTask, projectName: client.name, color: CONTRACT_CLIENT_COLOR });
+    }
+
     setNewTask(defaultTask);
     setDuration(DEFAULT_DURATION);
     setDurationUnit('days');
+    setSourceType('project');
     setOpen(false);
   };
 
   const handleProjectChange = (projectId: string) => {
-    const project = projects.find((p) => p.id === projectId);
-    if (project) {
-      setNewTask({
-        ...newTask,
-        projectId,
-        projectName: project.name,
-        color: project.color,
-      });
+    if (sourceType === 'project') {
+      const project = projects.find((p) => p.id === projectId);
+      if (project) {
+        setNewTask({ ...newTask, projectId, projectName: project.name, color: project.color });
+      }
+    } else {
+      const client = contractClients.find((c) => c.id === projectId);
+      if (client) {
+        setNewTask({ ...newTask, projectId: client.id, projectName: client.name, color: CONTRACT_CLIENT_COLOR });
+      }
     }
   };
 
@@ -133,27 +148,77 @@ export const AddTaskDialog = ({ projects, onAdd, teams = [] }: AddTaskDialogProp
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Project selection */}
+          {/* Source type toggle */}
+          <div className="flex rounded-md border border-input overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleSourceTypeChange('project')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm transition-colors',
+                sourceType === 'project'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted',
+              )}
+            >
+              Projeto
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSourceTypeChange('client')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm border-l border-input transition-colors',
+                sourceType === 'client'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted',
+              )}
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              Cliente Contrato
+            </button>
+          </div>
+
+          {/* Project / Client selection */}
           <div className="space-y-2">
-            <Label>Projeto</Label>
-            <Select value={newTask.projectId} onValueChange={handleProjectChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um projeto" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: project.color }}
-                      />
-                      {project.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>{sourceType === 'project' ? 'Projeto' : 'Cliente Contrato'}</Label>
+            {sourceType === 'project' ? (
+              <Select value={newTask.projectId} onValueChange={handleProjectChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.color }} />
+                        {project.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Select value={newTask.projectId} onValueChange={handleProjectChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractClients.length === 0 ? (
+                    <SelectItem value="__empty" disabled>
+                      Nenhum cliente com contrato ativo
+                    </SelectItem>
+                  ) : (
+                    contractClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CONTRACT_CLIENT_COLOR }} />
+                          {client.name}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Task name */}

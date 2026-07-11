@@ -262,3 +262,40 @@ export function useMaintenanceOrders(clientId?: string) {
 
   return { orders, isLoading, createOrder, updateOrder, deleteOrder, uploadPhoto, uploadSignature };
 }
+
+// Returns deduplicated clients that have at least one active maintenance contract,
+// filtered by client_group_id when the user is not an admin.
+export function useContractClients(allowedClientGroupIds?: string[] | null) {
+  return useQuery({
+    queryKey: ['contract-clients', allowedClientGroupIds ?? 'all'],
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      if (Array.isArray(allowedClientGroupIds) && allowedClientGroupIds.length === 0) {
+        return [];
+      }
+
+      const { data: activeContracts, error: contractsError } = await supabase
+        .from('maintenance_contracts')
+        .select('client_id')
+        .eq('status', 'active');
+
+      if (contractsError) throw contractsError;
+      if (!activeContracts?.length) return [];
+
+      const clientIds = [...new Set(activeContracts.map((c: any) => c.client_id as string))];
+
+      let query = (supabase as any)
+        .from('clients')
+        .select('id, name')
+        .in('id', clientIds)
+        .order('name', { ascending: true });
+
+      if (Array.isArray(allowedClientGroupIds) && allowedClientGroupIds.length > 0) {
+        query = query.in('client_group_id', allowedClientGroupIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+}

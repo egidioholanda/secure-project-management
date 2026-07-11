@@ -12,6 +12,7 @@ import {
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useContractClients } from '@/hooks/useClients';
 import TeamCard from '@/components/Teams/TeamCard';
 import AddTeamDialog from '@/components/Teams/AddTeamDialog';
 import AddMemberDialog from '@/components/Teams/AddMemberDialog';
@@ -56,7 +57,12 @@ const Teams = () => {
     createResource, updateResource, deleteResource,
   } = useTeams();
   const { projects } = useProjects(allowedClientIds, allowedClientGroupIds);
-  const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const { data: contractClients = [] } = useContractClients(allowedClientGroupIds);
+  const validProjectIds = useMemo(() => {
+    const ids = new Set(projects.map((p) => p.id));
+    contractClients.forEach((c) => ids.add(c.id));
+    return ids;
+  }, [projects, contractClients]);
 
   const handleAvailabilityDayClick = useCallback((day: Date) => {
     navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
