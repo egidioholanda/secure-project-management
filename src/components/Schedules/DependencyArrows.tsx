@@ -81,7 +81,7 @@ export const DependencyArrows = ({
       });
     });
     return result;
-  }, [tasks, startDate, dayWidth]);
+  }, [tasks, taskYOffsets, startDate, dayWidth]);
 
   if (arrows.length === 0) return null;
 
