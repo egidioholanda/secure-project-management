@@ -3,7 +3,7 @@ import type { Task } from '@/types/schedule';
 import { cn } from '@/lib/utils';
 import { Flag, GripVertical, ChevronRight } from 'lucide-react';
 import { getTaskStatus, STATUS_COLORS } from '@/utils/ganttUtils';
-import type { DisplayRow, ProjectGroup } from './GanttChart';
+import type { DisplayRow, ProjectGroup } from './ganttTypes';
 
 const ROW_HEIGHT = 48;
 
@@ -232,10 +232,10 @@ function ProjectHeaderRow({
         )}
       />
 
-      {/* Color dot */}
+      {/* Color dot — status-based color */}
       <div
         className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: group.color }}
+        style={{ backgroundColor: group.statusColor }}
       />
 
       {/* Project name + task count */}
@@ -246,15 +246,15 @@ function ProjectHeaderRow({
         </p>
       </div>
 
-      {/* Average progress bar */}
+      {/* Average progress bar — status-based color */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <div className="w-14 h-2 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${group.avgProgress}%`, backgroundColor: group.color }}
+            style={{ width: `${group.avgProgress}%`, backgroundColor: group.statusColor }}
           />
         </div>
-        <span className="text-xs w-8 text-right font-medium" style={{ color: group.color }}>
+        <span className="text-xs w-8 text-right font-medium" style={{ color: group.statusColor }}>
           {group.avgProgress}%
         </span>
       </div>

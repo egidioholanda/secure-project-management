@@ -5,34 +5,31 @@ import { GanttRow } from './GanttRow';
 import { GanttSidebar } from './GanttSidebar';
 import { DependencyArrows } from './DependencyArrows';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
-import { getCriticalPath } from '@/utils/ganttUtils';
+import { getCriticalPath, getTaskStatus, STATUS_COLORS } from '@/utils/ganttUtils';
+import type { TaskStatus } from '@/utils/ganttUtils';
 import { eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { CalendarConfig } from '@/utils/workingDaysEngine';
 import { DEFAULT_CALENDAR_CONFIG } from '@/utils/workingDaysEngine';
+import type { ProjectGroup, DisplayRow } from './ganttTypes';
+
+export type { ProjectGroup, DisplayRow };
 
 const DAY_WIDTH = 40;
 const ROW_HEIGHT = 48;
+
+const STATUS_PRIORITY: Record<TaskStatus, number> = {
+  overdue: 3,
+  'at-risk': 2,
+  'on-track': 1,
+  completed: 0,
+};
 
 interface LinkingState {
   sourceId: string;
   mouseX: number;
   mouseY: number;
 }
-
-export interface ProjectGroup {
-  projectId: string;
-  projectName: string;
-  color: string;
-  tasks: Task[];
-  avgProgress: number;
-  minStart: Date;
-  maxEnd: Date;
-}
-
-export type DisplayRow =
-  | { type: 'project'; group: ProjectGroup }
-  | { type: 'task'; task: Task };
 
 interface GanttChartProps {
   tasks: Task[];
@@ -100,11 +97,19 @@ export const GanttChart = ({
       if (task.startDate < g.minStart) g.minStart = task.startDate;
       if (task.endDate > g.maxEnd) g.maxEnd = task.endDate;
     }
-    // Compute average progress per group
+    // Compute average progress and status-based color per group
+    const now = new Date();
     for (const g of map.values()) {
       g.avgProgress = g.tasks.length > 0
         ? Math.round(g.tasks.reduce((s, t) => s + t.progress, 0) / g.tasks.length)
         : 0;
+
+      let worst: TaskStatus = 'completed';
+      for (const t of g.tasks) {
+        const s = getTaskStatus(t, now);
+        if (STATUS_PRIORITY[s] > STATUS_PRIORITY[worst]) worst = s;
+      }
+      g.statusColor = STATUS_COLORS[worst].dot;
     }
     return Array.from(map.values());
   }, [regularTasks]);
@@ -274,16 +279,16 @@ export const GanttChart = ({
                     {startOffset < days.length && (
                       <div
                         className="absolute top-3 h-6 rounded flex items-center overflow-hidden"
-                        style={{ left: barLeft, width: barWidth, backgroundColor: group.color + '30', border: `1.5px solid ${group.color}60` }}
+                        style={{ left: barLeft, width: barWidth, backgroundColor: group.statusColor + '30', border: `1.5px solid ${group.statusColor}60` }}
                       >
                         {/* Progress fill */}
                         <div
                           className="absolute left-0 top-0 h-full rounded transition-all duration-300"
-                          style={{ width: `${group.avgProgress}%`, backgroundColor: group.color + '50' }}
+                          style={{ width: `${group.avgProgress}%`, backgroundColor: group.statusColor + '50' }}
                         />
                         <span
                           className="relative z-10 px-2 text-xs font-semibold truncate"
-                          style={{ color: group.color }}
+                          style={{ color: group.statusColor }}
                         >
                           {group.avgProgress}%
                         </span>
