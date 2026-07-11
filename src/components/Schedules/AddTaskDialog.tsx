@@ -32,7 +32,7 @@ interface AddTaskDialogProps {
   teams?: Team[];
 }
 
-const DEFAULT_DURATION = 7; // dias
+const DEFAULT_DURATION = 1; // dias
 const HOURS_PER_DAY = 8;
 
 const defaultTask = {
