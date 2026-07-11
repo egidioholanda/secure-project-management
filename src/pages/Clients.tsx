@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients, useMaintenanceContracts, useMaintenanceOrders, useContractClients, Client, MaintenanceOrder } from "@/hooks/useClients";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -20,10 +21,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Users, Plus, Search, Building2, Phone, Mail, MapPin, FileText,
   ClipboardList, ChevronRight, Calendar, Wrench, CheckCircle2, Clock,
-  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt, Eye, FolderOpen
+  AlertCircle, XCircle, Pencil, Trash2, CalendarClock, RotateCcw, Power, PowerOff, Download, Briefcase, ChevronDown, Receipt, Eye, FolderOpen, Filter, X
 } from "lucide-react";
 import ProposalEditor from "@/components/Projects/ProposalEditor";
 
@@ -576,19 +578,59 @@ export default function Clients() {
   const { allowedClientGroupIds, isAdmin } = useAuthContext();
   const { clients, isLoading, deleteClient } = useClients(isAdmin ? null : allowedClientGroupIds);
   const { data: contractClients = [] } = useContractClients(isAdmin ? null : allowedClientGroupIds);
+  const { groups } = useClientGroups();
   const contractClientIds = useMemo(() => new Set(contractClients.map((c) => c.id)), [contractClients]);
+
+  const { data: globalStats } = useQuery({
+    queryKey: ['clients-global-stats'],
+    queryFn: async () => {
+      const [contractsRes, osAgRes, osConclRes] = await Promise.all([
+        supabase.from('maintenance_contracts').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('maintenance_orders').select('id', { count: 'exact', head: true }).in('status', ['agendada', 'em_andamento']),
+        supabase.from('maintenance_orders').select('id', { count: 'exact', head: true }).eq('status', 'concluida'),
+      ]);
+      return {
+        activeContracts: contractsRes.count ?? 0,
+        osAgendadas: osAgRes.count ?? 0,
+        osConcluidas: osConclRes.count ?? 0,
+      };
+    },
+  });
+
   const [addClient, setAddClient] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [editClientInList, setEditClientInList] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterContract, setFilterContract] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
 
-  const filtered = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.contact_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    let list = clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.contact_name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase())
+    );
+    if (filterGroup !== "all") {
+      list = list.filter((c) => (c.client_group_id ?? "none") === filterGroup);
+    }
+    if (filterContract === "yes") {
+      list = list.filter((c) => contractClientIds.has(c.id));
+    } else if (filterContract === "no") {
+      list = list.filter((c) => !contractClientIds.has(c.id));
+    }
+    list = [...list].sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "group") return (a.client_group?.name ?? "").localeCompare(b.client_group?.name ?? "");
+      if (sortBy === "contact") return (a.contact_name ?? "").localeCompare(b.contact_name ?? "");
+      return 0;
+    });
+    return list;
+  }, [clients, search, filterGroup, filterContract, sortBy, contractClientIds]);
+
+  const activeFilterCount = [filterGroup !== "all", filterContract !== "all"].filter(Boolean).length;
 
   if (selectedClient) {
     const updated = clients.find((c) => c.id === selectedClient.id) || selectedClient;
@@ -608,9 +650,9 @@ export default function Clients() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total de Clientes", value: clients.length, icon: Building2, color: "text-primary" },
-          { label: "Contratos Ativos", value: "-", icon: FileText, color: "text-chart-2" },
-          { label: "OS Agendadas", value: "-", icon: Clock, color: "text-chart-1" },
-          { label: "OS Concluídas", value: "-", icon: CheckCircle2, color: "text-chart-3" },
+          { label: "Contratos Ativos", value: globalStats?.activeContracts ?? "…", icon: FileText, color: "text-chart-2" },
+          { label: "OS Agendadas", value: globalStats?.osAgendadas ?? "…", icon: Clock, color: "text-chart-1" },
+          { label: "OS Concluídas", value: globalStats?.osConcluidas ?? "…", icon: CheckCircle2, color: "text-chart-3" },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="pt-4 pb-4">
@@ -626,15 +668,65 @@ export default function Clients() {
         ))}
       </div>
 
-      {/* Busca */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar clientes..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Busca e Filtros */}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar clientes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterGroup} onValueChange={setFilterGroup}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Grupo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os grupos</SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+              <SelectItem value="none">Sem grupo</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterContract} onValueChange={setFilterContract}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Contrato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="yes">Com contrato ativo</SelectItem>
+              <SelectItem value="no">Sem contrato</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Nome A–Z</SelectItem>
+              <SelectItem value="group">Grupo</SelectItem>
+              <SelectItem value="contact">Contato</SelectItem>
+            </SelectContent>
+          </Select>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-muted-foreground"
+              onClick={() => { setFilterGroup("all"); setFilterContract("all"); }}
+            >
+              <X className="w-3.5 h-3.5" /> Limpar filtros
+              <Badge className="ml-0.5 px-1.5 py-0 text-xs">{activeFilterCount}</Badge>
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground pl-0.5">
+          {filtered.length} cliente{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
       {/* Lista */}
