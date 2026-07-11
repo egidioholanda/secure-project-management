@@ -79,7 +79,7 @@ const Teams = () => {
   useEffect(() => {
     supabase
       .from('schedule_tasks')
-      .select('id, name, start_date, end_date, team_id, project_name, progress, project_id, projects!inner(id)')
+      .select('id, name, start_date, end_date, team_id, project_name, progress, project_id')
       .not('team_id', 'is', null)
       .then(({ data }) => setScheduleTasks((data as RawTask[]) ?? []));
   }, [teams]);
