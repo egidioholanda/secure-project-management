@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useMaintenanceContracts, MaintenanceContract } from "@/hooks/useClients";
 
 interface Props {
@@ -19,17 +25,19 @@ export function EditContractDialog({ open, onOpenChange, clientId, contract }: P
   const { updateContract } = useMaintenanceContracts(clientId);
   const { register, handleSubmit, setValue } = useForm();
   const [isLoading, setIsLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
 
   useEffect(() => {
     if (open && contract) {
       setValue("title", contract.title);
       setValue("type", contract.type);
       setValue("periodicity", contract.periodicity || "monthly");
-      setValue("start_date", contract.start_date || "");
-      setValue("end_date", contract.end_date || "");
       setValue("value", contract.value || 0);
       setValue("status", contract.status);
       setValue("description", contract.description || "");
+      setStartDate(contract.start_date ? parseISO(contract.start_date) : undefined);
+      setEndDate(contract.end_date ? parseISO(contract.end_date) : undefined);
     }
   }, [open, contract]);
 
@@ -41,8 +49,8 @@ export function EditContractDialog({ open, onOpenChange, clientId, contract }: P
         title: data.title,
         type: data.type,
         periodicity: data.periodicity || null,
-        start_date: data.start_date || null,
-        end_date: data.end_date || null,
+        start_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
+        end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
         value: parseFloat(data.value) || 0,
         status: data.status,
         description: data.description || null,
@@ -90,11 +98,49 @@ export function EditContractDialog({ open, onOpenChange, clientId, contract }: P
             </div>
             <div className="space-y-1">
               <Label>Data de Início</Label>
-              <Input {...register("start_date")} type="date" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    locale={ptBR}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-1">
               <Label>Data de Vencimento</Label>
-              <Input {...register("end_date")} type="date" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    locale={ptBR}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-1">
               <Label>Valor Mensal (R$)</Label>
