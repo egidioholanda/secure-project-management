@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import type { Task } from '@/types/schedule';
 import { GanttHeader } from './GanttHeader';
 import { GanttRow } from './GanttRow';
@@ -19,6 +19,20 @@ interface LinkingState {
   mouseX: number;
   mouseY: number;
 }
+
+export interface ProjectGroup {
+  projectId: string;
+  projectName: string;
+  color: string;
+  tasks: Task[];
+  avgProgress: number;
+  minStart: Date;
+  maxEnd: Date;
+}
+
+export type DisplayRow =
+  | { type: 'project'; group: ProjectGroup }
+  | { type: 'task'; task: Task };
 
 interface GanttChartProps {
   tasks: Task[];
@@ -47,6 +61,7 @@ export const GanttChart = ({
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [linkingState, setLinkingState] = useState<LinkingState | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   const { dragState, previewTask, handleDragStart, handleDragMove, handleDragEnd, isDragging } =
     useGanttDrag(tasks, onUpdateTask, onUpdateMultiple, DAY_WIDTH, calendarConfig);
@@ -55,9 +70,66 @@ export const GanttChart = ({
   const regularTasks = useMemo(() => tasks.filter((t) => !t.isMilestone), [tasks]);
   const criticalPathIds = useMemo(() => getCriticalPath(tasks), [tasks]);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
-
   const totalChartWidth = days.length * DAY_WIDTH;
-  const totalChartHeight = regularTasks.length * ROW_HEIGHT;
+
+  const toggleProject = useCallback((projectId: string) => {
+    setExpandedProjects((prev) => {
+      const next = new Set(prev);
+      next.has(projectId) ? next.delete(projectId) : next.add(projectId);
+      return next;
+    });
+  }, []);
+
+  // Group tasks by project, preserving the ordering of the task list
+  const projectGroups = useMemo((): ProjectGroup[] => {
+    const map = new Map<string, ProjectGroup>();
+    for (const task of regularTasks) {
+      if (!map.has(task.projectId)) {
+        map.set(task.projectId, {
+          projectId: task.projectId,
+          projectName: task.projectName,
+          color: task.color,
+          tasks: [],
+          avgProgress: 0,
+          minStart: task.startDate,
+          maxEnd: task.endDate,
+        });
+      }
+      const g = map.get(task.projectId)!;
+      g.tasks.push(task);
+      if (task.startDate < g.minStart) g.minStart = task.startDate;
+      if (task.endDate > g.maxEnd) g.maxEnd = task.endDate;
+    }
+    // Compute average progress per group
+    for (const g of map.values()) {
+      g.avgProgress = g.tasks.length > 0
+        ? Math.round(g.tasks.reduce((s, t) => s + t.progress, 0) / g.tasks.length)
+        : 0;
+    }
+    return Array.from(map.values());
+  }, [regularTasks]);
+
+  // Flat list of what's actually rendered (project header + tasks when expanded)
+  const displayRows = useMemo((): DisplayRow[] => {
+    const rows: DisplayRow[] = [];
+    for (const group of projectGroups) {
+      rows.push({ type: 'project', group });
+      if (expandedProjects.has(group.projectId)) {
+        for (const task of group.tasks) {
+          rows.push({ type: 'task', task });
+        }
+      }
+    }
+    return rows;
+  }, [projectGroups, expandedProjects]);
+
+  // Only the visible task rows (for dependency arrows)
+  const visibleTasks = useMemo(
+    () => displayRows.filter((r): r is { type: 'task'; task: Task } => r.type === 'task').map((r) => r.task),
+    [displayRows],
+  );
+
+  const totalChartHeight = displayRows.length * ROW_HEIGHT;
 
   // ─── Drag event listeners ──────────────────────────────────────────────────
   useEffect(() => {
@@ -113,7 +185,6 @@ export const GanttChart = ({
     (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Ghost line source position (viewport coords)
   const ghostSourcePos = useMemo(() => {
     if (!linkingState) return null;
     const el = document.getElementById(`gantt-bar-${linkingState.sourceId}`);
@@ -139,7 +210,9 @@ export const GanttChart = ({
       >
         {/* Sidebar */}
         <GanttSidebar
-          tasks={regularTasks}
+          displayRows={displayRows}
+          expandedProjects={expandedProjects}
+          onToggleProject={toggleProject}
           milestoneTasks={milestoneTasks}
           selectedTaskId={dragState.taskId}
           onTaskSelect={onTaskClick}
@@ -157,7 +230,7 @@ export const GanttChart = ({
             calendarConfig={calendarConfig}
           />
 
-          {/* Task rows + SVG overlay */}
+          {/* Rows + SVG overlay */}
           <div className="relative" style={{ minWidth: totalChartWidth }}>
             {/* Today line */}
             {todayOffset >= 0 && todayOffset <= days.length && (
@@ -169,9 +242,9 @@ export const GanttChart = ({
               </div>
             )}
 
-            {/* Dependency arrows SVG */}
+            {/* Dependency arrows — only for visible tasks */}
             <DependencyArrows
-              tasks={regularTasks}
+              tasks={visibleTasks}
               startDate={startDate}
               dayWidth={DAY_WIDTH}
               totalWidth={totalChartWidth}
@@ -179,25 +252,69 @@ export const GanttChart = ({
               onRemoveDependency={onRemoveDependency}
             />
 
-            {regularTasks.map((task) => (
-              <GanttRow
-                key={task.id}
-                task={task}
-                previewTask={previewTask?.id === task.id ? previewTask : null}
-                isCritical={criticalPathIds.has(task.id)}
-                isLinking={!!linkingState && linkingState.sourceId !== task.id}
-                startDate={startDate}
-                endDate={endDate}
-                dayWidth={DAY_WIDTH}
-                onDragStart={handleDragStart}
-                onLinkStart={handleLinkStart}
-                isDragging={dragState.taskId === task.id}
-                onTaskClick={onTaskClick}
-                calendarConfig={calendarConfig}
-              />
-            ))}
+            {displayRows.map((row) => {
+              if (row.type === 'project') {
+                const { group } = row;
+                const startOffset = Math.max(0,
+                  Math.floor((group.minStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+                );
+                const endOffset = Math.min(days.length,
+                  Math.ceil((group.maxEnd.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                );
+                const barLeft = startOffset * DAY_WIDTH;
+                const barWidth = Math.max(DAY_WIDTH, (endOffset - startOffset) * DAY_WIDTH);
 
-            {regularTasks.length === 0 && (
+                return (
+                  <div
+                    key={`project-${group.projectId}`}
+                    className="relative h-12 border-b border-border bg-muted/20 flex items-center cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => toggleProject(group.projectId)}
+                  >
+                    {/* Project span bar */}
+                    {startOffset < days.length && (
+                      <div
+                        className="absolute top-3 h-6 rounded flex items-center overflow-hidden"
+                        style={{ left: barLeft, width: barWidth, backgroundColor: group.color + '30', border: `1.5px solid ${group.color}60` }}
+                      >
+                        {/* Progress fill */}
+                        <div
+                          className="absolute left-0 top-0 h-full rounded transition-all duration-300"
+                          style={{ width: `${group.avgProgress}%`, backgroundColor: group.color + '50' }}
+                        />
+                        <span
+                          className="relative z-10 px-2 text-xs font-semibold truncate"
+                          style={{ color: group.color }}
+                        >
+                          {group.avgProgress}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // type === 'task'
+              const { task } = row;
+              return (
+                <GanttRow
+                  key={task.id}
+                  task={task}
+                  previewTask={previewTask?.id === task.id ? previewTask : null}
+                  isCritical={criticalPathIds.has(task.id)}
+                  isLinking={!!linkingState && linkingState.sourceId !== task.id}
+                  startDate={startDate}
+                  endDate={endDate}
+                  dayWidth={DAY_WIDTH}
+                  onDragStart={handleDragStart}
+                  onLinkStart={handleLinkStart}
+                  isDragging={dragState.taskId === task.id}
+                  onTaskClick={onTaskClick}
+                  calendarConfig={calendarConfig}
+                />
+              );
+            })}
+
+            {displayRows.length === 0 && (
               <div className="flex items-center justify-center h-48 text-muted-foreground">
                 Nenhuma tarefa encontrada. Adicione uma nova tarefa para começar.
               </div>

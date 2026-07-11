@@ -1,13 +1,16 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Task } from '@/types/schedule';
 import { cn } from '@/lib/utils';
-import { Flag, GripVertical } from 'lucide-react';
+import { Flag, GripVertical, ChevronRight } from 'lucide-react';
 import { getTaskStatus, STATUS_COLORS } from '@/utils/ganttUtils';
+import type { DisplayRow, ProjectGroup } from './GanttChart';
 
 const ROW_HEIGHT = 48;
 
 interface GanttSidebarProps {
-  tasks: Task[];
+  displayRows: DisplayRow[];
+  expandedProjects: Set<string>;
+  onToggleProject: (projectId: string) => void;
   milestoneTasks: Task[];
   selectedTaskId: string | null;
   onTaskSelect: (task: Task) => void;
@@ -15,21 +18,25 @@ interface GanttSidebarProps {
 }
 
 export const GanttSidebar = ({
-  tasks,
+  displayRows,
+  expandedProjects,
+  onToggleProject,
   milestoneTasks,
   selectedTaskId,
   onTaskSelect,
   onReorder,
 }: GanttSidebarProps) => {
-  const today = useMemo(() => new Date(), []);
+  const today = new Date();
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Refs hold live values accessible inside closures without stale captures
   const draggingIdRef = useRef<string | null>(null);
   const dropIndexRef  = useRef<number | null>(null);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropIndex,  setDropIndex]  = useState<number | null>(null);
+
+  // Only task rows participate in drag-and-drop
+  const taskRows = displayRows.filter((r): r is { type: 'task'; task: Task } => r.type === 'task');
 
   const startDrag = (e: React.MouseEvent, taskId: string) => {
     e.preventDefault();
@@ -44,8 +51,7 @@ export const GanttSidebar = ({
       if (!listRef.current) return;
       const rect = listRef.current.getBoundingClientRect();
       const relY  = me.clientY - rect.top;
-      // Snap to the nearest gap between rows
-      const idx = Math.max(0, Math.min(tasks.length, Math.floor(relY / ROW_HEIGHT + 0.5)));
+      const idx = Math.max(0, Math.min(taskRows.length, Math.floor(relY / ROW_HEIGHT + 0.5)));
       dropIndexRef.current = idx;
       setDropIndex(idx);
     };
@@ -55,15 +61,13 @@ export const GanttSidebar = ({
       const toIdx  = dropIndexRef.current;
 
       if (fromId !== null && toIdx !== null && onReorder) {
-        const fromIdx = tasks.findIndex((t) => t.id === fromId);
-        // Skip if no actual movement (dropped on same position or adjacent)
+        const fromIdx = taskRows.findIndex((r) => r.task.id === fromId);
         if (fromIdx !== -1 && fromIdx !== toIdx && fromIdx + 1 !== toIdx) {
-          const arr = [...tasks];
+          const arr = [...taskRows];
           const [moved] = arr.splice(fromIdx, 1);
-          // After removing the dragged item, indices after it shift down by 1
           const insertAt = toIdx > fromIdx ? toIdx - 1 : toIdx;
           arr.splice(Math.max(0, Math.min(arr.length, insertAt)), 0, moved);
-          onReorder(arr.map((t) => t.id));
+          onReorder(arr.map((r) => r.task.id));
         }
       }
 
@@ -81,18 +85,15 @@ export const GanttSidebar = ({
 
   return (
     <div className="w-80 flex-shrink-0 border-r border-border bg-card">
-      {/* Header — mirrors GanttHeader 3-row structure for pixel-perfect alignment */}
+      {/* Header */}
       <div className="sticky top-0 z-20 bg-card border-b border-border">
-        {/* Row 1: mirrors month row (py-1.5 + text-sm = 32px + border) */}
         <div className="border-b border-border px-4 py-1.5 bg-muted/50">
-          <span className="text-sm font-semibold text-foreground">Tarefas</span>
+          <span className="text-sm font-semibold text-foreground">Projetos / Tarefas</span>
         </div>
-        {/* Row 2: mirrors day row (py-1 + 2× text-xs = 40px + border) */}
         <div className="border-b border-border px-4 py-1">
           <div className="text-xs invisible select-none" aria-hidden="true">·</div>
           <div className="text-xs invisible select-none" aria-hidden="true">·</div>
         </div>
-        {/* Row 3: mirrors milestone row (h-8 = 32px) */}
         <div className="h-8 bg-muted/20 border-b border-border" />
       </div>
 
@@ -119,25 +120,40 @@ export const GanttSidebar = ({
         </div>
       )}
 
-      {/* Flat task list with drag handles */}
+      {/* Display rows */}
       <div ref={listRef} className="relative select-none">
-        {tasks.map((task, idx) => {
+        {displayRows.map((row, rowIdx) => {
+          if (row.type === 'project') {
+            const { group } = row;
+            const isExpanded = expandedProjects.has(group.projectId);
+            return (
+              <ProjectHeaderRow
+                key={`project-${group.projectId}`}
+                group={group}
+                isExpanded={isExpanded}
+                onToggle={() => onToggleProject(group.projectId)}
+              />
+            );
+          }
+
+          // Task row
+          const { task } = row;
+          const taskIdx   = taskRows.findIndex((r) => r.task.id === task.id);
           const status         = getTaskStatus(task, today);
           const colors         = STATUS_COLORS[status];
           const isDraggingThis = draggingId === task.id;
-          const showBefore     = dropIndex === idx && !!draggingId && !isDraggingThis;
-          const showAfter      = dropIndex === tasks.length && idx === tasks.length - 1 && !!draggingId && !isDraggingThis;
+          const showBefore     = dropIndex === taskIdx && !!draggingId && !isDraggingThis;
+          const showAfter      = dropIndex === taskRows.length && taskIdx === taskRows.length - 1 && !!draggingId && !isDraggingThis;
 
           return (
             <div key={task.id} className="relative">
-              {/* Drop indicator — above this row */}
               {showBefore && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary z-20 pointer-events-none rounded-full" />
               )}
 
               <div
                 className={cn(
-                  'h-12 flex items-center gap-2 px-2 border-b border-border transition-colors',
+                  'h-12 flex items-center gap-2 px-2 pl-6 border-b border-border transition-colors',
                   !draggingId && 'hover:bg-muted/50 cursor-pointer',
                   selectedTaskId === task.id && 'bg-primary/5',
                   isDraggingThis && 'opacity-40 bg-muted/30',
@@ -181,7 +197,6 @@ export const GanttSidebar = ({
                 </div>
               </div>
 
-              {/* Drop indicator — below last row */}
               {showAfter && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-20 pointer-events-none rounded-full" />
               )}
@@ -192,3 +207,57 @@ export const GanttSidebar = ({
     </div>
   );
 };
+
+// ─── Project header row ────────────────────────────────────────────────────────
+
+function ProjectHeaderRow({
+  group,
+  isExpanded,
+  onToggle,
+}: {
+  group: ProjectGroup;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      className="h-12 flex items-center gap-2 px-3 border-b border-border bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors group"
+      onClick={onToggle}
+    >
+      {/* Chevron */}
+      <ChevronRight
+        className={cn(
+          'w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200',
+          isExpanded && 'rotate-90'
+        )}
+      />
+
+      {/* Color dot */}
+      <div
+        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+        style={{ backgroundColor: group.color }}
+      />
+
+      {/* Project name + task count */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate text-foreground">{group.projectName}</p>
+        <p className="text-xs text-muted-foreground">
+          {group.tasks.length} tarefa{group.tasks.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {/* Average progress bar */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="w-14 h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${group.avgProgress}%`, backgroundColor: group.color }}
+          />
+        </div>
+        <span className="text-xs w-8 text-right font-medium" style={{ color: group.color }}>
+          {group.avgProgress}%
+        </span>
+      </div>
+    </div>
+  );
+}
