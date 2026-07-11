@@ -47,12 +47,11 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
 
   const activeTeams = teams.filter((t) => t.active);
 
-  // Includes ALL tasks (completed + active) — no progress filter here
+  // Includes ALL tasks (completed + active) — weekends included if tasks exist there
   const getTasksForTeamOnDay = (teamId: string, day: Date) =>
     tasks.filter(
       (t) =>
         t.team_id === teamId &&
-        !isWeekend(day) &&
         startOfDay(t.startDate) <= day &&
         startOfDay(t.endDate) >= day,
     );
