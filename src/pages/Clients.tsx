@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjects } from "@/hooks/useProjects";
-import { useClients, useMaintenanceContracts, useMaintenanceOrders, Client, MaintenanceOrder } from "@/hooks/useClients";
+import { useClients, useMaintenanceContracts, useMaintenanceOrders, useContractClients, Client, MaintenanceOrder } from "@/hooks/useClients";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useMaintenanceSchedules } from "@/hooks/useMaintenanceSchedules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -575,6 +575,8 @@ function ClientDetail({ client, onBack }: ClientDetailProps) {
 export default function Clients() {
   const { allowedClientGroupIds, isAdmin } = useAuthContext();
   const { clients, isLoading, deleteClient } = useClients(isAdmin ? null : allowedClientGroupIds);
+  const { data: contractClients = [] } = useContractClients(isAdmin ? null : allowedClientGroupIds);
+  const contractClientIds = useMemo(() => new Set(contractClients.map((c) => c.id)), [contractClients]);
   const [addClient, setAddClient] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [editClientInList, setEditClientInList] = useState<Client | null>(null);
@@ -666,7 +668,14 @@ export default function Clients() {
                         <Building2 className="w-5 h-5 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold truncate">{client.name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold truncate">{client.name}</p>
+                          {contractClientIds.has(client.id) && (
+                            <Badge className="text-xs px-1.5 py-0 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-0 shrink-0">
+                              Contrato
+                            </Badge>
+                          )}
+                        </div>
                         {client.cnpj && <p className="text-xs text-muted-foreground">{client.cnpj}</p>}
                       </div>
                     </div>
