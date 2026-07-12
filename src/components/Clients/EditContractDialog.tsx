@@ -114,6 +114,9 @@ export function EditContractDialog({ open, onOpenChange, clientId, contract }: P
                     selected={startDate}
                     onSelect={setStartDate}
                     locale={ptBR}
+                    captionLayout="dropdown-buttons"
+                    fromYear={2000}
+                    toYear={2040}
                     initialFocus
                   />
                 </PopoverContent>
@@ -137,6 +140,9 @@ export function EditContractDialog({ open, onOpenChange, clientId, contract }: P
                     selected={endDate}
                     onSelect={setEndDate}
                     locale={ptBR}
+                    captionLayout="dropdown-buttons"
+                    fromYear={2000}
+                    toYear={2040}
                     initialFocus
                   />
                 </PopoverContent>

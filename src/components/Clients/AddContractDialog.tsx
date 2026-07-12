@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -107,6 +107,9 @@ export function AddContractDialog({ open, onOpenChange, clientId }: Props) {
                     selected={startDate}
                     onSelect={setStartDate}
                     locale={ptBR}
+                    captionLayout="dropdown-buttons"
+                    fromYear={2000}
+                    toYear={2040}
                     initialFocus
                   />
                 </PopoverContent>
@@ -130,6 +133,9 @@ export function AddContractDialog({ open, onOpenChange, clientId }: Props) {
                     selected={endDate}
                     onSelect={setEndDate}
                     locale={ptBR}
+                    captionLayout="dropdown-buttons"
+                    fromYear={2000}
+                    toYear={2040}
                     initialFocus
                   />
                 </PopoverContent>
