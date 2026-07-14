@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   HardHat, TrendingUp, Target, FolderKanban, Package,
   Calendar, FileText, Settings, Users, Building2, Map,
-  ChevronLeft, ChevronRight, UsersRound, Shield,
+  ChevronLeft, ChevronRight, UsersRound, Shield, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -148,6 +148,9 @@ export function Sidebar() {
             ))}
             {canAccess('/usuarios') && (
               <NavItem path="/usuarios" label="Usuários" icon={Users} collapsed={collapsed} />
+            )}
+            {isAdmin && (
+              <NavItem path="/financeiro" label="Financeiro" icon={DollarSign} collapsed={collapsed} />
             )}
             {isAdmin && (
               <NavItem path="/auditoria" label="Auditoria" icon={Shield} collapsed={collapsed} />

@@ -22,6 +22,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import Teams from "./pages/Teams";
+import DashboardAdmin from "./pages/DashboardAdmin";
 import Audit from "./pages/Audit";
 import PendingApproval from "./pages/PendingApproval";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -214,6 +215,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Teams />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/financeiro"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <DashboardAdmin />
             </AppLayout>
           </ProtectedRoute>
         }
