@@ -207,9 +207,9 @@ export const GanttSidebar = ({
             </div>
           );
         })}
-        </div>{/* end listRef */}
-      </div>{/* end scrollRef */}
-    </div>{/* end container */}
+        </div>
+      </div>
+    </div>
   );
 };
 
