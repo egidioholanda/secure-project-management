@@ -299,12 +299,15 @@ export default function Audit() {
               </SelectContent>
             </Select>
 
-            <Select value={action} onValueChange={setAction}>
+            <Select
+              value={action || '__ALL__'}
+              onValueChange={(v) => setAction(v === '__ALL__' ? '' : v)}
+            >
               <SelectTrigger className="w-44 h-9">
-                <SelectValue placeholder="Todas as ações" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as ações</SelectItem>
+                <SelectItem value="__ALL__">Todas as ações</SelectItem>
                 <SelectItem value="CREATE">Criação</SelectItem>
                 <SelectItem value="UPDATE">Atualização</SelectItem>
                 <SelectItem value="DELETE">Exclusão</SelectItem>
@@ -314,12 +317,15 @@ export default function Audit() {
               </SelectContent>
             </Select>
 
-            <Select value={resourceType} onValueChange={setResourceType}>
+            <Select
+              value={resourceType || '__ALL__'}
+              onValueChange={(v) => setResourceType(v === '__ALL__' ? '' : v)}
+            >
               <SelectTrigger className="w-52 h-9">
-                <SelectValue placeholder="Todos os recursos" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os recursos</SelectItem>
+                <SelectItem value="__ALL__">Todos os recursos</SelectItem>
                 {Object.entries(RESOURCE_LABELS).map(([k, v]) => (
                   <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
