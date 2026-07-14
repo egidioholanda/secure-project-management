@@ -183,6 +183,12 @@ export const useAuth = () => {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      (supabase as any).rpc('log_audit_event', {
+        p_action: 'LOGIN',
+        p_resource_type: 'auth',
+      }).catch(() => {});
+    }
     return { error };
   };
 
@@ -203,6 +209,10 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
+    await (supabase as any).rpc('log_audit_event', {
+      p_action: 'LOGOUT',
+      p_resource_type: 'auth',
+    }).catch(() => {});
     const { error } = await supabase.auth.signOut();
     return { error };
   };

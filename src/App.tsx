@@ -22,13 +22,14 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import Teams from "./pages/Teams";
+import Audit from "./pages/Audit";
 import PendingApproval from "./pages/PendingApproval";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, profile, allowedPages } = useAuthContext();
+  const { user, isLoading, profile, allowedPages, isAdmin } = useAuthContext();
   const location = useLocation();
 
   if (isLoading) {
@@ -47,7 +48,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <PendingApproval />;
   }
 
-  if (allowedPages !== null && !allowedPages.includes(location.pathname)) {
+  // Admins sempre têm acesso a todas as páginas (incluindo /auditoria)
+  if (!isAdmin && allowedPages !== null && !allowedPages.includes(location.pathname)) {
     return <Navigate to="/dashboard/operacional" replace />;
   }
 
@@ -212,6 +214,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AppLayout>
               <Teams />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/auditoria"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Audit />
             </AppLayout>
           </ProtectedRoute>
         }
