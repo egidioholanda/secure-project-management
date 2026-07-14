@@ -15,6 +15,7 @@ interface GanttSidebarProps {
   selectedTaskId: string | null;
   onTaskSelect: (task: Task) => void;
   onReorder?: (orderedIds: string[]) => void;
+  scrollRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const GanttSidebar = ({
@@ -25,6 +26,7 @@ export const GanttSidebar = ({
   selectedTaskId,
   onTaskSelect,
   onReorder,
+  scrollRef,
 }: GanttSidebarProps) => {
   const today = new Date();
   const listRef = useRef<HTMLDivElement>(null);
@@ -84,9 +86,9 @@ export const GanttSidebar = ({
   };
 
   return (
-    <div className="w-80 flex-shrink-0 border-r border-border bg-card">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-card border-b border-border">
+    <div className="w-80 flex-shrink-0 border-r border-border bg-card flex flex-col">
+      {/* Header — fixo no topo da coluna flex, sem necessidade de sticky */}
+      <div className="flex-shrink-0 bg-card border-b border-border">
         <div className="border-b border-border px-4 py-1.5 bg-muted/50">
           <span className="text-sm font-semibold text-foreground">Projetos / Tarefas</span>
         </div>
@@ -97,31 +99,33 @@ export const GanttSidebar = ({
         <div className="h-8 bg-muted/20 border-b border-border" />
       </div>
 
-      {/* Milestones */}
-      {milestoneTasks.length > 0 && (
-        <div className="border-b border-border bg-muted/10">
-          <div className="px-4 py-1 flex items-center gap-2">
-            <Flag className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Marcos</span>
-          </div>
-          {milestoneTasks.map((task) => (
-            <div
-              key={task.id}
-              className={cn(
-                'h-10 flex items-center gap-3 px-4 border-t border-border/50 cursor-pointer hover:bg-muted/50 transition-colors',
-                selectedTaskId === task.id && 'bg-primary/5'
-              )}
-              onClick={() => onTaskSelect(task)}
-            >
-              <div className="w-3 h-3 rotate-45 flex-shrink-0" style={{ backgroundColor: task.color }} />
-              <p className="text-sm font-medium truncate text-foreground">{task.name}</p>
+      {/* Conteúdo — overflow hidden, scrollTop controlado via JS sincronizado com chartRef */}
+      <div ref={scrollRef} className="flex-1 overflow-hidden">
+        {/* Milestones */}
+        {milestoneTasks.length > 0 && (
+          <div className="border-b border-border bg-muted/10">
+            <div className="px-4 py-1 flex items-center gap-2">
+              <Flag className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Marcos</span>
             </div>
-          ))}
-        </div>
-      )}
+            {milestoneTasks.map((task) => (
+              <div
+                key={task.id}
+                className={cn(
+                  'h-10 flex items-center gap-3 px-4 border-t border-border/50 cursor-pointer hover:bg-muted/50 transition-colors',
+                  selectedTaskId === task.id && 'bg-primary/5'
+                )}
+                onClick={() => onTaskSelect(task)}
+              >
+                <div className="w-3 h-3 rotate-45 flex-shrink-0" style={{ backgroundColor: task.color }} />
+                <p className="text-sm font-medium truncate text-foreground">{task.name}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* Display rows */}
-      <div ref={listRef} className="relative select-none">
+        {/* Display rows */}
+        <div ref={listRef} className="relative select-none">
         {displayRows.map((row, rowIdx) => {
           if (row.type === 'project') {
             const { group } = row;
@@ -203,8 +207,9 @@ export const GanttSidebar = ({
             </div>
           );
         })}
-      </div>
-    </div>
+        </div>{/* end listRef */}
+      </div>{/* end scrollRef */}
+    </div>{/* end container */}
   );
 };
 

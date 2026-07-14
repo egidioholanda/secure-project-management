@@ -57,6 +57,7 @@ export const GanttChart = ({
   onReorder,
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [linkingState, setLinkingState] = useState<LinkingState | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -197,6 +198,19 @@ export const GanttChart = ({
     }
   }, [startDate]);
 
+  // Sync sidebar vertical scroll with chart scroll
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const onScroll = () => {
+      if (sidebarScrollRef.current) {
+        sidebarScrollRef.current.scrollTop = chart.scrollTop;
+      }
+    };
+    chart.addEventListener('scroll', onScroll, { passive: true });
+    return () => chart.removeEventListener('scroll', onScroll);
+  }, []);
+
   const todayOffset = Math.floor(
     (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -233,6 +247,7 @@ export const GanttChart = ({
           selectedTaskId={dragState.taskId}
           onTaskSelect={onTaskClick}
           onReorder={onReorder}
+          scrollRef={sidebarScrollRef}
         />
 
         {/* Chart area */}
