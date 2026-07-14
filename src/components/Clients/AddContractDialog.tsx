@@ -107,7 +107,7 @@ export function AddContractDialog({ open, onOpenChange, clientId }: Props) {
                     selected={startDate}
                     onSelect={setStartDate}
                     locale={ptBR}
-                    captionLayout="dropdown-buttons"
+                    captionLayout="dropdown"
                     fromYear={2000}
                     toYear={2040}
                     initialFocus
@@ -133,7 +133,7 @@ export function AddContractDialog({ open, onOpenChange, clientId }: Props) {
                     selected={endDate}
                     onSelect={setEndDate}
                     locale={ptBR}
-                    captionLayout="dropdown-buttons"
+                    captionLayout="dropdown"
                     fromYear={2000}
                     toYear={2040}
                     initialFocus
