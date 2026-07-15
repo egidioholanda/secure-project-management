@@ -16,6 +16,7 @@ interface GanttSidebarProps {
   onTaskSelect: (task: Task) => void;
   onReorder?: (orderedIds: string[]) => void;
   scrollRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const GanttSidebar = ({
@@ -27,6 +28,7 @@ export const GanttSidebar = ({
   onTaskSelect,
   onReorder,
   scrollRef,
+  containerRef,
 }: GanttSidebarProps) => {
   const today = new Date();
   const listRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,7 @@ export const GanttSidebar = ({
   };
 
   return (
-    <div className="w-80 flex-shrink-0 border-r border-border bg-card flex flex-col">
+    <div ref={containerRef} className="w-80 flex-shrink-0 border-r border-border bg-card flex flex-col">
       {/* Header — fixo no topo da coluna flex, sem necessidade de sticky */}
       <div className="flex-shrink-0 bg-card border-b border-border">
         <div className="border-b border-border px-4 py-1.5 bg-muted/50">
@@ -126,7 +128,7 @@ export const GanttSidebar = ({
 
         {/* Display rows */}
         <div ref={listRef} className="relative select-none">
-        {displayRows.map((row, rowIdx) => {
+        {displayRows.map((row) => {
           if (row.type === 'project') {
             const { group } = row;
             const isExpanded = expandedProjects.has(group.projectId);

@@ -58,6 +58,7 @@ export const GanttChart = ({
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [linkingState, setLinkingState] = useState<LinkingState | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -211,6 +212,20 @@ export const GanttChart = ({
     return () => chart.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Forward wheel events from the sidebar to the chart so the user can
+  // scroll vertically with the mouse wheel while hovering over the task list
+  useEffect(() => {
+    const sidebar = sidebarContainerRef.current;
+    if (!sidebar) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!chartRef.current || e.deltaY === 0) return;
+      e.preventDefault();
+      chartRef.current.scrollTop += e.deltaY;
+    };
+    sidebar.addEventListener('wheel', onWheel, { passive: false });
+    return () => sidebar.removeEventListener('wheel', onWheel);
+  }, []);
+
   const todayOffset = Math.floor(
     (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -248,6 +263,7 @@ export const GanttChart = ({
           onTaskSelect={onTaskClick}
           onReorder={onReorder}
           scrollRef={sidebarScrollRef}
+          containerRef={sidebarContainerRef}
         />
 
         {/* Chart area */}
