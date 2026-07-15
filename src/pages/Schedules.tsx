@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { addDays, subDays, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Filter, Download, Loader2, Search, X, CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Filter, Download, Loader2, Search, X, CalendarIcon, LayoutDashboard } from 'lucide-react';
 import type { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
@@ -82,6 +82,9 @@ const Schedules = () => {
   });
   const [filterClientGroup, setFilterClientGroup]   = useState<string>('all');
   const [taskOrder, setTaskOrder]           = useState<string[]>([]);
+  const [statsVisible, setStatsVisible]     = useState(
+    () => localStorage.getItem('secureproject:ganttStats') !== 'false'
+  );
   const [dateRange, setDateRange] = useState(() => {
     const d = searchParams.get('date');
     if (d) {
@@ -338,17 +341,17 @@ const Schedules = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const toggleStats = () => {
+    setStatsVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem('secureproject:ganttStats', String(next));
+      return next;
+    });
+  };
+
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      {/* Actions */}
-      <div className="flex items-center justify-end">
-        <AddTaskDialog projects={projectsList} contractClients={contractClients} onAdd={addTask} teams={teams} />
-      </div>
-
-      {/* Summary cards */}
-      {filteredTasks.length > 0 && <ScheduleSummary tasks={filteredTasks} />}
-
-      {/* Search bar */}
+    <div className="space-y-3 h-full flex flex-col">
+      {/* Top bar: search + stats toggle + actions */}
       <div className="flex gap-2 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -376,10 +379,26 @@ const Schedules = () => {
             {visibleProjectCount}/{totalProjectCount} projeto{totalProjectCount !== 1 ? 's' : ''}
           </span>
         </div>
+        {filteredTasks.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleStats}
+            className="gap-1.5 whitespace-nowrap"
+            title={statsVisible ? 'Ocultar resumo' : 'Mostrar resumo'}
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            {statsVisible ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </Button>
+        )}
+        <AddTaskDialog projects={projectsList} contractClients={contractClients} onAdd={addTask} teams={teams} />
       </div>
 
+      {/* Summary cards — collapsible */}
+      {filteredTasks.length > 0 && statsVisible && <ScheduleSummary tasks={filteredTasks} />}
+
       {/* Toolbar */}
-      <Card className="p-3">
+      <Card className="p-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Timeline navigation */}
           <div className="flex items-center gap-2">
