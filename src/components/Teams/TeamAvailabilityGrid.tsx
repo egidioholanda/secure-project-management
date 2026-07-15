@@ -91,11 +91,12 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
   }
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto">
+    <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div ref={scrollRef} className="overflow-x-auto p-4">
       <div className="min-w-max">
         {/* Month header */}
         <div className="flex mb-1">
-          <div className="w-40 flex-shrink-0" />
+          <div className="w-40 flex-shrink-0 sticky left-0 z-20 bg-card" />
           {days.map((day) => {
             const isFirst = day.getDate() === 1 || isSameDay(day, days[0]);
             return (
@@ -112,7 +113,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
 
         {/* Day numbers header */}
         <div className="flex mb-2">
-          <div className="w-40 flex-shrink-0" />
+          <div className="w-40 flex-shrink-0 sticky left-0 z-20 bg-card" />
           {days.map((day) => (
             <div
               key={day.toISOString()}
@@ -138,8 +139,8 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
 
             return (
               <div key={team.id} className="flex items-center group">
-                {/* Team label */}
-                <div className="w-40 flex-shrink-0 pr-3">
+                {/* Team label — sticky */}
+                <div className="w-40 flex-shrink-0 pr-3 sticky left-0 z-10 bg-card">
                   <p className="text-sm font-medium truncate">{team.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{respName}</p>
                 </div>
@@ -225,6 +226,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };
