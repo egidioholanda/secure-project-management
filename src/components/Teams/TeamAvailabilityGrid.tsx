@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { addDays, format, startOfDay, isSameDay, isWeekend, eachDayOfInterval } from 'date-fns';
+import { useMemo, useRef, useEffect } from 'react';
+import { format, startOfDay, isSameDay, isWeekend, eachDayOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarCheck } from 'lucide-react';
 import type { Team } from '@/types/teams';
@@ -17,12 +17,12 @@ interface ScheduleTask {
 interface Props {
   teams: Team[];
   tasks: ScheduleTask[];
+  startDate: Date;
+  endDate: Date;
   onDayClick?: (day: Date) => void;
 }
 
 type CellVariant = 'none' | 'green' | 'blue' | 'red';
-
-const DAYS_AHEAD = 30;
 
 const CELL_BG: Record<CellVariant, string> = {
   none: '',
@@ -38,16 +38,30 @@ const CIRCLE_BG: Record<CellVariant, string> = {
   red: 'bg-red-500/80',
 };
 
-const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
+const LABEL_W = 160; // px — matches w-40
+const CELL_W  = 32;  // px — matches w-8
+
+const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: Props) => {
   const today = startOfDay(new Date());
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const days = useMemo(
-    () => eachDayOfInterval({ start: today, end: addDays(today, DAYS_AHEAD - 1) }),
-    [today],
+    () => eachDayOfInterval({ start: startOfDay(startDate), end: startOfDay(endDate) }),
+    [startDate, endDate],
   );
+
+  // Auto-scroll to center "today" when the range or container changes
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const todayIdx = days.findIndex((d) => isSameDay(d, today));
+    if (todayIdx < 0) return;
+    const todayLeft = LABEL_W + todayIdx * CELL_W;
+    container.scrollLeft = Math.max(0, todayLeft - container.clientWidth / 2 + CELL_W / 2);
+  }, [days, today]);
 
   const activeTeams = teams.filter((t) => t.active);
 
-  // Includes ALL tasks (completed + active) — weekends included if tasks exist there
   const getTasksForTeamOnDay = (teamId: string, day: Date) =>
     tasks.filter(
       (t) =>
@@ -58,15 +72,12 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
 
   const getCellVariant = (dayTasks: ScheduleTask[]): CellVariant => {
     if (dayTasks.length === 0) return 'none';
-    // Red: any incomplete task whose deadline is today or already past
     const hasOverdue = dayTasks.some(
       (t) => (t.progress ?? 0) < 100 && startOfDay(t.endDate) <= today,
     );
     if (hasOverdue) return 'red';
-    // Blue: any incomplete task with a future deadline
     const hasActive = dayTasks.some((t) => (t.progress ?? 0) < 100);
     if (hasActive) return 'blue';
-    // Green: all tasks are complete
     return 'green';
   };
 
@@ -80,17 +91,17 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div ref={scrollRef} className="overflow-x-auto">
       <div className="min-w-max">
         {/* Month header */}
         <div className="flex mb-1">
           <div className="w-40 flex-shrink-0" />
           {days.map((day) => {
-            const isFirst = day.getDate() === 1 || isSameDay(day, today);
+            const isFirst = day.getDate() === 1 || isSameDay(day, days[0]);
             return (
               <div key={day.toISOString()} className="w-8 flex-shrink-0 text-center">
                 {isFirst && (
-                  <span className="text-[10px] text-muted-foreground font-medium">
+                  <span className="text-[10px] text-muted-foreground font-medium capitalize">
                     {format(day, 'MMM', { locale: ptBR })}
                   </span>
                 )}
@@ -105,9 +116,14 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
           {days.map((day) => (
             <div
               key={day.toISOString()}
-              className={`w-8 flex-shrink-0 text-center text-[10px] font-medium rounded-sm
-                ${isSameDay(day, today) ? 'bg-primary text-primary-foreground rounded' : ''}
-                ${isWeekend(day) ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}
+              className={[
+                'w-8 flex-shrink-0 text-center text-[10px] font-medium rounded-sm',
+                isSameDay(day, today)
+                  ? 'bg-primary text-primary-foreground rounded'
+                  : isWeekend(day)
+                    ? 'text-muted-foreground/40'
+                    : 'text-muted-foreground',
+              ].join(' ')}
             >
               {format(day, 'd')}
             </div>
@@ -134,6 +150,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
                   const variant = getCellVariant(dayTasks);
                   const count = dayTasks.length;
                   const weekend = isWeekend(day);
+                  const isPast = day < today && !isSameDay(day, today);
                   const clickable = count > 0 && !!onDayClick;
 
                   const tooltipLines = dayTasks.map((t) => {
@@ -155,6 +172,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, onDayClick }: Props) => {
                         'w-8 h-8 flex-shrink-0 flex items-center justify-center',
                         'border-r border-b border-border/30',
                         weekend ? 'bg-muted/30' : '',
+                        isPast && !weekend ? 'opacity-60' : '',
                         CELL_BG[variant],
                         clickable ? 'cursor-pointer hover:brightness-90 transition-all' : '',
                         isSameDay(day, today) ? 'border-l-2 border-l-primary' : '',

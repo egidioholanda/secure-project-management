@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, addDays, subDays, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Users, Plus, Wrench, Car, Package2, LayoutGrid, Loader2,
+  ChevronLeft, ChevronRight, CalendarIcon,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { ptBR } from 'date-fns/locale';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -70,6 +74,22 @@ const Teams = () => {
 
   const [scheduleTasks, setScheduleTasks] = useState<RawTask[]>([]);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+
+  // Availability date range — default: 30 days back → 30 days ahead
+  const [availStart, setAvailStart] = useState<Date>(() => subDays(startOfDay(new Date()), 30));
+  const [availEnd,   setAvailEnd]   = useState<Date>(() => addDays(startOfDay(new Date()), 30));
+
+  const AVAIL_PRESETS = useMemo(() => {
+    const today = startOfDay(new Date());
+    return [
+      { label: 'Mês anterior', start: startOfMonth(subMonths(today, 1)), end: endOfMonth(subMonths(today, 1)) },
+      { label: 'Últimos 30 dias', start: subDays(today, 30), end: addDays(today, 0) },
+      { label: 'Mês atual', start: startOfMonth(today), end: endOfMonth(today) },
+      { label: 'Próximos 30 dias', start: today, end: addDays(today, 30) },
+      { label: 'Próximos 60 dias', start: today, end: addDays(today, 60) },
+      { label: 'Próximo mês', start: startOfMonth(addMonths(today, 1)), end: endOfMonth(addMonths(today, 1)) },
+    ];
+  }, []);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [memberDialogTeam, setMemberDialogTeam] = useState<Team | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
@@ -293,12 +313,96 @@ const Teams = () => {
 
         {/* ── DISPONIBILIDADE ── */}
         <TabsContent value="disponibilidade" className="mt-6">
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground">
-              Próximos 30 dias — blocos indicam tarefas do cronograma vinculadas à equipe.
-            </p>
+          {/* Date range controls */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {/* Prev / Next week navigation */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => { setAvailStart((d) => subDays(d, 14)); setAvailEnd((d) => subDays(d, 14)); }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => { setAvailStart((d) => addDays(d, 14)); setAvailEnd((d) => addDays(d, 14)); }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+
+            {/* Preset buttons */}
+            <div className="flex flex-wrap gap-1">
+              {AVAIL_PRESETS.map((p) => {
+                const active =
+                  availStart.getTime() === p.start.getTime() &&
+                  availEnd.getTime() === p.end.getTime();
+                return (
+                  <button
+                    key={p.label}
+                    onClick={() => { setAvailStart(p.start); setAvailEnd(p.end); }}
+                    className={[
+                      'px-2.5 py-1 rounded text-xs border transition-colors',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border hover:bg-muted text-muted-foreground',
+                    ].join(' ')}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom date pickers */}
+            <div className="flex items-center gap-1 ml-auto">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 px-2 text-xs gap-1.5 font-normal">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {format(availStart, 'dd/MM/yyyy', { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={availStart}
+                    onSelect={(d) => { if (d) setAvailStart(startOfDay(d)); }}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">→</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 px-2 text-xs gap-1.5 font-normal">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {format(availEnd, 'dd/MM/yyyy', { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={availEnd}
+                    onSelect={(d) => { if (d) setAvailEnd(startOfDay(d)); }}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-          <TeamAvailabilityGrid teams={teams} tasks={mappedTasks} onDayClick={handleAvailabilityDayClick} />
+
+          <TeamAvailabilityGrid
+            teams={teams}
+            tasks={mappedTasks}
+            startDate={availStart}
+            endDate={availEnd}
+            onDayClick={handleAvailabilityDayClick}
+          />
         </TabsContent>
       </Tabs>
 
