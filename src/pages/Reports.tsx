@@ -1,17 +1,26 @@
 import { useState, useMemo } from "react";
-import { FileText, Plus, Search, Loader2 } from "lucide-react";
+import { FileText, Plus, Search, Loader2, ChevronsUpDown, Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { ReportCard } from "@/components/Reports/ReportCard";
 import { CreateReportDialog } from "@/components/Reports/CreateReportDialog";
 import { ViewReportDialog } from "@/components/Reports/ViewReportDialog";
@@ -31,6 +40,7 @@ const Reports = () => {
   const { data: contractClients = [], isLoading: contractClientsLoading } = useContractClients(allowedClientGroupIds);
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [projectComboOpen, setProjectComboOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -196,36 +206,76 @@ const Reports = () => {
               className="pl-10"
             />
           </div>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-full md:w-[220px]">
-              <SelectValue placeholder="Filtrar por cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Clientes</SelectItem>
-              {dbProjects.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel>Projetos</SelectLabel>
-                  {dbProjects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {contractClients.some((c) => !dbProjects.some((p) => p.id === c.id)) && (
-                <SelectGroup>
-                  <SelectLabel>Manutenção</SelectLabel>
-                  {contractClients
-                    .filter((c) => !dbProjects.some((p) => p.id === c.id))
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              )}
-            </SelectContent>
-          </Select>
+          <Popover open={projectComboOpen} onOpenChange={setProjectComboOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={projectComboOpen}
+                className="w-full md:w-[260px] justify-between font-normal"
+              >
+                <span className="truncate">
+                  {projectFilter === "all"
+                    ? "Todos os clientes"
+                    : (dbProjects.find((p) => p.id === projectFilter)?.name
+                        ?? contractClients.find((c) => c.id === projectFilter)?.name
+                        ?? "Todos os clientes")}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar cliente ou projeto..." />
+                <CommandList>
+                  <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+                  <CommandItem
+                    value="all"
+                    onSelect={() => { setProjectFilter("all"); setProjectComboOpen(false); }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", projectFilter === "all" ? "opacity-100" : "opacity-0")} />
+                    Todos os clientes
+                  </CommandItem>
+                  {dbProjects.length > 0 && (
+                    <>
+                      <CommandSeparator />
+                      <CommandGroup heading="Projetos">
+                        {dbProjects.map((project) => (
+                          <CommandItem
+                            key={project.id}
+                            value={project.name}
+                            onSelect={() => { setProjectFilter(project.id); setProjectComboOpen(false); }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", projectFilter === project.id ? "opacity-100" : "opacity-0")} />
+                            {project.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </>
+                  )}
+                  {contractClients.some((c) => !dbProjects.some((p) => p.id === c.id)) && (
+                    <>
+                      <CommandSeparator />
+                      <CommandGroup heading="Manutenção">
+                        {contractClients
+                          .filter((c) => !dbProjects.some((p) => p.id === c.id))
+                          .map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name}
+                              onSelect={() => { setProjectFilter(c.id); setProjectComboOpen(false); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", projectFilter === c.id ? "opacity-100" : "opacity-0")} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full md:w-[160px]">
               <SelectValue placeholder="Status" />
