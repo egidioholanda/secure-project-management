@@ -42,7 +42,9 @@ const LABEL_W = 160; // px — matches w-40
 const CELL_W  = 32;  // px — matches w-8
 
 const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: Props) => {
-  const today = startOfDay(new Date());
+  // Memoized so the reference stays stable across re-renders — prevents the
+  // auto-scroll effect from firing every render and resetting the user's scroll position
+  const today = useMemo(() => startOfDay(new Date()), []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const days = useMemo(
@@ -50,7 +52,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
     [startDate, endDate],
   );
 
-  // Auto-scroll to center "today" when the range or container changes
+  // Auto-scroll to center "today" only when the date range changes (days reference changes)
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -58,7 +60,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
     if (todayIdx < 0) return;
     const todayLeft = LABEL_W + todayIdx * CELL_W;
     container.scrollLeft = Math.max(0, todayLeft - container.clientWidth / 2 + CELL_W / 2);
-  }, [days, today]);
+  }, [days]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeTeams = teams.filter((t) => t.active);
 
