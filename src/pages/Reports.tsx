@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -17,12 +19,16 @@ import { DeleteReportDialog } from "@/components/Reports/DeleteReportDialog";
 import { Report } from "@/types/report";
 import { useReports } from "@/hooks/useReports";
 import { useProjects } from "@/hooks/useProjects";
+import { useContractClients } from "@/hooks/useClients";
 import { useScheduleTasks } from "@/hooks/useScheduleTasks";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 const Reports = () => {
   const { reports, loading, addReport, updateReport, deleteReport } = useReports();
   const { projects: dbProjects, loading: projectsLoading } = useProjects();
   const { tasks: scheduleTasks, loading: tasksLoading } = useScheduleTasks();
+  const { allowedClientGroupIds } = useAuthContext();
+  const { data: contractClients = [], isLoading: contractClientsLoading } = useContractClients(allowedClientGroupIds);
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -33,22 +39,38 @@ const Reports = () => {
   const [editReport, setEditReport] = useState<Report | null>(null);
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
-  // Transform db projects to format needed by CreateReportDialog with tasks
+  const toDialogTasks = (projectId: string) =>
+    scheduleTasks
+      .filter((t) => t.projectId === projectId)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        progress: t.progress,
+        status: t.progress === 100 ? "completed" as const : t.progress > 0 ? "in_progress" as const : "pending" as const,
+        assignee: t.assignee || "",
+      }));
+
+  // Regular projects + maintenance-contract-only clients (those without a project)
   const projectsForDialog = useMemo(() => {
-    return dbProjects.map((p) => ({
+    const fromProjects = dbProjects.map((p) => ({
       id: p.id,
       name: p.name,
-      tasks: scheduleTasks
-        .filter((t) => t.projectId === p.id)
-        .map((t) => ({
-          id: t.id,
-          name: t.name,
-          progress: t.progress,
-          status: t.progress === 100 ? "completed" as const : t.progress > 0 ? "in_progress" as const : "pending" as const,
-          assignee: t.assignee || "",
-        })),
+      tasks: toDialogTasks(p.id),
     }));
-  }, [dbProjects, scheduleTasks]);
+
+    const projectIds = new Set(dbProjects.map((p) => p.id));
+    const fromContracts = contractClients
+      .filter((c) => !projectIds.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        tasks: toDialogTasks(c.id),
+        isMaintenanceClient: true,
+      }));
+
+    return [...fromProjects, ...fromContracts];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbProjects, contractClients, scheduleTasks]);
 
   const filteredReports = reports.filter((report) => {
     const matchesSearch =
@@ -98,7 +120,7 @@ const Reports = () => {
   const publishedCount = reports.filter((r) => r.status === "published").length;
   const draftCount = reports.filter((r) => r.status === "draft").length;
 
-  if (loading || projectsLoading || tasksLoading) {
+  if (loading || projectsLoading || tasksLoading || contractClientsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -176,15 +198,32 @@ const Reports = () => {
           </div>
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="w-full md:w-[220px]">
-              <SelectValue placeholder="Filtrar por projeto" />
+              <SelectValue placeholder="Filtrar por cliente" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os Projetos</SelectItem>
-              {dbProjects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">Todos os Clientes</SelectItem>
+              {dbProjects.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>Projetos</SelectLabel>
+                  {dbProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              {contractClients.some((c) => !dbProjects.some((p) => p.id === c.id)) && (
+                <SelectGroup>
+                  <SelectLabel>Manutenção</SelectLabel>
+                  {contractClients
+                    .filter((c) => !dbProjects.some((p) => p.id === c.id))
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

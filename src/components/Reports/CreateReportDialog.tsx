@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -33,6 +35,7 @@ interface Project {
   id: string;
   name: string;
   tasks: TaskProgress[];
+  isMaintenanceClient?: boolean;
 }
 
 interface CreateReportDialogProps {
@@ -213,17 +216,32 @@ export const CreateReportDialog = ({
           <TabsContent value="info" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="project">Projeto</Label>
+                <Label htmlFor="project">Cliente / Projeto</Label>
                 <Select value={selectedProject} onValueChange={setSelectedProject}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um projeto" />
+                    <SelectValue placeholder="Selecione um cliente ou projeto" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
+                    {projects.filter(p => !p.isMaintenanceClient).length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>Projetos</SelectLabel>
+                        {projects.filter(p => !p.isMaintenanceClient).map(project => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {projects.filter(p => p.isMaintenanceClient).length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>Manutenção</SelectLabel>
+                        {projects.filter(p => p.isMaintenanceClient).map(project => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
