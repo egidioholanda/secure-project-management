@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +51,7 @@ export const TaskEditDialog = ({
   const [editedTask, setEditedTask] = useState<Task | null>(null);
   const [duration, setDuration] = useState<number>(1);
   const [durationUnit, setDurationUnit] = useState<'days' | 'hours'>('days');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // 8 working hours per day for hours↔days conversion
   const HOURS_PER_DAY = 8;
@@ -115,10 +126,12 @@ export const TaskEditDialog = ({
     if (editedTask) {
       onDelete(editedTask.id);
       onOpenChange(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -313,7 +326,7 @@ export const TaskEditDialog = ({
           <Button
             variant="destructive"
             size="sm"
-            onClick={handleDelete}
+            onClick={() => setConfirmDeleteOpen(true)}
             className="mr-auto"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -330,5 +343,27 @@ export const TaskEditDialog = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+          <AlertDialogDescription>
+            A tarefa <strong>"{editedTask?.name}"</strong> será excluída permanentemente.
+            Dependências vinculadas a ela também serão removidas. Essa ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
