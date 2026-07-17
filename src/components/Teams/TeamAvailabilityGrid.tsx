@@ -70,15 +70,20 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
         startOfDay(t.endDate) >= day,
     );
 
-  const getCellVariant = (dayTasks: ScheduleTask[]): CellVariant => {
+  const getCellVariant = (dayTasks: ScheduleTask[], day: Date): CellVariant => {
     if (dayTasks.length === 0) return 'none';
-    const hasOverdue = dayTasks.some(
-      (t) => (t.progress ?? 0) < 100 && startOfDay(t.endDate) <= today,
-    );
-    if (hasOverdue) return 'red';
-    const hasActive = dayTasks.some((t) => (t.progress ?? 0) < 100);
-    if (hasActive) return 'blue';
-    return 'green';
+    // Green if every task is 100% complete
+    if (dayTasks.every((t) => (t.progress ?? 0) >= 100)) return 'green';
+    // Red only for today or future days (overdue judgment doesn't apply to the past)
+    const isFutureOrToday = startOfDay(day) >= today;
+    if (isFutureOrToday) {
+      const hasOverdue = dayTasks.some(
+        (t) => (t.progress ?? 0) < 100 && startOfDay(t.endDate) <= today,
+      );
+      if (hasOverdue) return 'red';
+    }
+    // Past days with active tasks, or future tasks on track → orange
+    return 'blue';
   };
 
   if (activeTeams.length === 0) {
@@ -148,10 +153,9 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                 {/* Day cells */}
                 {days.map((day) => {
                   const dayTasks = getTasksForTeamOnDay(team.id, day);
-                  const variant = getCellVariant(dayTasks);
+                  const variant = getCellVariant(dayTasks, day);
                   const count = dayTasks.length;
                   const weekend = isWeekend(day);
-                  const isPast = day < today && !isSameDay(day, today);
                   const clickable = count > 0 && !!onDayClick;
 
                   const tooltipLines = dayTasks.map((t) => {
@@ -173,7 +177,6 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                         'w-8 h-8 flex-shrink-0 flex items-center justify-center',
                         'border-r border-b border-border/30',
                         weekend ? 'bg-muted/30' : '',
-                        isPast && !weekend ? 'opacity-60' : '',
                         CELL_BG[variant],
                         clickable ? 'cursor-pointer hover:brightness-90 transition-all' : '',
                         isSameDay(day, today) ? 'border-l-2 border-l-primary' : '',
