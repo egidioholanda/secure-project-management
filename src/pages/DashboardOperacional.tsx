@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useProjects } from "@/hooks/useProjects";
+import { useContractClients } from "@/hooks/useClients";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useScheduleTasks } from "@/hooks/useScheduleTasks";
 import { useTeams } from "@/hooks/useTeams";
@@ -88,6 +89,7 @@ const DashboardOperacional = () => {
   const navigate = useNavigate();
   const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
   const { projects, loading: loadingProjects } = useProjects(allowedClientIds, allowedClientGroupIds);
+  const { data: contractClients = [] } = useContractClients(allowedClientGroupIds);
   const { tasks, loading: loadingTasks } = useScheduleTasks();
   const { teams } = useTeams();
 
@@ -95,7 +97,11 @@ const DashboardOperacional = () => {
     navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
   }, [navigate]);
 
-  const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const validProjectIds = useMemo(() => {
+    const ids = new Set(projects.map((p) => p.id));
+    contractClients.forEach((c) => ids.add(c.id));
+    return ids;
+  }, [projects, contractClients]);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterStatuses, setFilterStatuses]   = useState<string[]>([]);
