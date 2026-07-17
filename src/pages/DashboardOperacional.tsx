@@ -390,7 +390,42 @@ const DashboardOperacional = () => {
         />
       </div>
 
-      {/* Team Availability */}
+      {/* Team Availability Grid */}
+      {teams.filter((t) => t.active).length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-semibold">Disponibilidade das Equipes</h2>
+            </div>
+            <Link to="/equipes?tab=disponibilidade" className="text-sm text-primary hover:underline flex items-center gap-1">
+              Ver tela completa <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Próximos 30 dias — clique em um dia ocupado para ver no cronograma
+          </p>
+          <TeamAvailabilityGrid
+            teams={teams}
+            tasks={tasks
+              .filter((t) => validProjectIds.has(t.projectId))
+              .map((t) => ({
+                id: t.id,
+                name: t.name,
+                startDate: t.startDate,
+                endDate: t.endDate,
+                team_id: t.teamId ?? null,
+                projectName: t.projectName,
+                progress: t.progress ?? 0,
+              }))}
+            startDate={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)}
+            endDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+            onDayClick={handleAvailabilityDayClick}
+          />
+        </Card>
+      )}
+
+      {/* Team status tiles */}
       {teamAvailability.length > 0 && (
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -754,41 +789,6 @@ const DashboardOperacional = () => {
               </div>
             ))}
           </div>
-        </Card>
-      )}
-
-      {/* Team Availability */}
-      {teams.filter((t) => t.active).length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              <h2 className="text-lg font-semibold">Disponibilidade das Equipes</h2>
-            </div>
-            <Link to="/equipes?tab=disponibilidade" className="text-sm text-primary hover:underline flex items-center gap-1">
-              Ver tela completa <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Próximos 30 dias — clique em um dia ocupado para ver no cronograma
-          </p>
-          <TeamAvailabilityGrid
-            teams={teams}
-            tasks={tasks
-              .filter((t) => validProjectIds.has(t.projectId))
-              .map((t) => ({
-                id: t.id,
-                name: t.name,
-                startDate: t.startDate,
-                endDate: t.endDate,
-                team_id: t.teamId ?? null,
-                projectName: t.projectName,
-                progress: t.progress ?? 0,
-              }))}
-            startDate={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)}
-            endDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
-            onDayClick={handleAvailabilityDayClick}
-          />
         </Card>
       )}
 
