@@ -687,11 +687,42 @@ export type Database = {
           },
         ]
       }
+      presentation_pages: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          image_url: string
+          position: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url: string
+          position?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          position?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       proposal_items: {
         Row: {
           created_at: string
           device_id: string | null
           device_name: string
+          featured_in_gallery: boolean
           id: string
           installation_price: number
           proposal_id: string
@@ -703,6 +734,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           device_name: string
+          featured_in_gallery?: boolean
           id?: string
           installation_price?: number
           proposal_id: string
@@ -714,6 +746,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           device_name?: string
+          featured_in_gallery?: boolean
           id?: string
           installation_price?: number
           proposal_id?: string

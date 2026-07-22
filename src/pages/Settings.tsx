@@ -1,11 +1,12 @@
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ShieldAlert, Shield, FolderOpen, BrainCircuit } from 'lucide-react';
+import { Building2, Users, ShieldAlert, Shield, FolderOpen, BrainCircuit, Presentation } from 'lucide-react';
 import { CompanySettingsTab } from '@/components/Settings/CompanySettingsTab';
 import { UsersTab } from '@/components/Settings/UsersTab';
 import { RoleProfilesTab } from '@/components/Settings/RoleProfilesTab';
 import { ClientGroupsTab } from '@/components/Settings/ClientGroupsTab';
 import { AISettingsTab } from '@/components/Settings/AISettingsTab';
+import { PresentationPagesTab } from '@/components/Settings/PresentationPagesTab';
 
 const Settings = () => {
   const { isAdmin } = useAuthContext();
@@ -29,7 +30,7 @@ const Settings = () => {
     <div className="space-y-6">
       {/* Tabs */}
       <Tabs defaultValue="company" className="space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-5">
+        <TabsList className="grid w-full max-w-3xl grid-cols-6">
           <TabsTrigger value="company" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Empresa
@@ -45,6 +46,10 @@ const Settings = () => {
           <TabsTrigger value="client-groups" className="flex items-center gap-2">
             <FolderOpen className="w-4 h-4" />
             Grupos
+          </TabsTrigger>
+          <TabsTrigger value="presentation" className="flex items-center gap-2">
+            <Presentation className="w-4 h-4" />
+            Apresentação
           </TabsTrigger>
           <TabsTrigger value="ai" className="flex items-center gap-2">
             <BrainCircuit className="w-4 h-4" />
@@ -66,6 +71,10 @@ const Settings = () => {
 
         <TabsContent value="client-groups">
           <ClientGroupsTab />
+        </TabsContent>
+
+        <TabsContent value="presentation">
+          <PresentationPagesTab />
         </TabsContent>
 
         <TabsContent value="ai">

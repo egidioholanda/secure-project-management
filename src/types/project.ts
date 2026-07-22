@@ -88,6 +88,7 @@ export interface ProposalItem {
   unit_price: number;
   installation_price: number;
   subtotal: number;
+  featured_in_gallery: boolean;
 }
 
 export interface Service {
@@ -95,4 +96,14 @@ export interface Service {
   name: string;
   description: string | null;
   unit_price: number;
+}
+
+export interface PresentationPage {
+  id: string;
+  title: string;
+  image_url: string;
+  position: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }

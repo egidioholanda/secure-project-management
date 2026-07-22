@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import type { ProposalItem } from "@/types/project";
+import type { Device, ProposalItem } from "@/types/project";
 import type { CompanySettings } from "@/hooks/useCompanySettings";
 
 interface ProposalPDFPreviewProps {
@@ -25,15 +25,24 @@ interface ProposalPDFPreviewProps {
     grandTotal: number;
   };
   companySettings?: CompanySettings | null;
+  catalogDevices?: Device[];
 }
 
 export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewProps>(
-  ({ formData, items, totals, companySettings }, ref) => {
+  ({ formData, items, totals, companySettings, catalogDevices }, ref) => {
     const formatCurrency = (value: number) =>
       new Intl.NumberFormat("pt-BR", {
         style: "currency",
         currency: "BRL",
       }).format(value);
+
+    const galleryItems = items
+      .filter((item) => item.featured_in_gallery && item.device_id)
+      .map((item) => ({
+        item,
+        device: catalogDevices?.find((d) => d.id === item.device_id),
+      }))
+      .filter((entry): entry is { item: ProposalItem; device: Device } => !!entry.device?.image_url);
 
     return (
       <div
@@ -137,6 +146,27 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
             <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
               {formData.scope}
             </p>
+          </div>
+        )}
+
+        {/* Equipment Gallery */}
+        {galleryItems.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-3 border-b border-gray-200 pb-1">
+              Equipamentos em Destaque
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              {galleryItems.map(({ item, device }) => (
+                <div key={item.id} className="text-center">
+                  <img
+                    src={device.image_url!}
+                    alt={item.device_name}
+                    className="w-full aspect-square object-cover rounded border border-gray-200"
+                  />
+                  <p className="text-xs text-gray-700 mt-1">{item.device_name}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

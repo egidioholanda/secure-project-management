@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus, Wrench } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus, Wrench, ImagePlus } from "lucide-react";
 import { SaveAsTemplateDialog, UseTemplateDialog, type ProposalTemplate, type ProposalTemplateItem } from "./ProposalTemplateDialogs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import type { PlacedDevice, Proposal, ProposalItem, Project, Device, FloorPlan, 
 import { useDevices } from "@/hooks/useDevices";
 import { useServices } from "@/hooks/useServices";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { usePresentationPages } from "@/hooks/usePresentationPages";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ProposalPDFPreview } from "./ProposalPDFPreview";
@@ -39,6 +40,8 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
   const { devices: catalogDevices, categories, loading: loadingDevices } = useDevices();
   const { services: catalogServices, loading: loadingServices } = useServices();
   const { settings: companySettings } = useCompanySettings();
+  const { activePages: presentationPages } = usePresentationPages();
+  const [includePresentationPages, setIncludePresentationPages] = useState(false);
   const [includeFloorPlan, setIncludeFloorPlan] = useState(false);
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [floorPlanDevices, setFloorPlanDevices] = useState<PlacedDevice[]>([]);
@@ -179,6 +182,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
       unit_price: item.device?.unit_price || 0,
       installation_price: item.device?.installation_price || 0,
       subtotal: item.quantity * ((item.device?.unit_price || 0) + (item.device?.installation_price || 0)),
+      featured_in_gallery: false,
     }));
 
     setItems(newItems);
@@ -225,6 +229,12 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     }));
   };
 
+  const handleToggleGalleryFeature = (itemId: string) => {
+    setItems(items.map(item =>
+      item.id === itemId ? { ...item, featured_in_gallery: !item.featured_in_gallery } : item
+    ));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     if (items.length <= 1) {
       toast.error("A proposta deve ter pelo menos um item");
@@ -252,6 +262,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
         unit_price: device.unit_price,
         installation_price: device.installation_price,
         subtotal: device.unit_price + device.installation_price,
+        featured_in_gallery: false,
       };
       setItems([...items, newProposalItem]);
       toast.success("Item adicionado à proposta!");
@@ -282,6 +293,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
         unit_price: service.unit_price,
         installation_price: 0,
         subtotal: service.unit_price,
+        featured_in_gallery: false,
       };
       setItems([...items, newItem]);
       toast.success("Serviço adicionado à proposta!");
@@ -316,6 +328,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
       unit_price: it.unit_price,
       installation_price: it.installation_price,
       subtotal: it.subtotal,
+      featured_in_gallery: false,
     }));
     setItems(newItems);
     toast.success(`Template "${tpl.name}" aplicado!`);
@@ -368,6 +381,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           unit_price: item.unit_price,
           installation_price: item.installation_price,
           subtotal: item.subtotal,
+          featured_in_gallery: item.featured_in_gallery,
         }));
 
         const { data: savedItems, error: itemsError } = await supabase
@@ -422,6 +436,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           unit_price: item.unit_price,
           installation_price: item.installation_price,
           subtotal: item.subtotal,
+          featured_in_gallery: item.featured_in_gallery,
         }));
 
         const { data: savedItems, error: itemsError } = await supabase
@@ -448,6 +463,27 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
     }
   };
 
+  const loadImageAsDataUrl = (url: string): Promise<{ dataUrl: string; width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context indisponível"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve({ dataUrl: canvas.toDataURL("image/png"), width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => reject(new Error(`Falha ao carregar imagem: ${url}`));
+      img.src = url;
+    });
+  };
+
   const handleExportPDF = async () => {
     if (!proposalRef.current) return;
 
@@ -462,6 +498,33 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Controla se a próxima página precisa de addPage() ou se pode usar a primeira página já criada
+      let firstPageUsed = false;
+      const ensurePage = () => {
+        if (firstPageUsed) {
+          pdf.addPage();
+        }
+        firstPageUsed = true;
+      };
+
+      // Add presentation pages (institutional pages) if selected
+      if (includePresentationPages && presentationPages.length > 0) {
+        for (const page of presentationPages) {
+          try {
+            const { dataUrl, width, height } = await loadImageAsDataUrl(page.image_url);
+            ensurePage();
+            const ratio = Math.min(pdfWidth / width, pdfHeight / height);
+            const scaledWidth = width * ratio;
+            const scaledHeight = height * ratio;
+            const x = (pdfWidth - scaledWidth) / 2;
+            const y = (pdfHeight - scaledHeight) / 2;
+            pdf.addImage(dataUrl, "PNG", x, y, scaledWidth, scaledHeight);
+          } catch (error) {
+            console.error("Error loading presentation page image:", page.id, error);
+          }
+        }
+      }
 
       // Margens laterais reduzidas para o conteúdo ocupar melhor a página
       const sideMargin = 8;
@@ -486,9 +549,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
 
       // Generate proposal pages
       for (let i = 0; i < proposalTotalPages; i++) {
-        if (i > 0) {
-          pdf.addPage();
-        }
+        ensurePage();
         pdf.addImage(
           proposalImgData,
           "PNG",
@@ -513,7 +574,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        pdf.addPage();
+        ensurePage();
 
         const floorPlanCanvas = await html2canvas(floorPlanRef.current, {
           scale: 2,
@@ -724,6 +785,28 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
 
           <Separator />
 
+          {/* Opção de incluir páginas de apresentação */}
+          {presentationPages.length > 0 && (
+            <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg">
+              <Checkbox
+                id="includePresentationPages"
+                checked={includePresentationPages}
+                onCheckedChange={(checked) => setIncludePresentationPages(checked as boolean)}
+              />
+              <div className="flex-1">
+                <Label htmlFor="includePresentationPages" className="font-medium cursor-pointer">
+                  Incluir páginas de apresentação no PDF
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {presentationPages.length} página(s) institucional(is) configurada(s) em Configurações serão
+                  adicionadas no início do PDF
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
           {/* Opção de incluir planta baixa */}
           {floorPlan && (
             <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg">
@@ -918,7 +1001,9 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
             )}
 
             <div className="space-y-2">
-              {items.map((item) => (
+              {items.map((item) => {
+                const itemDevice = item.device_id ? catalogDevices.find(d => d.id === item.device_id) : undefined;
+                return (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -937,12 +1022,28 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
                           Manual
                         </span>
                       )}
+                      {item.featured_in_gallery && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                          Na galeria
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {formatCurrency(item.unit_price + item.installation_price)} / unid.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {itemDevice?.image_url && (
+                      <Button
+                        variant={item.featured_in_gallery ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Destacar na galeria de equipamentos"
+                        onClick={() => handleToggleGalleryFeature(item.id)}
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="icon"
@@ -977,7 +1078,8 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </Card>
@@ -990,6 +1092,7 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
             items={items}
             totals={totals}
             companySettings={companySettings}
+            catalogDevices={catalogDevices}
           />
         </Card>
       </div>
