@@ -39,6 +39,8 @@ const ALL_PAGES = [
   { slug: '/clientes', label: 'Clientes' },
   { slug: '/equipes', label: 'Equipes' },
   { slug: '/usuarios', label: 'Usuários' },
+  { slug: '/financeiro', label: 'Financeiro' },
+  { slug: '/auditoria', label: 'Auditoria' },
   { slug: '/configuracoes', label: 'Configurações' },
 ];
 

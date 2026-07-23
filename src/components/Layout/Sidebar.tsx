@@ -72,7 +72,7 @@ function NavItem({
 }
 
 export function Sidebar() {
-  const { isAdmin, allowedPages } = useAuthContext();
+  const { allowedPages } = useAuthContext();
   const { collapsed, toggle } = useSidebar();
 
   const canAccess = (path: string) => !allowedPages || allowedPages.includes(path);
@@ -149,10 +149,10 @@ export function Sidebar() {
             {canAccess('/usuarios') && (
               <NavItem path="/usuarios" label="Usuários" icon={Users} collapsed={collapsed} />
             )}
-            {isAdmin && (
+            {canAccess('/financeiro') && (
               <NavItem path="/financeiro" label="Financeiro" icon={DollarSign} collapsed={collapsed} />
             )}
-            {isAdmin && (
+            {canAccess('/auditoria') && (
               <NavItem path="/auditoria" label="Auditoria" icon={Shield} collapsed={collapsed} />
             )}
           </div>
