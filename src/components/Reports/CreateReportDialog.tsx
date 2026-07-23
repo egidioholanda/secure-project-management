@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CalendarIcon, Upload, Plus, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, Upload, Plus, Trash2, Loader2, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,19 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -55,6 +62,7 @@ export const CreateReportDialog = ({
 }: CreateReportDialogProps) => {
   const { profile, user } = useAuthContext();
   const [selectedProject, setSelectedProject] = useState("");
+  const [projectComboOpen, setProjectComboOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [periodStart, setPeriodStart] = useState<Date | null>(null);
   const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
@@ -217,33 +225,63 @@ export const CreateReportDialog = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label htmlFor="project">Cliente / Projeto</Label>
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente ou projeto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.filter(p => !p.isMaintenanceClient).length > 0 && (
-                      <SelectGroup>
-                        <SelectLabel>Projetos</SelectLabel>
-                        {projects.filter(p => !p.isMaintenanceClient).map(project => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    )}
-                    {projects.filter(p => p.isMaintenanceClient).length > 0 && (
-                      <SelectGroup>
-                        <SelectLabel>Manutenção</SelectLabel>
-                        {projects.filter(p => p.isMaintenanceClient).map(project => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    )}
-                  </SelectContent>
-                </Select>
+                <Popover open={projectComboOpen} onOpenChange={setProjectComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="project"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={projectComboOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className="truncate">
+                        {selectedProject
+                          ? projects.find(p => p.id === selectedProject)?.name
+                          : "Selecione um cliente ou projeto"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar cliente ou projeto..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+                        {projects.filter(p => !p.isMaintenanceClient).length > 0 && (
+                          <CommandGroup heading="Projetos">
+                            {projects.filter(p => !p.isMaintenanceClient).map(project => (
+                              <CommandItem
+                                key={project.id}
+                                value={project.name}
+                                onSelect={() => { setSelectedProject(project.id); setProjectComboOpen(false); }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", selectedProject === project.id ? "opacity-100" : "opacity-0")} />
+                                {project.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {projects.filter(p => p.isMaintenanceClient).length > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup heading="Manutenção">
+                              {projects.filter(p => p.isMaintenanceClient).map(project => (
+                                <CommandItem
+                                  key={project.id}
+                                  value={project.name}
+                                  onSelect={() => { setSelectedProject(project.id); setProjectComboOpen(false); }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", selectedProject === project.id ? "opacity-100" : "opacity-0")} />
+                                  {project.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="col-span-2">
