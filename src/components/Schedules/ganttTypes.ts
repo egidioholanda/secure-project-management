@@ -9,6 +9,7 @@ export interface ProjectGroup {
   avgProgress: number;
   minStart: Date;
   maxEnd: Date;
+  teamName: string | null;
 }
 
 export type DisplayRow =

@@ -811,6 +811,7 @@ const Schedules = () => {
           endDate={dateRange.end}
           calendarConfig={calendarConfig}
           onReorder={handleReorder}
+          teams={teams}
         />
       </div>
 

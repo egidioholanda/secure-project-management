@@ -245,11 +245,12 @@ function ProjectHeaderRow({
         style={{ backgroundColor: group.statusColor }}
       />
 
-      {/* Project name + task count */}
+      {/* Project name + task count + equipe */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate text-foreground">{group.projectName}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground truncate">
           {group.tasks.length} tarefa{group.tasks.length !== 1 ? 's' : ''}
+          {group.teamName && <> · {group.teamName}</>}
         </p>
       </div>
 

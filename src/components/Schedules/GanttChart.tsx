@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import type { Task } from '@/types/schedule';
+import type { Team } from '@/types/teams';
 import { GanttHeader } from './GanttHeader';
 import { GanttRow } from './GanttRow';
 import { GanttSidebar } from './GanttSidebar';
@@ -42,6 +43,7 @@ interface GanttChartProps {
   endDate: Date;
   calendarConfig?: CalendarConfig;
   onReorder?: (orderedIds: string[]) => void;
+  teams?: Team[];
 }
 
 export const GanttChart = ({
@@ -55,6 +57,7 @@ export const GanttChart = ({
   endDate,
   calendarConfig = DEFAULT_CALENDAR_CONFIG,
   onReorder,
+  teams = [],
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -79,6 +82,12 @@ export const GanttChart = ({
     });
   }, []);
 
+  const teamNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of teams) map.set(t.id, t.name);
+    return map;
+  }, [teams]);
+
   // Group tasks by project, preserving the ordering of the task list
   const projectGroups = useMemo((): ProjectGroup[] => {
     const map = new Map<string, ProjectGroup>();
@@ -92,6 +101,7 @@ export const GanttChart = ({
           avgProgress: 0,
           minStart: task.startDate,
           maxEnd: task.endDate,
+          teamName: null,
         });
       }
       const g = map.get(task.projectId)!;
@@ -112,9 +122,18 @@ export const GanttChart = ({
         if (STATUS_PRIORITY[s] > STATUS_PRIORITY[worst]) worst = s;
       }
       g.statusColor = STATUS_COLORS[worst].dot;
+
+      // Nome da equipe do projeto — derivado das equipes atribuídas às tarefas
+      const distinctTeamIds = Array.from(new Set(g.tasks.map((t) => t.teamId).filter(Boolean))) as string[];
+      const distinctTeamNames = distinctTeamIds.map((id) => teamNameById.get(id)).filter(Boolean) as string[];
+      g.teamName = distinctTeamNames.length === 0
+        ? null
+        : distinctTeamNames.length === 1
+          ? distinctTeamNames[0]
+          : distinctTeamNames.join(' / ');
     }
     return Array.from(map.values());
-  }, [regularTasks]);
+  }, [regularTasks, teamNameById]);
 
   // Flat list of what's actually rendered (project header + tasks when expanded)
   const displayRows = useMemo((): DisplayRow[] => {
