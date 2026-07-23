@@ -26,12 +26,19 @@ interface UserWithRole {
   email: string | null;
   avatar_url: string | null;
   created_at: string;
+  role_definition_id: string | null;
   roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
+}
+
+interface RoleDefinition {
+  id: string;
+  name: string;
 }
 
 export const UsersTab = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [roleDefs, setRoleDefs] = useState<RoleDefinition[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -54,6 +61,12 @@ export const UsersTab = () => {
 
       if (rolesError) throw rolesError;
 
+      const { data: defs, error: defsError } = await (supabase as any)
+        .from('role_definitions')
+        .select('id, name');
+
+      if (defsError) throw defsError;
+
       const usersWithRoles = (profiles || []).map((profile) => ({
         ...profile,
         roles: (roles || [])
@@ -62,6 +75,7 @@ export const UsersTab = () => {
       }));
 
       setUsers(usersWithRoles);
+      setRoleDefs(defs || []);
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar usuários',
@@ -111,6 +125,28 @@ export const UsersTab = () => {
           <Badge variant="secondary">
             <User className="w-3 h-3 mr-1" />
             Usuário
+          </Badge>
+        );
+    }
+  };
+
+  const getProfileBadge = (roleDefinitionId: string | null) => {
+    const def = roleDefs.find((d) => d.id === roleDefinitionId);
+    if (!def) return null;
+    switch (def.name) {
+      case 'Administrador':
+        return getRoleBadge('admin');
+      case 'Gerente':
+        return getRoleBadge('manager');
+      case 'Suporte Técnico':
+        return getRoleBadge('sup_tecnico');
+      case 'Usuário':
+        return getRoleBadge('user');
+      default:
+        return (
+          <Badge variant="secondary">
+            <UserCheck className="w-3 h-3 mr-1" />
+            {def.name}
           </Badge>
         );
     }
@@ -185,12 +221,14 @@ export const UsersTab = () => {
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {user.roles.length > 0 ? (
-                          user.roles.map((r, idx) => (
-                            <span key={idx}>{getRoleBadge(r.role)}</span>
-                          ))
-                        ) : (
-                          getRoleBadge('user')
+                        {getProfileBadge(user.role_definition_id) ?? (
+                          user.roles.length > 0 ? (
+                            user.roles.map((r, idx) => (
+                              <span key={idx}>{getRoleBadge(r.role)}</span>
+                            ))
+                          ) : (
+                            getRoleBadge('user')
+                          )
                         )}
                       </div>
                     </TableCell>

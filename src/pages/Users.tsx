@@ -31,10 +31,23 @@ interface UserWithRole {
   roles: Array<{ role: 'admin' | 'manager' | 'user' | 'sup_tecnico' }>;
 }
 
+interface RoleDefinition {
+  id: string;
+  name: string;
+}
+
+const SYSTEM_PROFILE_VARIANTS: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
+  'Administrador': 'destructive',
+  'Gerente': 'default',
+  'Usuário': 'secondary',
+  'Suporte Técnico': 'outline',
+};
+
 const Users = () => {
   const { isAdmin, isManager, user } = useAuthContext();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [roleDefs, setRoleDefs] = useState<RoleDefinition[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -61,6 +74,12 @@ const Users = () => {
 
       if (rolesError) throw rolesError;
 
+      const { data: defs, error: defsError } = await (supabase as any)
+        .from('role_definitions')
+        .select('id, name');
+
+      if (defsError) throw defsError;
+
       const usersWithRoles = (profiles || []).map((profile) => ({
         ...profile,
         roles: (roles || [])
@@ -69,6 +88,7 @@ const Users = () => {
       }));
 
       setUsers(usersWithRoles);
+      setRoleDefs(defs || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -112,6 +132,16 @@ const Users = () => {
     return (
       <Badge variant={variants[role]} className="text-xs">
         {labels[role]}
+      </Badge>
+    );
+  };
+
+  const getProfileBadge = (roleDefinitionId: string | null) => {
+    const def = roleDefs.find((d) => d.id === roleDefinitionId);
+    if (!def) return null;
+    return (
+      <Badge variant={SYSTEM_PROFILE_VARIANTS[def.name] ?? 'secondary'} className="text-xs">
+        {def.name}
       </Badge>
     );
   };
@@ -277,12 +307,14 @@ const Users = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-1">
-                  {u.roles.length > 0 ? (
-                    u.roles.map((r, i) => (
-                      <span key={i}>{getRoleBadge(r.role)}</span>
-                    ))
-                  ) : (
-                    <Badge variant="outline">Sem função</Badge>
+                  {getProfileBadge(u.role_definition_id) ?? (
+                    u.roles.length > 0 ? (
+                      u.roles.map((r, i) => (
+                        <span key={i}>{getRoleBadge(r.role)}</span>
+                      ))
+                    ) : (
+                      <Badge variant="outline">Sem função</Badge>
+                    )
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
