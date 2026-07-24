@@ -251,18 +251,24 @@ const Schedules = () => {
     setSearchQuery('');
     setProjectSearch('');
     setFilterTeam('all');
-    setFilterDateStart(null);
-    setFilterDateEnd(null);
     setFilterClientGroup('all');
   };
 
-  const hasActiveFilters =
+  const hasActiveNonDateFilters =
     activeStatuses.size < ALL_STATUS_VALUES.length ||
     filterProjects.size > 0 ||
     filterTeam !== 'all' ||
-    filterClientGroup !== 'all' ||
-    filterDateStart !== null ||
-    filterDateEnd !== null;
+    filterClientGroup !== 'all';
+
+  const hasActiveDateFilter = filterDateStart !== null || filterDateEnd !== null;
+
+  const periodLabel = filterDateStart && filterDateEnd
+    ? `${format(filterDateStart, 'dd/MM')} – ${format(filterDateEnd, 'dd/MM')}`
+    : filterDateStart
+      ? `A partir de ${format(filterDateStart, 'dd/MM')}`
+      : filterDateEnd
+        ? `Até ${format(filterDateEnd, 'dd/MM')}`
+        : 'Período';
 
   const toggleFilterProject = (id: string) => {
     setFilterProjects((prev) => {
@@ -411,6 +417,110 @@ const Schedules = () => {
             <Button variant="outline" size="icon" onClick={() => navigateTimeline('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+
+            <Separator orientation="vertical" className="h-6 mx-1" />
+
+            {/* Date range filter — separado dos demais filtros */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={hasActiveDateFilter ? 'border-primary text-primary gap-2' : 'gap-2'}
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {periodLabel}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-4" align="start">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Período
+                    </p>
+                    {hasActiveDateFilter && (
+                      <button
+                        onClick={() => { setFilterDateStart(null); setFilterDateEnd(null); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Month quick presets */}
+                  <div className="flex flex-wrap gap-1">
+                    {[-1, 0, 1, 2].map((offset) => {
+                      const d = addMonths(new Date(), offset);
+                      const label = format(d, "MMM/yy", { locale: ptBR });
+                      const isActive =
+                        filterDateStart?.getTime() === startOfMonth(d).getTime() &&
+                        filterDateEnd?.getTime() === endOfMonth(d).getTime();
+                      return (
+                        <button
+                          key={offset}
+                          onClick={() => isActive
+                            ? (setFilterDateStart(null), setFilterDateEnd(null))
+                            : applyMonthPreset(d)
+                          }
+                          className={`px-2 py-1 rounded text-xs border transition-colors capitalize ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-border hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom range pickers */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">De</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
+                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                            {filterDateStart ? format(filterDateStart, "dd/MM/yy") : 'Início'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateStart ?? undefined}
+                            onSelect={(d) => setFilterDateStart(d ?? null)}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Até</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
+                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                            {filterDateEnd ? format(filterDateEnd, "dd/MM/yy") : 'Fim'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateEnd ?? undefined}
+                            onSelect={(d) => setFilterDateEnd(d ?? null)}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Legend */}
@@ -445,7 +555,7 @@ const Schedules = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className={hasActiveFilters ? 'border-primary text-primary gap-2' : 'gap-2'}
+                  className={hasActiveNonDateFilters ? 'border-primary text-primary gap-2' : 'gap-2'}
                 >
                   <Filter className="h-4 w-4" />
                   Filtros
@@ -458,7 +568,7 @@ const Schedules = () => {
                 {/* Sticky header */}
                 <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b bg-popover">
                   <p className="text-sm font-semibold">Filtros</p>
-                  {hasActiveFilters && (
+                  {hasActiveNonDateFilters && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -632,95 +742,6 @@ const Schedules = () => {
                   </>
                 )}
 
-                {/* Date range filter */}
-                <Separator className="my-3" />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Período
-                    </p>
-                    {(filterDateStart || filterDateEnd) && (
-                      <button
-                        onClick={() => { setFilterDateStart(null); setFilterDateEnd(null); }}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Limpar
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Month quick presets */}
-                  <div className="flex flex-wrap gap-1">
-                    {[-1, 0, 1, 2].map((offset) => {
-                      const d = addMonths(new Date(), offset);
-                      const label = format(d, "MMM/yy", { locale: ptBR });
-                      const isActive =
-                        filterDateStart?.getTime() === startOfMonth(d).getTime() &&
-                        filterDateEnd?.getTime() === endOfMonth(d).getTime();
-                      return (
-                        <button
-                          key={offset}
-                          onClick={() => isActive
-                            ? (setFilterDateStart(null), setFilterDateEnd(null))
-                            : applyMonthPreset(d)
-                          }
-                          className={`px-2 py-1 rounded text-xs border transition-colors capitalize ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'border-border hover:bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Custom range pickers */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">De</p>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
-                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
-                            {filterDateStart ? format(filterDateStart, "dd/MM/yy") : 'Início'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={filterDateStart ?? undefined}
-                            onSelect={(d) => setFilterDateStart(d ?? null)}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Até</p>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full h-8 px-2 text-xs justify-start font-normal">
-                            <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
-                            {filterDateEnd ? format(filterDateEnd, "dd/MM/yy") : 'Fim'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={filterDateEnd ?? undefined}
-                            onSelect={(d) => setFilterDateEnd(d ?? null)}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </div>
-
                 </div> {/* end scrollable body */}
               </PopoverContent>
             </Popover>
@@ -742,7 +763,7 @@ const Schedules = () => {
       </Card>
 
       {/* Active filter chips */}
-      {(hasActiveFilters || searchQuery) && (
+      {(hasActiveNonDateFilters || searchQuery) && (
         <div className="flex flex-wrap gap-2 items-center">
           {filterProjects.size > 0 && (
             filterProjects.size === 1 ? (
