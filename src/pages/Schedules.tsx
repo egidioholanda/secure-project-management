@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { addDays, subDays, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Filter, Download, Loader2, Search, X, CalendarIcon, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Filter, Download, Loader2, Search, X, CalendarIcon, LayoutDashboard } from 'lucide-react';
 import type { Task } from '@/types/schedule';
 import { GanttChart } from '@/components/Schedules/GanttChart';
 import { TaskEditDialog } from '@/components/Schedules/TaskEditDialog';
@@ -67,7 +67,9 @@ const Schedules = () => {
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_VALUES));
   const [projectSearch, setProjectSearch]   = useState('');
   const [filterTeam, setFilterTeam]         = useState<string>('all');
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [cameFromAvailability] = useState(() => searchParams.get('date') !== null);
   const [filterDateStart, setFilterDateStart]       = useState<Date | null>(() => {
     const d = searchParams.get('date');
     if (!d) return null;
@@ -359,6 +361,17 @@ const Schedules = () => {
     <div className="space-y-3 h-full flex flex-col">
       {/* Top bar: search + stats toggle + actions */}
       <div className="flex gap-2 items-center">
+        {cameFromAvailability && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 shrink-0"
+            onClick={() => navigate('/dashboard/operacional')}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+        )}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
