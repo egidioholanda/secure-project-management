@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { usePresentationPages } from "@/hooks/usePresentationPages";
 import type { PresentationPage } from "@/types/project";
-import { Plus, Trash2, ArrowUp, ArrowDown, ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, ImageIcon, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const PresentationPagesTab = () => {
@@ -53,7 +53,7 @@ export const PresentationPagesTab = () => {
       return;
     }
     if (!file) {
-      toast.error("Selecione a imagem da página");
+      toast.error("Selecione o arquivo da página");
       return;
     }
 
@@ -79,8 +79,11 @@ export const PresentationPagesTab = () => {
           <h3 className="text-lg font-semibold">Páginas de Apresentação</h3>
           <p className="text-sm text-muted-foreground max-w-2xl">
             Páginas institucionais prontas (capa, soluções por setor, diferenciais, etc.) que podem
-            ser incluídas no início do PDF de qualquer proposta. Envie cada página já pronta como
-            uma imagem (PNG, JPG ou WebP).
+            ser incluídas no início do PDF de qualquer proposta. Envie uma imagem já pronta (PNG, JPG
+            ou WebP) ou um arquivo Word (.docx) com várias páginas. Em arquivos Word, use os marcadores{' '}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{projeto}}'}</code> e{' '}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{cliente}}'}</code> no local onde
+            quer que apareçam o nome do projeto e do cliente de cada proposta.
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -103,7 +106,14 @@ export const PresentationPagesTab = () => {
           {pages.map((page, index) => (
             <Card key={page.id} className={!page.active ? "opacity-60" : undefined}>
               <div className="aspect-[210/297] bg-muted overflow-hidden rounded-t-lg border-b">
-                <img src={page.image_url} alt={page.title} className="w-full h-full object-cover" />
+                {page.source_type === "docx" ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <FileText className="w-10 h-10" />
+                    <span className="text-xs">Documento Word</span>
+                  </div>
+                ) : (
+                  <img src={page.image_url ?? undefined} alt={page.title} className="w-full h-full object-cover" />
+                )}
               </div>
               <CardContent className="p-3 space-y-3">
                 <p className="font-medium truncate" title={page.title}>{page.title}</p>
@@ -172,39 +182,55 @@ export const PresentationPagesTab = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Imagem da página *</Label>
+              <Label>Página (imagem ou Word) *</Label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/webp,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleFileSelect}
                 className="hidden"
               />
               {file ? (
-                <div className="relative aspect-[210/297] max-h-64 mx-auto rounded-lg overflow-hidden bg-muted border">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt="Pré-visualização"
-                    className="w-full h-full object-cover"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="absolute bottom-2 right-2"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Trocar imagem
-                  </Button>
-                </div>
+                file.type.startsWith("image/") ? (
+                  <div className="relative aspect-[210/297] max-h-64 mx-auto rounded-lg overflow-hidden bg-muted border">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt="Pré-visualização"
+                      className="w-full h-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Trocar arquivo
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="relative aspect-[210/297] max-h-64 mx-auto rounded-lg overflow-hidden bg-muted border flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <FileText className="w-10 h-10" />
+                    <span className="text-sm truncate max-w-[80%]">{file.name}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Trocar arquivo
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="aspect-[210/297] max-h-64 mx-auto rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted transition-colors"
                 >
                   <ImageIcon className="w-8 h-8 text-muted-foreground/50 mb-2" />
-                  <span className="text-sm text-muted-foreground">Clique para selecionar a imagem</span>
-                  <span className="text-xs text-muted-foreground/70 mt-1">JPG, PNG ou WebP (máx. 10MB)</span>
+                  <span className="text-sm text-muted-foreground">Clique para selecionar a página</span>
+                  <span className="text-xs text-muted-foreground/70 mt-1">Imagem (JPG/PNG/WebP) ou Word (.docx) — máx. 10MB</span>
                 </div>
               )}
             </div>

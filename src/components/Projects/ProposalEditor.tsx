@@ -19,6 +19,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ProposalPDFPreview } from "./ProposalPDFPreview";
 import { FloorPlanPDFPreview } from "./FloorPlanPDFPreview";
+import { convertDocxToHtml } from "@/utils/docxPresentation";
+import { renderHtmlToPdfPages } from "@/utils/renderHtmlToPdfPages";
 
 interface ProposalEditorProps {
   project: Project;
@@ -511,6 +513,21 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
       // Add presentation pages (institutional pages) if selected
       if (includePresentationPages && presentationPages.length > 0) {
         for (const page of presentationPages) {
+          if (page.source_type === "docx" && page.file_url) {
+            try {
+              const html = await convertDocxToHtml(page.file_url, {
+                projeto: project.name,
+                cliente: formData.client_name,
+              });
+              await renderHtmlToPdfPages(pdf, html, ensurePage);
+            } catch (error) {
+              console.error("Error rendering docx presentation page:", page.id, error);
+            }
+            continue;
+          }
+
+          if (!page.image_url) continue;
+
           try {
             const { dataUrl, width, height } = await loadImageAsDataUrl(page.image_url);
             ensurePage();

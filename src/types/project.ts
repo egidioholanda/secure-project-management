@@ -101,7 +101,9 @@ export interface Service {
 export interface PresentationPage {
   id: string;
   title: string;
-  image_url: string;
+  source_type: "image" | "docx";
+  image_url: string | null;
+  file_url: string | null;
   position: number;
   active: boolean;
   created_at: string;

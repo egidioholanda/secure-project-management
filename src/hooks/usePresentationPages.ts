@@ -28,18 +28,23 @@ export const usePresentationPages = () => {
     fetchPages();
   }, [fetchPages]);
 
+  const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
   const addPage = async (title: string, file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Por favor, selecione uma imagem válida");
+    const isDocx = file.type === DOCX_MIME || file.name.toLowerCase().endsWith(".docx");
+    const isImage = file.type.startsWith("image/");
+
+    if (!isDocx && !isImage) {
+      toast.error("Selecione uma imagem (PNG/JPG/WebP) ou um arquivo Word (.docx)");
       return null;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 10MB");
+      toast.error("O arquivo deve ter no máximo 10MB");
       return null;
     }
 
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = isDocx ? "docx" : file.name.split(".").pop();
       const filePath = `pages/${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -56,7 +61,13 @@ export const usePresentationPages = () => {
 
       const { data, error } = await supabase
         .from("presentation_pages")
-        .insert({ title, image_url: urlData.publicUrl, position: nextPosition })
+        .insert({
+          title,
+          source_type: isDocx ? "docx" : "image",
+          image_url: isDocx ? null : urlData.publicUrl,
+          file_url: isDocx ? urlData.publicUrl : null,
+          position: nextPosition,
+        })
         .select()
         .single();
 
@@ -115,7 +126,8 @@ export const usePresentationPages = () => {
     if (!page) return;
 
     try {
-      const urlParts = page.image_url.split("/presentation-pages/");
+      const sourceUrl = page.image_url ?? page.file_url;
+      const urlParts = sourceUrl?.split("/presentation-pages/") ?? [];
       if (urlParts.length > 1) {
         await supabase.storage.from("presentation-pages").remove([urlParts[1]]);
       }

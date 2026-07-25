@@ -691,27 +691,33 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          file_url: string | null
           id: string
-          image_url: string
+          image_url: string | null
           position: number
+          source_type: string
           title: string
           updated_at: string
         }
         Insert: {
           active?: boolean
           created_at?: string
+          file_url?: string | null
           id?: string
-          image_url: string
+          image_url?: string | null
           position?: number
+          source_type?: string
           title: string
           updated_at?: string
         }
         Update: {
           active?: boolean
           created_at?: string
+          file_url?: string | null
           id?: string
-          image_url?: string
+          image_url?: string | null
           position?: number
+          source_type?: string
           title?: string
           updated_at?: string
         }
