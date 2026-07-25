@@ -20,6 +20,7 @@ import { ProposalPDFPreview } from "./ProposalPDFPreview";
 import { FloorPlanPDFPreview } from "./FloorPlanPDFPreview";
 import { convertDocxToHtml } from "@/utils/docxPresentation";
 import { renderHtmlToPdfPages } from "@/utils/renderHtmlToPdfPages";
+import { renderPdfToPdfPages } from "@/utils/renderPdfToPdfPages";
 
 interface ProposalEditorProps {
   project: Project;
@@ -521,6 +522,15 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
               await renderHtmlToPdfPages(pdf, html, ensurePage);
             } catch (error) {
               console.error("Error rendering docx presentation page:", page.id, error);
+            }
+            continue;
+          }
+
+          if (page.source_type === "pdf" && page.file_url) {
+            try {
+              await renderPdfToPdfPages(pdf, page.file_url, ensurePage);
+            } catch (error) {
+              console.error("Error rendering pdf presentation page:", page.id, error);
             }
             continue;
           }

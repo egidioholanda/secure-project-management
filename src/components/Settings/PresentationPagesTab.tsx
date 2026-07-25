@@ -79,12 +79,23 @@ export const PresentationPagesTab = () => {
           <h3 className="text-lg font-semibold">Páginas de Apresentação</h3>
           <p className="text-sm text-muted-foreground max-w-2xl">
             Páginas institucionais prontas (capa, soluções por setor, diferenciais, etc.) que podem
-            ser incluídas no início do PDF de qualquer proposta. Envie uma imagem já pronta (PNG, JPG
-            ou WebP) ou um arquivo Word (.docx) com várias páginas. Em arquivos Word, use os marcadores{' '}
-            <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{projeto}}'}</code> e{' '}
-            <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{cliente}}'}</code> no local onde
-            quer que apareçam o nome do projeto e do cliente de cada proposta.
+            ser incluídas no início do PDF de qualquer proposta. Você pode enviar:
           </p>
+          <ul className="text-sm text-muted-foreground max-w-2xl list-disc pl-5 mt-1 space-y-0.5">
+            <li><strong>Imagem</strong> (PNG/JPG/WebP) — página já pronta, fidelidade perfeita.</li>
+            <li>
+              <strong>PDF</strong> — exporte o Word para PDF (Arquivo → Exportar/Salvar como PDF) e envie
+              aqui; fica idêntico ao design original, mas não permite marcadores dinâmicos.
+            </li>
+            <li>
+              <strong>Word (.docx)</strong> — permite usar os marcadores{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{projeto}}'}</code> e{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{{cliente}}'}</code>, substituídos
+              pelo nome real de cada proposta — mas layouts elaborados (caixas de texto, colunas, fundos)
+              podem sair desformatados. Use para a página que precisa do nome do projeto/cliente e prefira
+              PDF para as demais.
+            </li>
+          </ul>
         </div>
         <Button onClick={openCreate}>
           <Plus className="w-4 h-4 mr-2" />
@@ -106,13 +117,13 @@ export const PresentationPagesTab = () => {
           {pages.map((page, index) => (
             <Card key={page.id} className={!page.active ? "opacity-60" : undefined}>
               <div className="aspect-[210/297] bg-muted overflow-hidden rounded-t-lg border-b">
-                {page.source_type === "docx" ? (
+                {page.source_type === "image" ? (
+                  <img src={page.image_url ?? undefined} alt={page.title} className="w-full h-full object-cover" />
+                ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <FileText className="w-10 h-10" />
-                    <span className="text-xs">Documento Word</span>
+                    <span className="text-xs">{page.source_type === "docx" ? "Documento Word" : "Documento PDF"}</span>
                   </div>
-                ) : (
-                  <img src={page.image_url ?? undefined} alt={page.title} className="w-full h-full object-cover" />
                 )}
               </div>
               <CardContent className="p-3 space-y-3">
@@ -182,11 +193,11 @@ export const PresentationPagesTab = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Página (imagem ou Word) *</Label>
+              <Label>Página (imagem, PDF ou Word) *</Label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept="image/png,image/jpeg,image/webp,.pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -230,7 +241,7 @@ export const PresentationPagesTab = () => {
                 >
                   <ImageIcon className="w-8 h-8 text-muted-foreground/50 mb-2" />
                   <span className="text-sm text-muted-foreground">Clique para selecionar a página</span>
-                  <span className="text-xs text-muted-foreground/70 mt-1">Imagem (JPG/PNG/WebP) ou Word (.docx) — máx. 10MB</span>
+                  <span className="text-xs text-muted-foreground/70 mt-1">Imagem (JPG/PNG/WebP), PDF ou Word (.docx) — máx. 10MB</span>
                 </div>
               )}
             </div>

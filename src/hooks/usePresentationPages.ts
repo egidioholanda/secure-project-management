@@ -30,12 +30,18 @@ export const usePresentationPages = () => {
 
   const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  const addPage = async (title: string, file: File) => {
-    const isDocx = file.type === DOCX_MIME || file.name.toLowerCase().endsWith(".docx");
-    const isImage = file.type.startsWith("image/");
+  const detectKind = (file: File): "image" | "docx" | "pdf" | null => {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type === DOCX_MIME || file.name.toLowerCase().endsWith(".docx")) return "docx";
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return "pdf";
+    return null;
+  };
 
-    if (!isDocx && !isImage) {
-      toast.error("Selecione uma imagem (PNG/JPG/WebP) ou um arquivo Word (.docx)");
+  const addPage = async (title: string, file: File) => {
+    const kind = detectKind(file);
+
+    if (!kind) {
+      toast.error("Selecione uma imagem (PNG/JPG/WebP), um Word (.docx) ou um PDF");
       return null;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -44,7 +50,7 @@ export const usePresentationPages = () => {
     }
 
     try {
-      const fileExt = isDocx ? "docx" : file.name.split(".").pop();
+      const fileExt = kind === "image" ? file.name.split(".").pop() : kind;
       const filePath = `pages/${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -63,9 +69,9 @@ export const usePresentationPages = () => {
         .from("presentation_pages")
         .insert({
           title,
-          source_type: isDocx ? "docx" : "image",
-          image_url: isDocx ? null : urlData.publicUrl,
-          file_url: isDocx ? urlData.publicUrl : null,
+          source_type: kind,
+          image_url: kind === "image" ? urlData.publicUrl : null,
+          file_url: kind === "image" ? null : urlData.publicUrl,
           position: nextPosition,
         })
         .select()
