@@ -157,7 +157,7 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
             </h2>
             <div className="grid grid-cols-3 gap-4">
               {galleryItems.map(({ item, device }) => (
-                <div key={item.id} className="text-center">
+                <div key={item.id} className="text-center" data-pdf-avoid-break>
                   <img
                     src={device.image_url!}
                     alt={item.device_name}
@@ -187,7 +187,7 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} data-pdf-avoid-break>
                   <td className="p-2 border border-gray-300">{item.device_name}</td>
                   <td className="p-2 border border-gray-300 text-center">{item.quantity}</td>
                   <td className="p-2 border border-gray-300 text-right">
@@ -206,7 +206,7 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
         </div>
 
         {/* Totals */}
-        <div className="mb-6 bg-gray-50 p-4 rounded border border-gray-200">
+        <div className="mb-6 bg-gray-50 p-4 rounded border border-gray-200" data-pdf-avoid-break>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Total Equipamentos:</span>
@@ -234,13 +234,13 @@ export const ProposalPDFPreview = forwardRef<HTMLDivElement, ProposalPDFPreviewP
         {/* Terms Section */}
         <div className="mb-6 grid grid-cols-2 gap-6">
           {formData.payment_terms && (
-            <div>
+            <div data-pdf-avoid-break>
               <h3 className="font-bold text-gray-800 mb-1 text-sm">Condições de Pagamento</h3>
               <p className="text-xs text-gray-700 leading-relaxed">{formData.payment_terms}</p>
             </div>
           )}
           {formData.warranty_terms && (
-            <div>
+            <div data-pdf-avoid-break>
               <h3 className="font-bold text-gray-800 mb-1 text-sm">Garantia</h3>
               <p className="text-xs text-gray-700 leading-relaxed">{formData.warranty_terms}</p>
             </div>

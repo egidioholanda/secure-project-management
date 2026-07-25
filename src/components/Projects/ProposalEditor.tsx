@@ -21,6 +21,7 @@ import { FloorPlanPDFPreview } from "./FloorPlanPDFPreview";
 import { convertDocxToHtml } from "@/utils/docxPresentation";
 import { renderHtmlToPdfPages } from "@/utils/renderHtmlToPdfPages";
 import { renderPdfToPdfPages } from "@/utils/renderPdfToPdfPages";
+import { addCanvasAsPdfPages } from "@/utils/paginateCanvasToPdf";
 
 interface ProposalEditorProps {
   project: Project;
@@ -554,7 +555,6 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
 
       // Margens laterais reduzidas para o conteúdo ocupar melhor a página
       const sideMargin = 8;
-      const contentWidth = pdfWidth - 2 * sideMargin;
 
       // Render proposal content
       const proposalCanvas = await html2canvas(proposalRef.current, {
@@ -564,27 +564,13 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
         backgroundColor: "#ffffff",
       });
 
-      const proposalImgData = proposalCanvas.toDataURL("image/png");
-      const proposalImgWidth = proposalCanvas.width;
-      const proposalImgHeight = proposalCanvas.height;
-
-      // Escala baseada na largura para preencher a página com margens estreitas
-      const proposalRatio = contentWidth / proposalImgWidth;
-      const proposalScaledHeight = proposalImgHeight * proposalRatio;
-      const proposalTotalPages = Math.max(1, Math.ceil(proposalScaledHeight / pdfHeight));
-
-      // Generate proposal pages
-      for (let i = 0; i < proposalTotalPages; i++) {
-        ensurePage();
-        pdf.addImage(
-          proposalImgData,
-          "PNG",
-          sideMargin,
-          -i * pdfHeight,
-          proposalImgWidth * proposalRatio,
-          proposalScaledHeight
-        );
-      }
+      // Pagina o conteúdo evitando cortar linhas da tabela, totais e blocos de texto no meio
+      addCanvasAsPdfPages(pdf, proposalCanvas, ensurePage, {
+        sideMargin,
+        scale: 2,
+        container: proposalRef.current,
+        avoidBreakSelector: "[data-pdf-avoid-break]",
+      });
 
       // Add floor plan if selected
       if (includeFloorPlan && floorPlan && floorPlanRef.current) {

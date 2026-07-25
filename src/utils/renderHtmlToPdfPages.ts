@@ -1,5 +1,6 @@
 import type jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { addCanvasAsPdfPages } from "./paginateCanvasToPdf";
 
 const PAGE_STYLES = `
   table { border-collapse: collapse; width: 100%; margin: 8px 0; }
@@ -22,10 +23,6 @@ export const renderHtmlToPdfPages = async (
   ensurePage: () => void,
   sideMargin = 8
 ): Promise<void> => {
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = pdf.internal.pageSize.getHeight();
-  const contentWidth = pdfWidth - 2 * sideMargin;
-
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.left = "-9999px";
@@ -53,15 +50,12 @@ export const renderHtmlToPdfPages = async (
       backgroundColor: "#ffffff",
     });
 
-    const imgData = canvas.toDataURL("image/png");
-    const ratio = contentWidth / canvas.width;
-    const scaledHeight = canvas.height * ratio;
-    const totalPages = Math.max(1, Math.ceil(scaledHeight / pdfHeight));
-
-    for (let i = 0; i < totalPages; i++) {
-      ensurePage();
-      pdf.addImage(imgData, "PNG", sideMargin, -i * pdfHeight, canvas.width * ratio, scaledHeight);
-    }
+    addCanvasAsPdfPages(pdf, canvas, ensurePage, {
+      sideMargin,
+      scale: 2,
+      container,
+      avoidBreakSelector: "p, tr, li, h1, h2, h3, h4",
+    });
   } finally {
     document.body.removeChild(container);
   }
