@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus, Wrench, ImagePlus } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Plus, Minus, X, Search, FileText, BookmarkPlus, Wrench, ImagePlus, Presentation, Map } from "lucide-react";
 import { SaveAsTemplateDialog, UseTemplateDialog, type ProposalTemplate, type ProposalTemplateItem } from "./ProposalTemplateDialogs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PlacedDevice, Proposal, ProposalItem, Project, Device, FloorPlan, Service } from "@/types/project";
@@ -675,6 +674,26 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Salvando..." : "Salvar"}
           </Button>
+          {presentationPages.length > 0 && (
+            <Button
+              variant={includePresentationPages ? "default" : "outline"}
+              onClick={() => setIncludePresentationPages((prev) => !prev)}
+              title="Incluir as páginas de apresentação institucionais no início do PDF"
+            >
+              <Presentation className="w-4 h-4 mr-2" />
+              Apresentação
+            </Button>
+          )}
+          {floorPlan && (
+            <Button
+              variant={includeFloorPlan ? "default" : "outline"}
+              onClick={() => setIncludeFloorPlan((prev) => !prev)}
+              title="Incluir a planta baixa com os dispositivos posicionados ao final do PDF"
+            >
+              <Map className="w-4 h-4 mr-2" />
+              Planta Baixa
+            </Button>
+          )}
           <Button onClick={handleExportPDF} className="bg-gradient-primary">
             <Download className="w-4 h-4 mr-2" />
             Exportar PDF
@@ -799,49 +818,6 @@ const ProposalEditor = ({ project, placedDevices, onBack, existingProposalId, au
               rows={2}
             />
           </div>
-
-          <Separator />
-
-          {/* Opção de incluir páginas de apresentação */}
-          {presentationPages.length > 0 && (
-            <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg">
-              <Checkbox
-                id="includePresentationPages"
-                checked={includePresentationPages}
-                onCheckedChange={(checked) => setIncludePresentationPages(checked as boolean)}
-              />
-              <div className="flex-1">
-                <Label htmlFor="includePresentationPages" className="font-medium cursor-pointer">
-                  Incluir páginas de apresentação no PDF
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {presentationPages.length} página(s) institucional(is) configurada(s) em Configurações serão
-                  adicionadas no início do PDF
-                </p>
-              </div>
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Opção de incluir planta baixa */}
-          {floorPlan && (
-            <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg">
-              <Checkbox
-                id="includeFloorPlan"
-                checked={includeFloorPlan}
-                onCheckedChange={(checked) => setIncludeFloorPlan(checked as boolean)}
-              />
-              <div className="flex-1">
-                <Label htmlFor="includeFloorPlan" className="font-medium cursor-pointer">
-                  Incluir planta baixa no PDF
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  A planta com os {floorPlanDevices.length} dispositivos posicionados será adicionada ao final do PDF
-                </p>
-              </div>
-            </div>
-          )}
 
           <Separator />
 
