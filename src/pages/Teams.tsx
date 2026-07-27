@@ -68,8 +68,9 @@ const Teams = () => {
     return ids;
   }, [projects, contractClients]);
 
-  const handleAvailabilityDayClick = useCallback((day: Date) => {
-    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
+  const handleAvailabilityDayClick = useCallback((day: Date, projectIds: string[]) => {
+    const highlight = projectIds.length > 0 ? `&highlight=${projectIds.join(',')}` : '';
+    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}${highlight}`);
   }, [navigate]);
 
   const [scheduleTasks, setScheduleTasks] = useState<RawTask[]>([]);
@@ -114,6 +115,7 @@ const Teams = () => {
           startDate: new Date(t.start_date + 'T00:00:00'),
           endDate: new Date(t.end_date + 'T00:00:00'),
           team_id: t.team_id,
+          projectId: t.project_id,
           projectName: t.project_name ?? '',
           progress: t.progress ?? 0,
         })),

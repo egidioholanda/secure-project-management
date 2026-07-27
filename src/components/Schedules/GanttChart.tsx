@@ -44,6 +44,7 @@ interface GanttChartProps {
   calendarConfig?: CalendarConfig;
   onReorder?: (orderedIds: string[]) => void;
   teams?: Team[];
+  highlightedProjectIds?: string[];
 }
 
 export const GanttChart = ({
@@ -58,6 +59,7 @@ export const GanttChart = ({
   calendarConfig = DEFAULT_CALENDAR_CONFIG,
   onReorder,
   teams = [],
+  highlightedProjectIds = [],
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -283,6 +285,7 @@ export const GanttChart = ({
           onReorder={onReorder}
           scrollRef={sidebarScrollRef}
           containerRef={sidebarContainerRef}
+          highlightedProjectIds={highlightedProjectIds}
         />
 
         {/* Chart area */}

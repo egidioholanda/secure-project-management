@@ -93,8 +93,9 @@ const DashboardOperacional = () => {
   const { tasks, loading: loadingTasks } = useScheduleTasks();
   const { teams } = useTeams();
 
-  const handleAvailabilityDayClick = useCallback((day: Date) => {
-    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}`);
+  const handleAvailabilityDayClick = useCallback((day: Date, projectIds: string[]) => {
+    const highlight = projectIds.length > 0 ? `&highlight=${projectIds.join(',')}` : '';
+    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}${highlight}`);
   }, [navigate]);
 
   const validProjectIds = useMemo(() => {
@@ -415,6 +416,7 @@ const DashboardOperacional = () => {
                 startDate: t.startDate,
                 endDate: t.endDate,
                 team_id: t.teamId ?? null,
+                projectId: t.projectId,
                 projectName: t.projectName,
                 progress: t.progress ?? 0,
               }))}

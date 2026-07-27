@@ -70,6 +70,17 @@ const Schedules = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [cameFromAvailability] = useState(() => searchParams.get('date') !== null);
+  const [highlightedProjectIds, setHighlightedProjectIds] = useState<string[]>(() => {
+    const raw = searchParams.get('highlight');
+    return raw ? raw.split(',').filter(Boolean) : [];
+  });
+
+  // Temporarily highlight the project(s) clicked from the availability grid, then clear it
+  useEffect(() => {
+    if (highlightedProjectIds.length === 0) return;
+    const t = setTimeout(() => setHighlightedProjectIds([]), 4000);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [filterDateStart, setFilterDateStart]       = useState<Date | null>(() => {
     const d = searchParams.get('date');
     if (!d) return null;
@@ -846,6 +857,7 @@ const Schedules = () => {
           calendarConfig={calendarConfig}
           onReorder={handleReorder}
           teams={teams}
+          highlightedProjectIds={highlightedProjectIds}
         />
       </div>
 

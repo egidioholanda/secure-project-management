@@ -17,6 +17,7 @@ interface GanttSidebarProps {
   onReorder?: (orderedIds: string[]) => void;
   scrollRef?: React.RefObject<HTMLDivElement>;
   containerRef?: React.RefObject<HTMLDivElement>;
+  highlightedProjectIds?: string[];
 }
 
 export const GanttSidebar = ({
@@ -29,7 +30,9 @@ export const GanttSidebar = ({
   onReorder,
   scrollRef,
   containerRef,
+  highlightedProjectIds = [],
 }: GanttSidebarProps) => {
+  const highlightedSet = new Set(highlightedProjectIds);
   const today = new Date();
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +141,7 @@ export const GanttSidebar = ({
                 group={group}
                 isExpanded={isExpanded}
                 onToggle={() => onToggleProject(group.projectId)}
+                isHighlighted={highlightedSet.has(group.projectId)}
               />
             );
           }
@@ -221,14 +225,19 @@ function ProjectHeaderRow({
   group,
   isExpanded,
   onToggle,
+  isHighlighted,
 }: {
   group: ProjectGroup;
   isExpanded: boolean;
   onToggle: () => void;
+  isHighlighted?: boolean;
 }) {
   return (
     <div
-      className="h-12 flex items-center gap-2 px-3 border-b border-border bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors group"
+      className={cn(
+        'h-12 flex items-center gap-2 px-3 border-b border-border hover:bg-muted/50 cursor-pointer transition-colors duration-700 group',
+        isHighlighted ? 'bg-primary/15 ring-2 ring-inset ring-primary' : 'bg-muted/30'
+      )}
       onClick={onToggle}
     >
       {/* Chevron */}

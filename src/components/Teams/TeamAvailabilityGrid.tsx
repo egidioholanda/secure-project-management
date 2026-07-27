@@ -10,6 +10,7 @@ interface ScheduleTask {
   startDate: Date;
   endDate: Date;
   team_id?: string | null;
+  projectId?: string | null;
   projectName?: string;
   progress?: number;
 }
@@ -19,7 +20,7 @@ interface Props {
   tasks: ScheduleTask[];
   startDate: Date;
   endDate: Date;
-  onDayClick?: (day: Date) => void;
+  onDayClick?: (day: Date, projectIds: string[]) => void;
 }
 
 type CellVariant = 'none' | 'green' | 'blue' | 'red';
@@ -172,6 +173,10 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                   });
                   if (clickable) tooltipLines.push('→ Clique para ver no cronograma');
 
+                  const projectIds = Array.from(
+                    new Set(dayTasks.map((t) => t.projectId).filter((id): id is string => !!id))
+                  );
+
                   return (
                     <div
                       key={day.toISOString()}
@@ -186,7 +191,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                         .filter(Boolean)
                         .join(' ')}
                       title={tooltipLines.length ? tooltipLines.join('\n') : undefined}
-                      onClick={clickable ? () => onDayClick!(day) : undefined}
+                      onClick={clickable ? () => onDayClick!(day, projectIds) : undefined}
                     >
                       {count > 0 && (
                         <div
