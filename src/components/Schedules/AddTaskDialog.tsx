@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Task } from '@/types/schedule';
 import { format, addDays, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Plus, UsersRound, Clock, Wrench } from 'lucide-react';
+import { CalendarIcon, User, Flag, Plus, UsersRound, Clock, Wrench, ChevronsUpDown, Check } from 'lucide-react';
 import type { Team } from '@/types/teams';
 import {
   Dialog,
@@ -19,6 +19,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 
 const CONTRACT_CLIENT_COLOR = '#8B5CF6';
@@ -54,6 +62,7 @@ export const AddTaskDialog = ({ projects, contractClients = [], onAdd, teams = [
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [durationUnit, setDurationUnit] = useState<'days' | 'hours'>('days');
   const [sourceType, setSourceType] = useState<SourceType>('project');
+  const [projectComboOpen, setProjectComboOpen] = useState(false);
 
   const durationToDays = (value: number, unit: 'days' | 'hours') =>
     unit === 'days' ? value - 1 : Math.max(0, Math.ceil(value / HOURS_PER_DAY) - 1);
@@ -180,45 +189,69 @@ export const AddTaskDialog = ({ projects, contractClients = [], onAdd, teams = [
           {/* Project / Client selection */}
           <div className="space-y-2">
             <Label>{sourceType === 'project' ? 'Projeto' : 'Cliente Contrato'}</Label>
-            {sourceType === 'project' ? (
-              <Select value={newTask.projectId} onValueChange={handleProjectChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.color }} />
-                        {project.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select value={newTask.projectId} onValueChange={handleProjectChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contractClients.length === 0 ? (
-                    <SelectItem value="__empty" disabled>
-                      Nenhum cliente com contrato ativo
-                    </SelectItem>
-                  ) : (
-                    contractClients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CONTRACT_CLIENT_COLOR }} />
-                          {client.name}
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            )}
+            <Popover open={projectComboOpen} onOpenChange={setProjectComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={projectComboOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    {newTask.projectId ? (
+                      <>
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{
+                            backgroundColor:
+                              sourceType === 'project'
+                                ? projects.find((p) => p.id === newTask.projectId)?.color
+                                : CONTRACT_CLIENT_COLOR,
+                          }}
+                        />
+                        <span className="truncate">{newTask.projectName}</span>
+                      </>
+                    ) : (
+                      sourceType === 'project' ? 'Selecione um projeto' : 'Selecione um cliente'
+                    )}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder={sourceType === 'project' ? 'Buscar projeto...' : 'Buscar cliente...'} />
+                  <CommandList>
+                    <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {sourceType === 'project'
+                        ? projects.map((project) => (
+                            <CommandItem
+                              key={project.id}
+                              value={project.name}
+                              onSelect={() => { handleProjectChange(project.id); setProjectComboOpen(false); }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', newTask.projectId === project.id ? 'opacity-100' : 'opacity-0')} />
+                              <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ backgroundColor: project.color }} />
+                              {project.name}
+                            </CommandItem>
+                          ))
+                        : contractClients.map((client) => (
+                            <CommandItem
+                              key={client.id}
+                              value={client.name}
+                              onSelect={() => { handleProjectChange(client.id); setProjectComboOpen(false); }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', newTask.projectId === client.id ? 'opacity-100' : 'opacity-0')} />
+                              <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ backgroundColor: CONTRACT_CLIENT_COLOR }} />
+                              {client.name}
+                            </CommandItem>
+                          ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Task name */}
