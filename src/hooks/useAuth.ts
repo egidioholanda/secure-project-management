@@ -184,10 +184,19 @@ export const useAuth = () => {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) {
-      (supabase as any).rpc('log_audit_event', {
-        p_action: 'LOGIN',
-        p_resource_type: 'auth',
-      }).catch(() => {});
+      // Fire-and-forget audit log — awaited inside its own async scope so a
+      // failure can't throw synchronously into signIn's call site (the
+      // builder returned by .rpc() is thenable but has no .catch method).
+      (async () => {
+        try {
+          await (supabase as any).rpc('log_audit_event', {
+            p_action: 'LOGIN',
+            p_resource_type: 'auth',
+          });
+        } catch {
+          // best-effort audit log; login already succeeded
+        }
+      })();
     }
     return { error };
   };
@@ -209,10 +218,17 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
-    await (supabase as any).rpc('log_audit_event', {
-      p_action: 'LOGOUT',
-      p_resource_type: 'auth',
-    }).catch(() => {});
+    // Logged before the session is destroyed, since the RPC relies on auth.uid().
+    // Wrapped in try/catch — .rpc() returns a thenable without a real .catch method,
+    // so calling .catch() directly on it throws synchronously and used to abort sign-out.
+    try {
+      await (supabase as any).rpc('log_audit_event', {
+        p_action: 'LOGOUT',
+        p_resource_type: 'auth',
+      });
+    } catch {
+      // best-effort audit log; sign-out must proceed regardless
+    }
     const { error } = await supabase.auth.signOut();
     return { error };
   };
