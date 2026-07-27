@@ -11,6 +11,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Project } from "@/types/project";
 import { cn } from "@/lib/utils";
+import { getProjectTypes } from "@/utils/projectTypes";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function ProjectListRow({
   onEdit: (p: Project) => void;
   onDelete: (id: string) => void;
 }) {
-  const types = project.type ? project.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+  const types = getProjectTypes(project.type);
   return (
     <div
       onClick={onSelect}
@@ -111,7 +112,7 @@ const Projects = () => {
   const allTypes = useMemo(() => {
     const set = new Set<string>();
     projects.forEach((p) => {
-      if (p.type) p.type.split(",").forEach((t) => { const s = t.trim(); if (s) set.add(s); });
+      getProjectTypes(p.type).forEach((t) => set.add(t));
     });
     return Array.from(set).sort();
   }, [projects]);
@@ -135,7 +136,7 @@ const Projects = () => {
       if (q && !p.name.toLowerCase().includes(q) && !p.client.toLowerCase().includes(q)) return false;
       if (!activeStatuses.has(p.status)) return false;
       if (activeTypes.size > 0 && allTypes.length > 0) {
-        const ptypes = p.type ? p.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+        const ptypes = getProjectTypes(p.type);
         if (ptypes.length > 0 && !ptypes.some((t) => activeTypes.has(t))) return false;
       }
       return true;

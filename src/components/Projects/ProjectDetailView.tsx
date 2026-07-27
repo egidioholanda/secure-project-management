@@ -9,6 +9,7 @@ import ProjectDocumentsSection from "./ProjectDocumentsSection";
 import { LinkClientDialog } from "./LinkClientDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useClients } from "@/hooks/useClients";
+import { getProjectTypes } from "@/utils/projectTypes";
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -143,7 +144,7 @@ const ProjectDetailView = ({ project, onBack, onEdit }: ProjectDetailViewProps) 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
         <div>
           <p className="text-sm text-muted-foreground">Tipo</p>
-          <p className="font-medium">{project.type}</p>
+          <p className="font-medium">{getProjectTypes(project.type).join(", ") || "-"}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Gerente</p>

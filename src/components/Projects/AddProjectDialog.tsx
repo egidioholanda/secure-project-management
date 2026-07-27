@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useClientGroups } from "@/hooks/useClientGroups";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { getProjectTypes } from "@/utils/projectTypes";
 
 import type { Project } from "@/types/project";
 export type { Project };
@@ -32,14 +33,6 @@ export interface ProjectFormData {
   opportunityId?: string;
   clientGroupId?: string | null;
 }
-
-const SERVICE_TYPES = [
-  "CFTV",
-  "Controle de Acesso",
-  "Alarme Perimetral",
-  "Sistema Integrado",
-  "Automação",
-];
 
 interface AddProjectDialogProps {
   open: boolean;
@@ -87,7 +80,7 @@ const AddProjectDialog = ({
   const [formData, setFormData] = useState({
     name: "",
     client: "",
-    types: [] as string[],
+    type: "",
     status: "planning",
     startDate: "",
     endDate: "",
@@ -106,7 +99,7 @@ const AddProjectDialog = ({
       setFormData({
         name: editingProject.name,
         client: editingProject.client,
-        types: editingProject.type ? editingProject.type.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        type: editingProject.type || "",
         status: editingProject.status,
         startDate: editingProject.startDate,
         endDate: editingProject.endDate,
@@ -122,7 +115,7 @@ const AddProjectDialog = ({
       setFormData({
         name: initialData.name,
         client: initialData.client,
-        types: initialData.type ? [initialData.type] : [],
+        type: initialData.type || "",
         status: "planning",
         startDate: "",
         endDate: "",
@@ -138,7 +131,7 @@ const AddProjectDialog = ({
       setFormData({
         name: "",
         client: "",
-        types: [],
+        type: "",
         status: "planning",
         startDate: "",
         endDate: "",
@@ -156,19 +149,10 @@ const AddProjectDialog = ({
   const set = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-  const toggleType = (t: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      types: prev.types.includes(t)
-        ? prev.types.filter((x) => x !== t)
-        : [...prev.types, t],
-    }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.client || formData.types.length === 0) {
+    if (!formData.name || !formData.client) {
       toast.error("Por favor, preencha todos os campos obrigatórios");
       return;
     }
@@ -192,7 +176,7 @@ const AddProjectDialog = ({
       id: editingProject?.id || "",
       name: formData.name,
       client: formData.client,
-      type: formData.types.join(","),
+      type: formData.type,
       status: formData.status,
       startDate: formData.startDate,
       endDate: formData.endDate,
@@ -261,24 +245,20 @@ const AddProjectDialog = ({
               </Select>
             </div>
 
-            {/* Tipos de serviço */}
-            <div className="col-span-2">
-              <Label>Tipo de Serviço *</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                {SERVICE_TYPES.map((t) => (
-                  <label
-                    key={t}
-                    className="flex items-center gap-2 cursor-pointer rounded-lg border border-border px-3 py-2 hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-                  >
-                    <Checkbox
-                      checked={formData.types.includes(t)}
-                      onCheckedChange={() => toggleType(t)}
-                    />
-                    <span className="text-sm">{t}</span>
-                  </label>
-                ))}
+            {/* Tipo de solução — somente leitura, definido na Oportunidade de origem */}
+            {formData.type && (
+              <div className="col-span-2">
+                <Label>Tipo de Solução</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Definido na oportunidade de origem. Para alterar, edite a oportunidade.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {getProjectTypes(formData.type).map((t) => (
+                    <Badge key={t} variant="secondary">{t}</Badge>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Endereço */}
             <div className="col-span-2">

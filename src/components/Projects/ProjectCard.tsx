@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Project } from "./AddProjectDialog";
+import { getProjectTypes } from "@/utils/projectTypes";
 
 interface ProjectCardProps {
   project: Project;
@@ -77,8 +78,8 @@ const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
       </div>
 
       <div className="pt-4 border-t border-border flex flex-wrap gap-1.5">
-        {project.type.split(",").filter(Boolean).map((t) => (
-          <Badge key={t} variant="secondary">{t.trim()}</Badge>
+        {getProjectTypes(project.type).map((t) => (
+          <Badge key={t} variant="secondary">{t}</Badge>
         ))}
       </div>
     </Card>

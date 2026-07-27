@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Search, AlertCircle, Loader2, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
+import { getProjectTypes } from "@/utils/projectTypes";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -308,7 +309,7 @@ const Mapa = () => {
     if (projects.length === 0) return;
     const types = new Set<string>();
     projects.forEach((p) => {
-      if (p.type) p.type.split(",").forEach((t) => { const tr = t.trim(); if (tr) types.add(tr); });
+      getProjectTypes(p.type).forEach((t) => types.add(t));
     });
     const arr = Array.from(types).sort();
     setAllTypes(arr);
@@ -409,7 +410,7 @@ const Mapa = () => {
     const matchSearch = [p.name, p.client, p.displayAddress]
       .some((s) => s?.toLowerCase().includes(search.toLowerCase()));
     const matchStatus = activeStatuses.has(canonicalStatus(p.status));
-    const pTypes = p.type ? p.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
+    const pTypes = getProjectTypes(p.type);
     const matchType = allTypes.length === 0 || pTypes.length === 0
       ? true
       : pTypes.some((t) => activeTypes.has(t));
@@ -597,7 +598,7 @@ const Mapa = () => {
             {visibleMapped.map((p) => {
               const info = st(p.status);
               const isActive = p.id === activeId;
-              const types = p.type.split(",").map((t) => t.trim()).filter(Boolean);
+              const types = getProjectTypes(p.type);
               return (
                 <Marker
                   key={p.id}
