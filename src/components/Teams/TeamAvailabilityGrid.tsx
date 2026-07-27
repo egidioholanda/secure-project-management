@@ -65,12 +65,20 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
 
   const activeTeams = teams.filter((t) => t.active);
 
+  // An unfinished task whose deadline already passed still counts as "happening"
+  // today — otherwise it disappears from the grid the day after it's due and can
+  // never be flagged as overdue (red) since it'd never reach today's cell.
+  const effectiveEndDate = (t: ScheduleTask) => {
+    const end = startOfDay(t.endDate);
+    return (t.progress ?? 0) < 100 && end < today ? today : end;
+  };
+
   const getTasksForTeamOnDay = (teamId: string, day: Date) =>
     tasks.filter(
       (t) =>
         t.team_id === teamId &&
         startOfDay(t.startDate) <= day &&
-        startOfDay(t.endDate) >= day,
+        effectiveEndDate(t) >= day,
     );
 
   const getCellVariant = (dayTasks: ScheduleTask[], day: Date): CellVariant => {
