@@ -8,6 +8,7 @@ import AddProjectDialog, { ProjectFormData } from "@/components/Projects/AddProj
 import ProjectCard from "@/components/Projects/ProjectCard";
 import ProjectDetailView from "@/components/Projects/ProjectDetailView";
 import { useProjects } from "@/hooks/useProjects";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Project } from "@/types/project";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,10 @@ const Projects = () => {
   const location = useLocation();
   const { allowedClientIds, allowedClientGroupIds } = useAuthContext();
   const { projects, loading, addProject, updateProject, deleteProject } = useProjects(allowedClientIds, allowedClientGroupIds);
+  const { groups: clientGroups } = useClientGroups();
+  const visibleClientGroups = allowedClientGroupIds === null
+    ? clientGroups
+    : clientGroups.filter((g) => allowedClientGroupIds.includes(g.id));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -107,6 +112,7 @@ const Projects = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(ALL_STATUS_KEYS));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set<string>());
+  const [activeClientGroups, setActiveClientGroups] = useState<Set<string>>(new Set<string>());
 
   // Collect all unique service types from projects
   const allTypes = useMemo(() => {
@@ -121,6 +127,11 @@ const Projects = () => {
   useEffect(() => {
     setActiveTypes(new Set(allTypes));
   }, [allTypes.join(",")]);
+
+  // Sync activeClientGroups when the visible group list first loads
+  useEffect(() => {
+    setActiveClientGroups(new Set(visibleClientGroups.map((g) => g.id)));
+  }, [visibleClientGroups.map((g) => g.id).join(",")]);
 
   useEffect(() => {
     if (location.state?.fromOpportunity) {
@@ -139,13 +150,17 @@ const Projects = () => {
         const ptypes = getProjectTypes(p.type);
         if (ptypes.length > 0 && !ptypes.some((t) => activeTypes.has(t))) return false;
       }
+      if (visibleClientGroups.length > 0 && p.clientGroupId && !activeClientGroups.has(p.clientGroupId)) {
+        return false;
+      }
       return true;
     });
-  }, [projects, searchQuery, activeStatuses, activeTypes, allTypes]);
+  }, [projects, searchQuery, activeStatuses, activeTypes, allTypes, activeClientGroups, visibleClientGroups]);
 
   const hasActiveFilters =
     activeStatuses.size < ALL_STATUS_KEYS.length ||
-    (allTypes.length > 0 && activeTypes.size < allTypes.length);
+    (allTypes.length > 0 && activeTypes.size < allTypes.length) ||
+    (visibleClientGroups.length > 0 && activeClientGroups.size < visibleClientGroups.length);
 
   const toggleStatus = (key: string) => {
     setActiveStatuses((prev) => {
@@ -163,9 +178,18 @@ const Projects = () => {
     });
   };
 
+  const toggleClientGroup = (id: string) => {
+    setActiveClientGroups((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const clearFilters = () => {
     setActiveStatuses(new Set(ALL_STATUS_KEYS));
     setActiveTypes(new Set(allTypes));
+    setActiveClientGroups(new Set(visibleClientGroups.map((g) => g.id)));
     setSearchQuery("");
   };
 
@@ -352,6 +376,27 @@ const Projects = () => {
                       )}
                     >
                       {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {visibleClientGroups.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Grupo de Clientes</p>
+                <div className="flex flex-wrap gap-2">
+                  {visibleClientGroups.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => toggleClientGroup(g.id)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-sm border transition-colors",
+                        activeClientGroups.has(g.id)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-muted-foreground"
+                      )}
+                    >
+                      {g.name}
                     </button>
                   ))}
                 </div>
