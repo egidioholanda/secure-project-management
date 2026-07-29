@@ -214,34 +214,6 @@ const DashboardOperacional = () => {
       .sort((a, b) => (a.daysToEnd ?? 0) - (b.daysToEnd ?? 0));
   }, [filteredProjects]);
 
-  const teamAvailability = useMemo(() => {
-    return teams
-      .filter((t) => t.active)
-      .map((team) => {
-        const teamTasks = tasks.filter((t) => t.teamId === team.id && !t.isMilestone);
-        const activeTasks = teamTasks.filter((t) => t.progress < 100);
-        const projectCounts: Record<string, { name: string; count: number }> = {};
-        activeTasks.forEach((t) => {
-          if (!projectCounts[t.projectId])
-            projectCounts[t.projectId] = { name: t.projectName, count: 0 };
-          projectCounts[t.projectId].count++;
-        });
-        const topProject =
-          Object.values(projectCounts).sort((a, b) => b.count - a.count)[0] ?? null;
-        const avgProgress =
-          teamTasks.length > 0
-            ? Math.round(teamTasks.reduce((s, t) => s + t.progress, 0) / teamTasks.length)
-            : 0;
-        return {
-          team,
-          isIdle: activeTasks.length === 0,
-          topProject,
-          avgProgress,
-          memberCount: team.members?.length ?? 0,
-        };
-      });
-  }, [teams, tasks]);
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -425,68 +397,6 @@ const DashboardOperacional = () => {
             endDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
             onDayClick={handleAvailabilityDayClick}
           />
-        </Card>
-      )}
-
-      {/* Team status tiles */}
-      {teamAvailability.length > 0 && (
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-base font-semibold">Disponibilidade de Equipes</h2>
-            <span className="text-xs text-muted-foreground ml-auto">
-              {teamAvailability.filter((t) => !t.isIdle).length}/{teamAvailability.length} em campo
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {teamAvailability.map(({ team, isIdle, topProject, avgProgress, memberCount }) => (
-              <div
-                key={team.id}
-                className={cn(
-                  "rounded-lg border p-3 flex flex-col gap-2",
-                  isIdle ? "border-warning/30 bg-warning/5" : "border-border bg-muted/20"
-                )}
-              >
-                <div className="flex items-start justify-between gap-1">
-                  <p className="text-sm font-semibold leading-tight truncate">{team.name}</p>
-                  <Badge
-                    className={cn(
-                      "text-[10px] shrink-0 px-1.5 border",
-                      isIdle
-                        ? "bg-warning/10 text-warning border-warning/20"
-                        : "bg-success/10 text-success border-success/20"
-                    )}
-                  >
-                    {isIdle ? "Ociosa" : "Campo"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {memberCount} membro{memberCount !== 1 ? "s" : ""}
-                </p>
-                {!isIdle && topProject ? (
-                  <>
-                    <p className="text-xs font-medium truncate text-foreground/80 leading-tight">
-                      {topProject.name}
-                    </p>
-                    <div className="space-y-1 mt-auto">
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full",
-                            avgProgress >= 75 ? "bg-success" : avgProgress >= 40 ? "bg-primary" : "bg-warning"
-                          )}
-                          style={{ width: `${avgProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-right">{avgProgress}%</p>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-xs text-warning font-medium mt-auto">Sem tarefa ativa</p>
-                )}
-              </div>
-            ))}
-          </div>
         </Card>
       )}
 
