@@ -52,13 +52,13 @@ const parseDisplayDate = (dateStr: string): Date | null => {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  execution:       { label: "Em Execução",     color: "#3b82f6" },
-  planning:        { label: "Planejamento",    color: "#f59e0b" },
-  completed:       { label: "Concluído",       color: "#10b981" },
-  onhold:          { label: "Em Espera",       color: "#6366f1" },
-  stopped:         { label: "Parado",          color: "#ef4444" },
-  started_stopped: { label: "Iniciado/Parado", color: "#a855f7" },
-  obra_civil:      { label: "Obra Civil",      color: "#92400e" },
+  execution:       { label: "Em Execução",        color: "#3b82f6" },
+  planning:        { label: "Para Iniciar",        color: "#f59e0b" },
+  completed:       { label: "Concluído",           color: "#10b981" },
+  onhold:          { label: "Aguardando Material", color: "#6366f1" },
+  stopped:         { label: "Parado",              color: "#ef4444" },
+  started_stopped: { label: "Iniciado/Parado",     color: "#a855f7" },
+  obra_civil:      { label: "Obra Civil",          color: "#92400e" },
 };
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -188,9 +188,9 @@ const DashboardOperacional = () => {
 
   const statusData = [
     { name: "Em Execução",  value: execProjects.length,      color: "#3b82f6" },
-    { name: "Planejamento", value: planProjects.length,      color: "#f59e0b" },
+    { name: "Para Iniciar", value: planProjects.length,      color: "#f59e0b" },
     { name: "Concluídos",   value: completedProjects.length, color: "#10b981" },
-    { name: "Em Espera",    value: onholdProjects.length,    color: "#6366f1" },
+    { name: "Aguardando Material", value: onholdProjects.length, color: "#6366f1" },
     { name: "Parados",          value: stoppedProjects.length,        color: "#ef4444" },
     { name: "Iniciado/Parado",  value: startedStoppedProjects.length, color: "#a855f7" },
     { name: "Obra Civil",   value: obraCivilProjects.length, color: "#92400e" },
@@ -374,7 +374,7 @@ const DashboardOperacional = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Em Execução" value={execProjects.length} icon={FolderKanban} gradient />
-        <MetricCard title="Para Iniciar" value={planProjects.length + onholdProjects.length} icon={Clock} />
+        <MetricCard title="Para Iniciar" value={planProjects.length} icon={Clock} />
         <MetricCard
           title="Com Atraso"
           value={lateProjects.length}
@@ -695,12 +695,12 @@ const DashboardOperacional = () => {
         </Card>
       )}
 
-      {/* Em Espera */}
+      {/* Aguardando Material */}
       {onholdProjects.length > 0 && (
         <Card className="p-6 border-indigo-500/20 bg-indigo-500/5">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-3 h-3 rounded-full bg-indigo-500" />
-            <h2 className="text-lg font-semibold">Em Espera</h2>
+            <h2 className="text-lg font-semibold">Aguardando Material</h2>
             <Badge variant="secondary">{onholdProjects.length}</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">

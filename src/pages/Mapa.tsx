@@ -47,24 +47,24 @@ function displayAddr(raw: string) {
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { label: string; hex: string }> = {
-  planning:       { label: "Planejamento",  hex: "#3b82f6" },
-  "Planejamento": { label: "Planejamento",  hex: "#3b82f6" },
+  planning:       { label: "Para Iniciar",  hex: "#3b82f6" },
+  "Planejamento": { label: "Para Iniciar",  hex: "#3b82f6" },
   execution:      { label: "Em Execução",   hex: "#f97316" },
   "Em Andamento": { label: "Em Andamento",  hex: "#f97316" },
   in_progress:    { label: "Em Andamento",  hex: "#f97316" },
   completed:      { label: "Concluído",     hex: "#10b981" },
   "Concluído":    { label: "Concluído",     hex: "#10b981" },
-  onhold:         { label: "Em Espera",     hex: "#f59e0b" },
+  onhold:         { label: "Aguardando Material", hex: "#f59e0b" },
   stopped:         { label: "Parado",          hex: "#ef4444" },
   started_stopped: { label: "Iniciado/Parado", hex: "#a855f7" },
   obra_civil:      { label: "Obra Civil",       hex: "#92400e" },
 };
 
 const ALL_STATUSES = [
-  { key: "planning",    label: "Planejamento", hex: "#3b82f6" },
+  { key: "planning",    label: "Para Iniciar", hex: "#3b82f6" },
   { key: "execution",   label: "Em Execução",  hex: "#f97316" },
   { key: "completed",   label: "Concluído",    hex: "#10b981" },
-  { key: "onhold",      label: "Em Espera",    hex: "#f59e0b" },
+  { key: "onhold",      label: "Aguardando Material", hex: "#f59e0b" },
   { key: "stopped",         label: "Parado",          hex: "#ef4444" },
   { key: "started_stopped", label: "Iniciado/Parado", hex: "#a855f7" },
   { key: "obra_civil",      label: "Obra Civil",       hex: "#92400e" },

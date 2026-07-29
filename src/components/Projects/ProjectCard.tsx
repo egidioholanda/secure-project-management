@@ -18,10 +18,10 @@ interface ProjectCardProps {
 }
 
 const statusConfig = {
-  planning: { label: "Planejamento", color: "bg-primary/10 text-primary" },
+  planning: { label: "Para Iniciar", color: "bg-primary/10 text-primary" },
   execution: { label: "Em Execução", color: "bg-accent/10 text-accent" },
   completed: { label: "Concluído", color: "bg-success/10 text-success" },
-  onhold: { label: "Em Espera", color: "bg-warning/10 text-warning" },
+  onhold: { label: "Aguardando Material", color: "bg-warning/10 text-warning" },
   stopped: { label: "Parado", color: "bg-red-500/10 text-red-500" },
   started_stopped: { label: "Iniciado/Parado", color: "bg-purple-500/10 text-purple-500" },
   obra_civil: { label: "Obra Civil", color: "bg-amber-700/10 text-amber-700" },

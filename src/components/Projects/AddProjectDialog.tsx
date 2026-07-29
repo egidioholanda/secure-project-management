@@ -324,10 +324,10 @@ const AddProjectDialog = ({
                   <SelectValue placeholder="Selecione o status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planning">Planejamento</SelectItem>
+                  <SelectItem value="planning">Para Iniciar</SelectItem>
                   <SelectItem value="execution">Em Execução</SelectItem>
                   <SelectItem value="completed">Concluído</SelectItem>
-                  <SelectItem value="onhold">Em Espera</SelectItem>
+                  <SelectItem value="onhold">Aguardando Material</SelectItem>
                   <SelectItem value="stopped">Parado</SelectItem>
                   <SelectItem value="started_stopped">Iniciado/Parado</SelectItem>
                   <SelectItem value="obra_civil">Obra Civil</SelectItem>

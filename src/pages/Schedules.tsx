@@ -34,10 +34,10 @@ import { AIAssistant } from '@/components/AIAssistant';
 // ─── Status options (sincronizado com Projects) ───────────────────────────────
 
 const PROJECT_STATUSES = [
-  { value: 'planning',        label: 'Planejamento' },
+  { value: 'planning',        label: 'Para Iniciar' },
   { value: 'execution',       label: 'Em Execução' },
   { value: 'completed',       label: 'Concluído' },
-  { value: 'onhold',          label: 'Em Espera' },
+  { value: 'onhold',          label: 'Aguardando Material' },
   { value: 'stopped',         label: 'Parado' },
   { value: 'started_stopped', label: 'Iniciado/Parado' },
   { value: 'obra_civil',      label: 'Obra Civil' },
