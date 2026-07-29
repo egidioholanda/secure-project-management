@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import {
   FolderKanban, Clock, AlertTriangle, CheckCircle2,
-  CalendarDays, User, TrendingUp, ArrowRight, Filter, X, Users,
+  CalendarDays, User, TrendingUp, ArrowRight, Filter, X, Users, Package,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -372,9 +372,10 @@ const DashboardOperacional = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard title="Em Execução" value={execProjects.length} icon={FolderKanban} gradient />
         <MetricCard title="Para Iniciar" value={planProjects.length} icon={Clock} />
+        <MetricCard title="Aguardando Material" value={onholdProjects.length} icon={Package} />
         <MetricCard
           title="Com Atraso"
           value={lateProjects.length}
