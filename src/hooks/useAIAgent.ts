@@ -12,7 +12,7 @@ interface UseAIAgentOptions {
     projects: unknown[];
     teams: unknown[];
   };
-  onMutation?: () => void;
+  onMutation?: () => void | Promise<void>;
 }
 
 export const useAIAgent = ({ context, onMutation }: UseAIAgentOptions) => {
@@ -56,7 +56,9 @@ export const useAIAgent = ({ context, onMutation }: UseAIAgentOptions) => {
         ]);
 
         if (data.mutations && onMutation) {
-          onMutation();
+          // Awaited so `tasks` (and the next `context` built from it) reflects the
+          // AI's own mutation before the user can send another message.
+          await onMutation();
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro ao contatar o assistente';

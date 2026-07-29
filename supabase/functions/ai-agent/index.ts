@@ -131,6 +131,20 @@ async function executeTool(
       };
       const { data, error } = await supabase.from("schedule_tasks").insert(payload).select().single();
       if (error) return { error: error.message };
+      // Keep context.tasks in sync so a list_tasks/analyze_workload call later in
+      // this same turn sees the task just created, not the pre-mutation snapshot.
+      context.tasks.push({
+        id: data.id,
+        name: data.name,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        progress: data.progress,
+        assignee: data.assignee,
+        teamId: data.team_id,
+        projectId: data.project_id,
+        projectName: data.project_name,
+        color: data.color,
+      });
       return { success: true, task: data };
     }
 
@@ -146,6 +160,19 @@ async function executeTool(
       if (fields.teamId !== undefined) payload.team_id = fields.teamId;
       const { error } = await supabase.from("schedule_tasks").update(payload).eq("id", taskId);
       if (error) return { error: error.message };
+      // Same reasoning as create_task above — patch the in-memory snapshot too.
+      const idx = context.tasks.findIndex((t) => t.id === taskId);
+      if (idx !== -1) {
+        context.tasks[idx] = {
+          ...context.tasks[idx],
+          ...(fields.name !== undefined && { name: fields.name }),
+          ...(fields.startDate !== undefined && { startDate: fields.startDate }),
+          ...(fields.endDate !== undefined && { endDate: fields.endDate }),
+          ...(fields.progress !== undefined && { progress: fields.progress }),
+          ...(fields.assignee !== undefined && { assignee: fields.assignee }),
+          ...(fields.teamId !== undefined && { teamId: fields.teamId }),
+        };
+      }
       return { success: true };
     }
 
@@ -219,6 +246,7 @@ REGRAS:
 - Ao criar ou editar tarefas, confirme as ações realizadas de forma objetiva
 - Responda sempre em português brasileiro
 - Seja direto e prático — o usuário está em contexto operacional
+- CRÍTICO — DADOS PODEM TER MUDADO: o usuário pode editar nomes, datas, progresso e responsáveis das tarefas a qualquer momento no cronograma, inclusive entre uma mensagem e outra desta mesma conversa. Nomes, datas ou status mencionados em turnos anteriores deste chat podem estar desatualizados — NUNCA responda repetindo ou parafraseando o que você mesmo (ou o usuário) disse antes sobre uma tarefa/projeto específico. Sempre que a pergunta envolver o estado atual de tarefas ou projetos (datas, nomes, progresso, responsável, sobreposições), chame list_tasks/list_projects/analyze_workload de novo nesta mensagem e baseie a resposta apenas no retorno dessas ferramentas nesta chamada — nunca em memória da conversa.
 ${contextSection}
 RESUMO DO ESTADO ATUAL (${today}):
 - ${context.tasks.length} tarefa(s) no cronograma

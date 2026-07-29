@@ -11,7 +11,7 @@ interface AIAssistantProps {
     projects: unknown[];
     teams: unknown[];
   };
-  onMutation?: () => void;
+  onMutation?: () => void | Promise<void>;
 }
 
 export const AIAssistant = ({ context, onMutation }: AIAssistantProps) => {
