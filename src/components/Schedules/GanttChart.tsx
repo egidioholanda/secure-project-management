@@ -20,6 +20,7 @@ const DAY_WIDTH = 40;
 const ROW_HEIGHT = 48;
 
 const STATUS_PRIORITY: Record<TaskStatus, number> = {
+  blocked: 4,
   overdue: 3,
   'at-risk': 2,
   'on-track': 1,

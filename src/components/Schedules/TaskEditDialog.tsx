@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Task } from '@/types/schedule';
 import { format, addDays, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Trash2, UsersRound, Clock } from 'lucide-react';
+import { CalendarIcon, User, Flag, Trash2, UsersRound, Clock, Ban } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Team } from '@/types/teams';
 import {
@@ -318,6 +318,19 @@ export const TaskEditDialog = ({
               id="milestone"
               checked={editedTask.isMilestone || false}
               onCheckedChange={(checked) => setEditedTask({ ...editedTask, isMilestone: checked })}
+            />
+          </div>
+
+          {/* Blocked by client toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Ban className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="blockedByClient">Parado por culpa do cliente</Label>
+            </div>
+            <Switch
+              id="blockedByClient"
+              checked={editedTask.blockedByClient || false}
+              onCheckedChange={(checked) => setEditedTask({ ...editedTask, blockedByClient: checked })}
             />
           </div>
         </div>

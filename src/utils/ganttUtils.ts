@@ -1,9 +1,11 @@
 import { differenceInDays } from 'date-fns';
 import type { Task } from '@/types/schedule';
 
-export type TaskStatus = 'completed' | 'on-track' | 'at-risk' | 'overdue';
+export type TaskStatus = 'completed' | 'on-track' | 'at-risk' | 'overdue' | 'blocked';
 
 export const getTaskStatus = (task: Task, today: Date = new Date()): TaskStatus => {
+  // Manual override — stays purple regardless of dates/progress until unmarked.
+  if (task.blockedByClient) return 'blocked';
   if (task.progress >= 100) return 'completed';
 
   const todayMs = today.getTime();
@@ -33,6 +35,7 @@ export const STATUS_COLORS: Record<TaskStatus, StatusColors> = {
   'on-track': { bg: '#3B82F612', border: '#3B82F6', progress: '#3B82F6', text: '#2563EB', dot: '#3B82F6' },
   'at-risk':  { bg: '#F59E0B15', border: '#F59E0B', progress: '#F59E0B', text: '#D97706', dot: '#F59E0B' },
   overdue:    { bg: '#EF444415', border: '#EF4444', progress: '#EF4444', text: '#DC2626', dot: '#EF4444' },
+  blocked:    { bg: '#8B5CF615', border: '#8B5CF6', progress: '#8B5CF6', text: '#7C3AED', dot: '#8B5CF6' },
 };
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -40,6 +43,7 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   'on-track': 'No prazo',
   'at-risk': 'Em risco',
   overdue: 'Atrasada',
+  blocked: 'Parado (cliente)',
 };
 
 /**
@@ -88,6 +92,6 @@ export const countByStatus = (tasks: Task[], today: Date = new Date()) => {
       acc[getTaskStatus(task, today)] += 1;
       return acc;
     },
-    { completed: 0, 'on-track': 0, 'at-risk': 0, overdue: 0 } as Record<TaskStatus, number>
+    { completed: 0, 'on-track': 0, 'at-risk': 0, overdue: 0, blocked: 0 } as Record<TaskStatus, number>
   );
 };

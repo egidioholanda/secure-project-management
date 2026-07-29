@@ -11,6 +11,7 @@ export interface Task {
   color: string;
   dependencies?: string[];
   isMilestone?: boolean;
+  blockedByClient?: boolean;
 }
 
 export interface Project {

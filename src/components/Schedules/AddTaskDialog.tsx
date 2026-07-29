@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Task } from '@/types/schedule';
 import { format, addDays, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, User, Flag, Plus, UsersRound, Clock, Wrench, ChevronsUpDown, Check } from 'lucide-react';
+import { CalendarIcon, User, Flag, Plus, UsersRound, Clock, Wrench, ChevronsUpDown, Check, Ban } from 'lucide-react';
 import type { Team } from '@/types/teams';
 import {
   Dialog,
@@ -54,6 +54,7 @@ const defaultTask = {
   projectName: '',
   color: '#3B82F6',
   isMilestone: false,
+  blockedByClient: false,
 };
 
 export const AddTaskDialog = ({ projects, contractClients = [], onAdd, teams = [] }: AddTaskDialogProps) => {
@@ -413,6 +414,19 @@ export const AddTaskDialog = ({ projects, contractClients = [], onAdd, teams = [
               id="milestone"
               checked={newTask.isMilestone}
               onCheckedChange={(checked) => setNewTask({ ...newTask, isMilestone: checked })}
+            />
+          </div>
+
+          {/* Blocked by client toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Ban className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="blockedByClient">Parado por culpa do cliente</Label>
+            </div>
+            <Switch
+              id="blockedByClient"
+              checked={newTask.blockedByClient}
+              onCheckedChange={(checked) => setNewTask({ ...newTask, blockedByClient: checked })}
             />
           </div>
         </div>

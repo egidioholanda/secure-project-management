@@ -21,6 +21,7 @@ interface DbTask {
   team_id: string | null;
   color: string | null;
   dependencies?: string[] | null;
+  blocked_by_client?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ const mapDbToTask = (db: DbTask): Task => ({
   teamId: db.team_id ?? null,
   color: db.color || "#3B82F6",
   dependencies: Array.isArray(db.dependencies) ? db.dependencies : [],
+  blockedByClient: db.blocked_by_client ?? false,
 });
 
 const taskToDbPayload = (task: Task) => ({
@@ -64,6 +66,7 @@ const taskToDbPayload = (task: Task) => ({
   team_id: task.teamId ?? null,
   color: task.color || "#3B82F6",
   dependencies: task.dependencies || [],
+  blocked_by_client: task.blockedByClient ?? false,
 });
 
 export const useScheduleTasks = () => {

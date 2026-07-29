@@ -1069,6 +1069,7 @@ export type Database = {
       schedule_tasks: {
         Row: {
           assignee: string | null
+          blocked_by_client: boolean
           color: string | null
           created_at: string
           end_date: string
@@ -1082,6 +1083,7 @@ export type Database = {
         }
         Insert: {
           assignee?: string | null
+          blocked_by_client?: boolean
           color?: string | null
           created_at?: string
           end_date: string
@@ -1095,6 +1097,7 @@ export type Database = {
         }
         Update: {
           assignee?: string | null
+          blocked_by_client?: boolean
           color?: string | null
           created_at?: string
           end_date?: string

@@ -562,6 +562,10 @@ const Schedules = () => {
               Atrasada
             </span>
             <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-sm border-2 border-[#8B5CF6] bg-[#8B5CF615] inline-block" />
+              Parado (cliente)
+            </span>
+            <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
               Dependência
             </span>
