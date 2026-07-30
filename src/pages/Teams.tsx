@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Users, Plus, Wrench, Car, Package2, LayoutGrid, Loader2,
-  ChevronLeft, ChevronRight, CalendarIcon,
+  ChevronLeft, ChevronRight, CalendarIcon, TrendingUp,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -17,11 +17,13 @@ import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useContractClients } from '@/hooks/useClients';
+import { useClientGroups } from '@/hooks/useClientGroups';
 import TeamCard from '@/components/Teams/TeamCard';
 import AddTeamDialog from '@/components/Teams/AddTeamDialog';
 import AddMemberDialog from '@/components/Teams/AddMemberDialog';
 import AddResourceDialog from '@/components/Teams/AddResourceDialog';
 import TeamAvailabilityGrid from '@/components/Teams/TeamAvailabilityGrid';
+import TeamPerformancePanel from '@/components/Teams/TeamPerformancePanel';
 import type { Team, TeamMember, TeamMemberRole, Resource, ResourceStatus } from '@/types/teams';
 import { RESOURCE_TYPE_LABELS, RESOURCE_STATUS_LABELS } from '@/types/teams';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +64,10 @@ const Teams = () => {
   } = useTeams();
   const { projects } = useProjects(allowedClientIds, allowedClientGroupIds);
   const { data: contractClients = [] } = useContractClients(allowedClientGroupIds);
+  const { groups: clientGroups } = useClientGroups();
+  const visibleClientGroups = allowedClientGroupIds === null
+    ? clientGroups
+    : clientGroups.filter((g) => allowedClientGroupIds.includes(g.id));
   const validProjectIds = useMemo(() => {
     const ids = new Set(projects.map((p) => p.id));
     contractClients.forEach((c) => ids.add(c.id));
@@ -161,6 +167,9 @@ const Teams = () => {
             </TabsTrigger>
             <TabsTrigger value="disponibilidade" className="gap-1.5">
               <LayoutGrid className="h-4 w-4" /> Disponibilidade
+            </TabsTrigger>
+            <TabsTrigger value="desempenho" className="gap-1.5">
+              <TrendingUp className="h-4 w-4" /> Desempenho
             </TabsTrigger>
           </TabsList>
         </div>
@@ -404,6 +413,17 @@ const Teams = () => {
             startDate={availStart}
             endDate={availEnd}
             onDayClick={handleAvailabilityDayClick}
+          />
+        </TabsContent>
+
+        {/* ── DESEMPENHO ── */}
+        <TabsContent value="desempenho" className="mt-6">
+          <TeamPerformancePanel
+            teams={teams}
+            tasks={mappedTasks}
+            projects={projects}
+            contractClients={contractClients}
+            clientGroups={visibleClientGroups}
           />
         </TabsContent>
       </Tabs>

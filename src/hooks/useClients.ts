@@ -268,7 +268,7 @@ export function useMaintenanceOrders(clientId?: string) {
 export function useContractClients(allowedClientGroupIds?: string[] | null) {
   return useQuery({
     queryKey: ['contract-clients', allowedClientGroupIds ?? 'all'],
-    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+    queryFn: async (): Promise<{ id: string; name: string; clientGroupId: string | null }[]> => {
       if (Array.isArray(allowedClientGroupIds) && allowedClientGroupIds.length === 0) {
         return [];
       }
@@ -285,7 +285,7 @@ export function useContractClients(allowedClientGroupIds?: string[] | null) {
 
       let query = (supabase as any)
         .from('clients')
-        .select('id, name')
+        .select('id, name, client_group_id')
         .in('id', clientIds)
         .order('name', { ascending: true });
 
@@ -295,7 +295,11 @@ export function useContractClients(allowedClientGroupIds?: string[] | null) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string }[];
+      return ((data ?? []) as { id: string; name: string; client_group_id: string | null }[]).map((c) => ({
+        id: c.id,
+        name: c.name,
+        clientGroupId: c.client_group_id,
+      }));
     },
   });
 }

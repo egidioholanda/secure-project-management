@@ -4,6 +4,7 @@ import { useContractClients } from "@/hooks/useClients";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useScheduleTasks } from "@/hooks/useScheduleTasks";
 import { useTeams } from "@/hooks/useTeams";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { MetricCard } from "@/components/Dashboard/MetricCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
@@ -26,8 +33,11 @@ import {
   CalendarDays, User, TrendingUp, ArrowRight, Filter, X, Users, Package,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import TeamAvailabilityGrid from "@/components/Teams/TeamAvailabilityGrid";
+import TeamPerformancePanel from "@/components/Teams/TeamPerformancePanel";
+import type { MonthSelection } from "@/components/Teams/TeamPerformancePanel";
 import { cn } from "@/lib/utils";
 
 const normalizeStatus = (status: string) => {
@@ -92,6 +102,12 @@ const DashboardOperacional = () => {
   const { data: contractClients = [] } = useContractClients(allowedClientGroupIds);
   const { tasks, loading: loadingTasks } = useScheduleTasks();
   const { teams } = useTeams();
+  const { groups: clientGroups } = useClientGroups();
+  const visibleClientGroups = allowedClientGroupIds === null
+    ? clientGroups
+    : clientGroups.filter((g) => allowedClientGroupIds.includes(g.id));
+
+  const [selectedMonth, setSelectedMonth] = useState<MonthSelection>(() => startOfMonth(new Date()));
 
   const handleAvailabilityDayClick = useCallback((day: Date, projectIds: string[]) => {
     const highlight = projectIds.length > 0 ? `&highlight=${projectIds.join(',')}` : '';
@@ -103,6 +119,22 @@ const DashboardOperacional = () => {
     contractClients.forEach((c) => ids.add(c.id));
     return ids;
   }, [projects, contractClients]);
+
+  const performanceTasks = useMemo(
+    () => tasks
+      .filter((t) => validProjectIds.has(t.projectId))
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        startDate: t.startDate,
+        endDate: t.endDate,
+        team_id: t.teamId ?? null,
+        projectId: t.projectId,
+        projectName: t.projectName,
+        progress: t.progress ?? 0,
+      })),
+    [tasks, validProjectIds]
+  );
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterStatuses, setFilterStatuses]   = useState<string[]>([]);
@@ -180,6 +212,44 @@ const DashboardOperacional = () => {
   const obraCivilProjects = filteredProjects.filter((p) => p.normalized === "obra_civil");
   const completedProjects = filteredProjects.filter((p) => p.normalized === "completed");
   const lateProjects      = execProjects.filter((p) => p.isLate);
+
+  // ── Scope the top KPI cards to the month selected in "Desempenho das equipes" ──
+  const projectIdsWithTasks = useMemo(() => new Set(tasks.map((t) => t.projectId)), [tasks]);
+
+  const monthActiveProjectIds = useMemo(() => {
+    if (selectedMonth === "all") return null;
+    const mStart = startOfMonth(selectedMonth);
+    const mEnd = endOfMonth(selectedMonth);
+    const ids = new Set<string>();
+    tasks.forEach((t) => {
+      const s = new Date(t.startDate); s.setHours(0, 0, 0, 0);
+      const realEnd = new Date(t.endDate); realEnd.setHours(0, 0, 0, 0);
+      const e = t.progress < 100 && realEnd < today ? today : realEnd;
+      if (e >= mStart && s <= mEnd) ids.add(t.projectId);
+    });
+    return ids;
+  }, [tasks, selectedMonth, today]);
+
+  // "Todos os meses" shows everything; otherwise, projects without any cronograma
+  // task yet are month-independent (always shown) — only task-bearing projects are scoped.
+  const scopeToMonth = (list: typeof filteredProjects) => {
+    if (!monthActiveProjectIds) return list;
+    return list.filter((p) => !projectIdsWithTasks.has(p.id) || monthActiveProjectIds.has(p.id));
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const execProjectsForMonth      = useMemo(() => scopeToMonth(execProjects), [execProjects, projectIdsWithTasks, monthActiveProjectIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const planProjectsForMonth      = useMemo(() => scopeToMonth(planProjects), [planProjects, projectIdsWithTasks, monthActiveProjectIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const onholdProjectsForMonth    = useMemo(() => scopeToMonth(onholdProjects), [onholdProjects, projectIdsWithTasks, monthActiveProjectIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const completedProjectsForMonth = useMemo(() => scopeToMonth(completedProjects), [completedProjects, projectIdsWithTasks, monthActiveProjectIds]);
+  const lateProjectsForMonth      = useMemo(() => execProjectsForMonth.filter((p) => p.isLate), [execProjectsForMonth]);
+
+  const monthLabel = selectedMonth === "all" ? "todos os meses" : format(selectedMonth, "MMMM/yyyy", { locale: ptBR });
+
+  const [obrasDrill, setObrasDrill] = useState<{ title: string; projects: typeof filteredProjects } | null>(null);
 
   const avgProgressOngoing =
     execProjects.length > 0
@@ -344,25 +414,63 @@ const DashboardOperacional = () => {
       </div>
 
       {/* KPI Cards */}
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        <FolderKanban className="w-4 h-4 text-primary" />
+        Obras
+      </h2>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Contagem referente a {monthLabel} — troque o mês em "Desempenho das equipes" para ver outro período.
+      </p>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <MetricCard title="Em Execução" value={execProjects.length} icon={FolderKanban} gradient />
-        <MetricCard title="Para Iniciar" value={planProjects.length} icon={Clock} />
-        <MetricCard title="Aguardando Material" value={onholdProjects.length} icon={Package} />
+        <MetricCard
+          title="Em Execução"
+          value={execProjectsForMonth.length}
+          icon={FolderKanban}
+          gradient
+          onClick={() => setObrasDrill({ title: `Obras Em Execução — ${monthLabel}`, projects: execProjectsForMonth })}
+        />
+        <MetricCard
+          title="Para Iniciar"
+          value={planProjectsForMonth.length}
+          icon={Clock}
+          onClick={() => setObrasDrill({ title: `Obras Para Iniciar — ${monthLabel}`, projects: planProjectsForMonth })}
+        />
+        <MetricCard
+          title="Aguardando Material"
+          value={onholdProjectsForMonth.length}
+          icon={Package}
+          onClick={() => setObrasDrill({ title: `Obras Aguardando Material — ${monthLabel}`, projects: onholdProjectsForMonth })}
+        />
         <MetricCard
           title="Com Atraso"
-          value={lateProjects.length}
+          value={lateProjectsForMonth.length}
           icon={AlertTriangle}
-          change={lateProjects.length > 0 ? "Atenção necessária" : "Em dia"}
-          changeType={lateProjects.length > 0 ? "negative" : "positive"}
+          change={lateProjectsForMonth.length > 0 ? "Atenção necessária" : "Em dia"}
+          changeType={lateProjectsForMonth.length > 0 ? "negative" : "positive"}
+          onClick={() => setObrasDrill({ title: `Obras Com Atraso — ${monthLabel}`, projects: lateProjectsForMonth })}
         />
         <MetricCard
           title="Concluídos"
-          value={completedProjects.length}
+          value={completedProjectsForMonth.length}
           icon={CheckCircle2}
           change={execProjects.length > 0 ? `${avgProgressOngoing}% progresso médio` : undefined}
           changeType="positive"
+          onClick={() => setObrasDrill({ title: `Obras Concluídas — ${monthLabel}`, projects: completedProjectsForMonth })}
         />
       </div>
+
+      {/* Desempenho das Equipes */}
+      <TeamPerformancePanel
+        teams={teams}
+        tasks={performanceTasks}
+        projects={projects}
+        contractClients={contractClients}
+        clientGroups={visibleClientGroups}
+        showChart={false}
+        showInsight={false}
+        selectedMonth={selectedMonth}
+        onSelectedMonthChange={setSelectedMonth}
+      />
 
       {/* Team Availability Grid */}
       {teams.filter((t) => t.active).length > 0 && (
@@ -732,6 +840,51 @@ const DashboardOperacional = () => {
           </div>
         </Card>
       )}
+
+      {/* Obras drill-down */}
+      <Dialog open={!!obrasDrill} onOpenChange={(open) => !open && setObrasDrill(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{obrasDrill?.title}</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {obrasDrill?.projects.length ?? 0} obra{(obrasDrill?.projects.length ?? 0) !== 1 ? "s" : ""}
+            </p>
+          </DialogHeader>
+          {obrasDrill && (
+            obrasDrill.projects.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma obra encontrada.</p>
+            ) : (
+              <div className="space-y-3">
+                {obrasDrill.projects.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-border p-3 flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sm leading-tight">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">{p.client}</p>
+                      </div>
+                      {p.displayManager && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                          <User className="w-3 h-3" />{p.displayManager.split(" ")[0]}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      {p.isLate ? (
+                        <span className="font-semibold text-destructive">{p.daysLate} dia{p.daysLate !== 1 ? "s" : ""} de atraso</span>
+                      ) : p.endDate ? (
+                        <span className="text-muted-foreground">Prazo: {p.endDate.toLocaleDateString("pt-BR")}</span>
+                      ) : null}
+                      {(p.normalized === "execution" || p.normalized === "completed") && (
+                        <span className="text-muted-foreground">{p.avgProgress}% concluído</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
