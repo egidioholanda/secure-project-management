@@ -74,11 +74,26 @@ const Schedules = () => {
     const raw = searchParams.get('highlight');
     return raw ? raw.split(',').filter(Boolean) : [];
   });
+  const [highlightedTaskIds, setHighlightedTaskIds] = useState<string[]>(() => {
+    const raw = searchParams.get('highlightTasks');
+    return raw ? raw.split(',').filter(Boolean) : [];
+  });
+  // Captured once on mount — the exact day clicked in the availability grid, used to
+  // scroll the Gantt to that precise column (kept separate from the mutable "Período" filter)
+  const [scrollToDate] = useState<Date | null>(() => {
+    const d = searchParams.get('date');
+    if (!d) return null;
+    const parsed = new Date(d + 'T00:00:00');
+    return isNaN(parsed.getTime()) ? null : parsed;
+  });
 
-  // Temporarily highlight the project(s) clicked from the availability grid, then clear it
+  // Temporarily highlight the project(s)/task(s) clicked from the availability grid, then clear it
   useEffect(() => {
-    if (highlightedProjectIds.length === 0) return;
-    const t = setTimeout(() => setHighlightedProjectIds([]), 4000);
+    if (highlightedProjectIds.length === 0 && highlightedTaskIds.length === 0) return;
+    const t = setTimeout(() => {
+      setHighlightedProjectIds([]);
+      setHighlightedTaskIds([]);
+    }, 4000);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [filterDateStart, setFilterDateStart]       = useState<Date | null>(() => {
@@ -862,6 +877,9 @@ const Schedules = () => {
           onReorder={handleReorder}
           teams={teams}
           highlightedProjectIds={highlightedProjectIds}
+          highlightedTaskIds={highlightedTaskIds}
+          autoExpandProjectIds={highlightedProjectIds}
+          scrollToDate={scrollToDate}
         />
       </div>
 

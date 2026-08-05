@@ -36,6 +36,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import TeamAvailabilityGrid from "@/components/Teams/TeamAvailabilityGrid";
+import type { AvailabilityDayClickInfo } from "@/components/Teams/TeamAvailabilityGrid";
 import TeamPerformancePanel from "@/components/Teams/TeamPerformancePanel";
 import type { MonthSelection } from "@/components/Teams/TeamPerformancePanel";
 import { cn } from "@/lib/utils";
@@ -109,9 +110,11 @@ const DashboardOperacional = () => {
 
   const [selectedMonth, setSelectedMonth] = useState<MonthSelection>(() => startOfMonth(new Date()));
 
-  const handleAvailabilityDayClick = useCallback((day: Date, projectIds: string[]) => {
-    const highlight = projectIds.length > 0 ? `&highlight=${projectIds.join(',')}` : '';
-    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}${highlight}`);
+  const handleAvailabilityDayClick = useCallback(({ day, taskIds, projectIds }: AvailabilityDayClickInfo) => {
+    const params = new URLSearchParams({ date: format(day, 'yyyy-MM-dd') });
+    if (taskIds.length > 0) params.set('highlightTasks', taskIds.join(','));
+    if (projectIds.length > 0) params.set('highlight', projectIds.join(','));
+    navigate(`/cronogramas?${params.toString()}`);
   }, [navigate]);
 
   const validProjectIds = useMemo(() => {
@@ -132,6 +135,7 @@ const DashboardOperacional = () => {
         projectId: t.projectId,
         projectName: t.projectName,
         progress: t.progress ?? 0,
+        blockedByClient: t.blockedByClient ?? false,
       })),
     [tasks, validProjectIds]
   );

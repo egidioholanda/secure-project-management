@@ -15,12 +15,19 @@ interface ScheduleTask {
   progress?: number;
 }
 
+export interface AvailabilityDayClickInfo {
+  day: Date;
+  teamId: string;
+  taskIds: string[];
+  projectIds: string[];
+}
+
 interface Props {
   teams: Team[];
   tasks: ScheduleTask[];
   startDate: Date;
   endDate: Date;
-  onDayClick?: (day: Date, projectIds: string[]) => void;
+  onDayClick?: (info: AvailabilityDayClickInfo) => void;
 }
 
 type CellVariant = 'none' | 'green' | 'blue' | 'red';
@@ -184,6 +191,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                   const projectIds = Array.from(
                     new Set(dayTasks.map((t) => t.projectId).filter((id): id is string => !!id))
                   );
+                  const taskIds = dayTasks.map((t) => t.id);
 
                   return (
                     <div
@@ -199,7 +207,7 @@ const TeamAvailabilityGrid = ({ teams, tasks, startDate, endDate, onDayClick }: 
                         .filter(Boolean)
                         .join(' ')}
                       title={tooltipLines.length ? tooltipLines.join('\n') : undefined}
-                      onClick={clickable ? () => onDayClick!(day, projectIds) : undefined}
+                      onClick={clickable ? () => onDayClick!({ day, teamId: team.id, taskIds, projectIds }) : undefined}
                     >
                       {count > 0 && (
                         <div

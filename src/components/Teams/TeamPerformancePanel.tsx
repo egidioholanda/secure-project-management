@@ -69,6 +69,7 @@ export interface PerformanceTask {
   projectId: string;
   projectName: string;
   progress: number;
+  blockedByClient?: boolean;
 }
 
 export interface ContractClientRef {
@@ -148,20 +149,25 @@ interface ObraGroup {
   dias: number;
   done: boolean;
   late: boolean;
+  stopped: boolean;
   periodoStart: Date;
   periodoEnd: Date;
 }
 
-type ObraStatus = "concluida" | "atrasada" | "andamento";
+type ObraStatus = "concluida" | "atrasada" | "andamento" | "parada";
 
 const OBRA_STATUS_OPTIONS: { key: ObraStatus; label: string }[] = [
   { key: "concluida", label: "Concluída" },
   { key: "atrasada", label: "Atrasada" },
   { key: "andamento", label: "Em Andamento" },
+  { key: "parada", label: "Parada (Cliente)" },
 ];
 
-const obraStatusOf = (done: boolean, late: boolean): ObraStatus =>
-  done ? "concluida" : late ? "atrasada" : "andamento";
+// Excluída por padrão do filtro (e das contagens de "Obras no mês") — reative em Filtros se necessário
+const DEFAULT_OBRA_STATUSES: ObraStatus[] = ["concluida", "atrasada", "andamento"];
+
+const obraStatusOf = (done: boolean, late: boolean, stopped: boolean): ObraStatus =>
+  done ? "concluida" : stopped ? "parada" : late ? "atrasada" : "andamento";
 
 const fmtRange = (start: Date, end: Date) =>
   differenceInCalendarDays(end, start) === 0
@@ -222,7 +228,7 @@ export const TeamPerformancePanel = ({
   const [activeClientGroups, setActiveClientGroups] = useState<Set<string>>(new Set());
   const [activeTeamIds, setActiveTeamIds] = useState<Set<string>>(new Set());
   const [activeObraStatuses, setActiveObraStatuses] = useState<Set<ObraStatus>>(
-    new Set(OBRA_STATUS_OPTIONS.map((o) => o.key))
+    new Set(DEFAULT_OBRA_STATUSES)
   );
 
   useEffect(() => {
@@ -292,7 +298,7 @@ export const TeamPerformancePanel = ({
     setActiveTeamIds(new Set(activeTeams.map((t) => t.id)));
     setActiveTypes(new Set(TYPE_OPTIONS.map((o) => o.key)));
     setActiveClientGroups(new Set(clientGroups.map((g) => g.id)));
-    setActiveObraStatuses(new Set(OBRA_STATUS_OPTIONS.map((o) => o.key)));
+    setActiveObraStatuses(new Set(DEFAULT_OBRA_STATUSES));
   };
 
   const visibleTeams = useMemo(
@@ -425,35 +431,40 @@ export const TeamPerformancePanel = ({
           dias: 0,
           done: true,
           late: false,
+          stopped: false,
           periodoStart: overlapStart,
           periodoEnd: overlapEnd,
         };
       }
       const g = grouped[key];
       g.dias += Math.max(dias, 0);
-      if (t.progress < 100) g.done = false;
+      // "Concluída" só se a tarefa terminou DENTRO deste período — uma tarefa 100%
+      // cujo término real cai num mês seguinte ainda está "em andamento" neste mês.
+      if (t.progress < 100 || realEnd > mEnd) g.done = false;
       if (t.progress < 100 && realEnd < today) g.late = true;
+      if (t.blockedByClient) g.stopped = true;
       if (overlapStart < g.periodoStart) g.periodoStart = overlapStart;
       if (overlapEnd > g.periodoEnd) g.periodoEnd = overlapEnd;
     });
     return Object.values(grouped).sort((a, b) => b.dias - a.dias);
   };
 
-  // Cross-team aggregate — status (concluída/atrasada/andamento) is evaluated across ALL
+  // Cross-team aggregate — status (concluída/atrasada/andamento/parada) is evaluated across ALL
   // contributing teams, then the obra-status filter is applied here (the source of truth).
   const obrasAcrossTeamsForRange = (range: DateRange) => {
-    const map: Record<string, { projectId: string; nome: string; cliente?: string; done: boolean; late: boolean; teams: { name: string; color: string; dias: number }[] }> = {};
+    const map: Record<string, { projectId: string; nome: string; cliente?: string; done: boolean; late: boolean; stopped: boolean; teams: { name: string; color: string; dias: number }[] }> = {};
     visibleTeams.forEach((team) => {
       teamObrasForRange(team.id, range).forEach((o) => {
         if (!map[o.projectId]) {
-          map[o.projectId] = { projectId: o.projectId, nome: o.nome, cliente: o.cliente, done: true, late: false, teams: [] };
+          map[o.projectId] = { projectId: o.projectId, nome: o.nome, cliente: o.cliente, done: true, late: false, stopped: false, teams: [] };
         }
         map[o.projectId].teams.push({ name: team.name, color: teamColor[team.id], dias: o.dias });
         if (!o.done) map[o.projectId].done = false;
         if (o.late) map[o.projectId].late = true;
+        if (o.stopped) map[o.projectId].stopped = true;
       });
     });
-    return Object.values(map).filter((o) => activeObraStatuses.has(obraStatusOf(o.done, o.late)));
+    return Object.values(map).filter((o) => activeObraStatuses.has(obraStatusOf(o.done, o.late, o.stopped)));
   };
 
   // Per-team obra list restricted to projects whose CROSS-team status passes the active filter
@@ -522,12 +533,18 @@ export const TeamPerformancePanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTeams, filteredTasks, monthsWindow, firstActiveMonth]);
 
-  const statusBadge = (done: boolean) => (
+  const statusBadge = (done: boolean, stopped = false) => (
     <Badge
       variant="outline"
-      className={done ? "text-success border-success/30 bg-success/10" : "text-primary border-primary/30 bg-primary/10"}
+      className={
+        done
+          ? "text-success border-success/30 bg-success/10"
+          : stopped
+            ? "text-warning border-warning/30 bg-warning/10"
+            : "text-primary border-primary/30 bg-primary/10"
+      }
     >
-      {done ? "Concluída" : "Em andamento"}
+      {done ? "Concluída" : stopped ? "Parada (Cliente)" : "Em andamento"}
     </Badge>
   );
 
@@ -551,7 +568,7 @@ export const TeamPerformancePanel = ({
                 <p className="font-medium text-sm leading-tight">{o.nome}</p>
                 {o.cliente && <p className="text-xs text-muted-foreground">{o.cliente}</p>}
               </div>
-              {statusBadge(o.done)}
+              {statusBadge(o.done, o.stopped)}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {o.teams.map((t) => teamChip(t.name, t.color, t.dias))}
@@ -610,7 +627,7 @@ export const TeamPerformancePanel = ({
                 <p className="font-medium text-sm leading-tight">{o.nome}</p>
                 {o.cliente && <p className="text-xs text-muted-foreground">{o.cliente}</p>}
               </div>
-              {statusBadge(o.done)}
+              {statusBadge(o.done, o.stopped)}
             </div>
             <p className="text-xs text-muted-foreground">
               {fmtRange(o.periodoStart, o.periodoEnd)} · <span className="font-semibold text-foreground">{o.dias} dias</span>

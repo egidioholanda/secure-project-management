@@ -23,6 +23,7 @@ import AddTeamDialog from '@/components/Teams/AddTeamDialog';
 import AddMemberDialog from '@/components/Teams/AddMemberDialog';
 import AddResourceDialog from '@/components/Teams/AddResourceDialog';
 import TeamAvailabilityGrid from '@/components/Teams/TeamAvailabilityGrid';
+import type { AvailabilityDayClickInfo } from '@/components/Teams/TeamAvailabilityGrid';
 import TeamPerformancePanel from '@/components/Teams/TeamPerformancePanel';
 import type { Team, TeamMember, TeamMemberRole, Resource, ResourceStatus } from '@/types/teams';
 import { RESOURCE_TYPE_LABELS, RESOURCE_STATUS_LABELS } from '@/types/teams';
@@ -49,6 +50,7 @@ interface RawTask {
   project_id: string | null;
   project_name: string | null;
   progress: number;
+  blocked_by_client: boolean | null;
 }
 
 const Teams = () => {
@@ -74,9 +76,11 @@ const Teams = () => {
     return ids;
   }, [projects, contractClients]);
 
-  const handleAvailabilityDayClick = useCallback((day: Date, projectIds: string[]) => {
-    const highlight = projectIds.length > 0 ? `&highlight=${projectIds.join(',')}` : '';
-    navigate(`/cronogramas?date=${format(day, 'yyyy-MM-dd')}${highlight}`);
+  const handleAvailabilityDayClick = useCallback(({ day, taskIds, projectIds }: AvailabilityDayClickInfo) => {
+    const params = new URLSearchParams({ date: format(day, 'yyyy-MM-dd') });
+    if (taskIds.length > 0) params.set('highlightTasks', taskIds.join(','));
+    if (projectIds.length > 0) params.set('highlight', projectIds.join(','));
+    navigate(`/cronogramas?${params.toString()}`);
   }, [navigate]);
 
   const [scheduleTasks, setScheduleTasks] = useState<RawTask[]>([]);
@@ -106,7 +110,7 @@ const Teams = () => {
   useEffect(() => {
     supabase
       .from('schedule_tasks')
-      .select('id, name, start_date, end_date, team_id, project_name, progress, project_id')
+      .select('id, name, start_date, end_date, team_id, project_name, progress, project_id, blocked_by_client')
       .not('team_id', 'is', null)
       .then(({ data }) => setScheduleTasks((data as RawTask[]) ?? []));
   }, [teams]);
@@ -124,6 +128,7 @@ const Teams = () => {
           projectId: t.project_id,
           projectName: t.project_name ?? '',
           progress: t.progress ?? 0,
+          blockedByClient: t.blocked_by_client ?? false,
         })),
     [scheduleTasks, validProjectIds],
   );

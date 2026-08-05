@@ -46,6 +46,9 @@ interface GanttChartProps {
   onReorder?: (orderedIds: string[]) => void;
   teams?: Team[];
   highlightedProjectIds?: string[];
+  highlightedTaskIds?: string[];
+  autoExpandProjectIds?: string[];
+  scrollToDate?: Date | null;
 }
 
 export const GanttChart = ({
@@ -61,6 +64,9 @@ export const GanttChart = ({
   onReorder,
   teams = [],
   highlightedProjectIds = [],
+  highlightedTaskIds = [],
+  autoExpandProjectIds = [],
+  scrollToDate = null,
 }: GanttChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -90,6 +96,8 @@ export const GanttChart = ({
     for (const t of teams) map.set(t.id, t.name);
     return map;
   }, [teams]);
+
+  const highlightedTaskSet = useMemo(() => new Set(highlightedTaskIds), [highlightedTaskIds]);
 
   // Group tasks by project, preserving the ordering of the task list
   const projectGroups = useMemo((): ProjectGroup[] => {
@@ -211,15 +219,27 @@ export const GanttChart = ({
     };
   }, [linkingState, onAddDependency]);
 
-  // Scroll to today on mount
+  // Scroll to the requested day (e.g. clicked from the availability grid), or today by default
   useEffect(() => {
     if (chartRef.current) {
+      const target = scrollToDate ?? new Date();
       const daysFromStart = Math.floor(
-        (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (target.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
       );
       chartRef.current.scrollLeft = Math.max(0, daysFromStart * DAY_WIDTH - 200);
     }
-  }, [startDate]);
+  }, [startDate, scrollToDate]);
+
+  // Auto-expand the project group(s) containing a highlighted day/team click
+  useEffect(() => {
+    if (autoExpandProjectIds.length === 0) return;
+    setExpandedProjects((prev) => {
+      const next = new Set(prev);
+      autoExpandProjectIds.forEach((id) => next.add(id));
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoExpandProjectIds.join(',')]);
 
   // Sync sidebar vertical scroll with chart scroll
   useEffect(() => {
@@ -287,6 +307,7 @@ export const GanttChart = ({
           scrollRef={sidebarScrollRef}
           containerRef={sidebarContainerRef}
           highlightedProjectIds={highlightedProjectIds}
+          highlightedTaskIds={highlightedTaskIds}
         />
 
         {/* Chart area */}
@@ -381,6 +402,7 @@ export const GanttChart = ({
                   isDragging={dragState.taskId === task.id}
                   onTaskClick={onTaskClick}
                   calendarConfig={calendarConfig}
+                  isHighlighted={highlightedTaskSet.has(task.id)}
                 />
               );
             })}

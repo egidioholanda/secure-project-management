@@ -18,6 +18,7 @@ interface GanttSidebarProps {
   scrollRef?: React.RefObject<HTMLDivElement>;
   containerRef?: React.RefObject<HTMLDivElement>;
   highlightedProjectIds?: string[];
+  highlightedTaskIds?: string[];
 }
 
 export const GanttSidebar = ({
@@ -31,8 +32,10 @@ export const GanttSidebar = ({
   scrollRef,
   containerRef,
   highlightedProjectIds = [],
+  highlightedTaskIds = [],
 }: GanttSidebarProps) => {
   const highlightedSet = new Set(highlightedProjectIds);
+  const highlightedTaskSet = new Set(highlightedTaskIds);
   const today = new Date();
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -163,11 +166,12 @@ export const GanttSidebar = ({
 
               <div
                 className={cn(
-                  'h-12 flex items-center gap-2 px-2 pl-6 border-b border-border transition-colors',
+                  'h-12 flex items-center gap-2 px-2 pl-6 border-b border-border transition-colors duration-700',
                   !draggingId && 'hover:bg-muted/50 cursor-pointer',
                   selectedTaskId === task.id && 'bg-primary/5',
                   isDraggingThis && 'opacity-40 bg-muted/30',
-                  !!draggingId && !isDraggingThis && 'cursor-ns-resize'
+                  !!draggingId && !isDraggingThis && 'cursor-ns-resize',
+                  highlightedTaskSet.has(task.id) && 'ring-2 ring-inset ring-primary bg-primary/10'
                 )}
                 onClick={() => !draggingId && onTaskSelect(task)}
               >

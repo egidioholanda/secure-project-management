@@ -24,6 +24,7 @@ interface GanttRowProps {
   isDragging: boolean;
   onTaskClick: (task: Task) => void;
   calendarConfig?: CalendarConfig;
+  isHighlighted?: boolean;
 }
 
 export const GanttRow = ({
@@ -39,13 +40,19 @@ export const GanttRow = ({
   isDragging,
   onTaskClick,
   calendarConfig = DEFAULT_CALENDAR_CONFIG,
+  isHighlighted = false,
 }: GanttRowProps) => {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
   const effectiveTask = previewTask ?? task;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   return (
-    <div className="relative h-12 border-b border-border flex">
+    <div
+      className={cn(
+        'relative h-12 border-b border-border flex transition-colors duration-700',
+        isHighlighted && 'ring-2 ring-inset ring-primary bg-primary/10 z-10'
+      )}
+    >
       {/* Background grid */}
       {days.map((day, idx) => {
         const working = isWorkingDay(day, calendarConfig);
