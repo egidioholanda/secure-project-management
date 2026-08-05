@@ -34,10 +34,13 @@ import { useAuthContext } from "@/contexts/AuthContext";
 
 const Reports = () => {
   const { reports, loading, addReport, updateReport, deleteReport } = useReports();
-  const { projects: dbProjects, loading: projectsLoading } = useProjects();
+  const { allowedClientIds, allowedClientGroupIds, isAdmin } = useAuthContext();
+  const { projects: dbProjects, loading: projectsLoading } = useProjects(
+    isAdmin ? null : allowedClientIds,
+    isAdmin ? null : allowedClientGroupIds
+  );
   const { tasks: scheduleTasks, loading: tasksLoading } = useScheduleTasks();
-  const { allowedClientGroupIds } = useAuthContext();
-  const { data: contractClients = [], isLoading: contractClientsLoading } = useContractClients(allowedClientGroupIds);
+  const { data: contractClients = [], isLoading: contractClientsLoading } = useContractClients(isAdmin ? null : allowedClientGroupIds);
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [projectComboOpen, setProjectComboOpen] = useState(false);

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useClients } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
 import { useClientGroups, GERAL_GROUP_ID } from "@/hooks/useClientGroups";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 interface Props {
   open: boolean;
@@ -17,7 +18,8 @@ interface Props {
 
 export function AddClientDialog({ open, onOpenChange }: Props) {
   const { createClient } = useClients();
-  const { projects } = useProjects();
+  const { allowedClientIds, allowedClientGroupIds, isAdmin } = useAuthContext();
+  const { projects } = useProjects(isAdmin ? null : allowedClientIds, isAdmin ? null : allowedClientGroupIds);
   const { groups } = useClientGroups();
   const { register, handleSubmit, reset, setValue, watch } = useForm();
   const [isLoading, setIsLoading] = useState(false);

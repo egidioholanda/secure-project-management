@@ -70,7 +70,8 @@ interface ClientDetailProps {
 
 function ClientDetail({ client, onBack }: ClientDetailProps) {
   const { deleteClient } = useClients();
-  const { projects } = useProjects();
+  const { allowedClientIds, allowedClientGroupIds, isAdmin } = useAuthContext();
+  const { projects } = useProjects(isAdmin ? null : allowedClientIds, isAdmin ? null : allowedClientGroupIds);
   const { contracts, deleteContract } = useMaintenanceContracts(client.id);
   const { orders, deleteOrder } = useMaintenanceOrders(client.id);
   const { schedules, deleteSchedule, updateSchedule } = useMaintenanceSchedules(client.id);
