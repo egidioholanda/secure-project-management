@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useAuthContext } from '@/contexts/AuthContext';
 import {
   Shield, Search, X, ChevronDown, ChevronRight,
   Clock, User2, Activity, Filter,
@@ -198,8 +197,6 @@ function EventRow({ log, expanded, onToggle }: {
 // ─── Página principal ──────────────────────────────────────
 
 export default function Audit() {
-  const { isAdmin, isLoading } = useAuthContext();
-
   const [period, setPeriod]           = useState<AuditPeriod>('7d');
   const [action, setAction]           = useState('');
   const [resourceType, setResourceType] = useState('');
@@ -230,21 +227,8 @@ export default function Audit() {
     setUserSearch('');
   };
 
-  if (!isLoading && !isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-10 pb-10 text-center space-y-3">
-            <Shield className="w-12 h-12 text-muted-foreground mx-auto" />
-            <h2 className="text-lg font-semibold">Acesso Restrito</h2>
-            <p className="text-muted-foreground text-sm">
-              Esta página é exclusiva para administradores do sistema.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Acesso à rota já é controlado pelo ProtectedRoute com base nas
+  // páginas liberadas para o perfil do usuário (allowedPages).
 
   return (
     <div className="space-y-6">

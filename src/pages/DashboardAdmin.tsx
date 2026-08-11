@@ -12,7 +12,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   DollarSign, TrendingUp, FileText, AlertTriangle,
-  Calendar, Users, Wrench, Shield,
+  Calendar, Users, Wrench,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -166,7 +166,7 @@ function DashboardSkeleton() {
 // ─── Página principal ─────────────────────────────────────
 
 export default function DashboardAdmin() {
-  const { isAdmin, isLoading: authLoading } = useAuthContext();
+  const { isLoading: authLoading } = useAuthContext();
   const { data: contracts = [], isLoading: contractsLoading } = useAdminContracts();
   const { data: orders = [],   isLoading: ordersLoading   } = useAdminOrders();
 
@@ -296,20 +296,8 @@ export default function DashboardAdmin() {
   }, [contracts, orders]);
 
   // ─── Guards ──────────────────────────────────────────────
-
-  if (!authLoading && !isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-10 pb-10 text-center space-y-3">
-            <Shield className="w-12 h-12 text-muted-foreground mx-auto" />
-            <h2 className="text-lg font-semibold">Acesso Restrito</h2>
-            <p className="text-muted-foreground text-sm">Esta página é exclusiva para administradores.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Acesso à rota já é controlado pelo ProtectedRoute com base nas
+  // páginas liberadas para o perfil do usuário (allowedPages).
 
   if (isLoading) return <DashboardSkeleton />;
 
