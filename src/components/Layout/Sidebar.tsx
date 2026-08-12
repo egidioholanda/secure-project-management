@@ -121,7 +121,7 @@ export function Sidebar() {
 
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2">
-        {visibleCommercial.length > 0 && (
+        {(visibleCommercial.length > 0 || canAccess('/financeiro')) && (
           <div className="mb-3">
             {!collapsed && (
               <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-2 pb-1">
@@ -132,6 +132,9 @@ export function Sidebar() {
               {visibleCommercial.map((item) => (
                 <NavItem key={item.path} {...item} collapsed={collapsed} />
               ))}
+              {canAccess('/financeiro') && (
+                <NavItem path="/financeiro" label="Financeiro" icon={DollarSign} collapsed={collapsed} />
+              )}
             </div>
           </div>
         )}
@@ -148,9 +151,6 @@ export function Sidebar() {
             ))}
             {canAccess('/usuarios') && (
               <NavItem path="/usuarios" label="Usuários" icon={Users} collapsed={collapsed} />
-            )}
-            {canAccess('/financeiro') && (
-              <NavItem path="/financeiro" label="Financeiro" icon={DollarSign} collapsed={collapsed} />
             )}
             {canAccess('/auditoria') && (
               <NavItem path="/auditoria" label="Auditoria" icon={Shield} collapsed={collapsed} />
