@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Filter,
@@ -60,7 +61,24 @@ import {
 
 type TabKey = "todos" | "travados" | "cliente" | "faturar";
 
-const ROWS_STEP = 12;
+const PAGE_SIZES = [10, 25, 50];
+const DEFAULT_PAGE_SIZE = 10;
+
+/**
+ * Números de página com elipse: primeira, última e a janela ao redor da atual.
+ * Com 20 páginas, imprimir 20 botões estoura a largura no projetor.
+ */
+function pageNumbers(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const from = Math.max(2, current - 1);
+  const to = Math.min(total - 1, current + 1);
+  if (from > 2) out.push("…");
+  for (let p = from; p <= to; p++) out.push(p);
+  if (to < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
 
 // ── Trilha de 10 marcadores ──────────────────────────────────────────────────
 // Nunca 10 rótulos por linha: os nomes vivem na legenda, aqui cada fase é um
@@ -280,7 +298,8 @@ export function BillingPipeline() {
 
   const [tab, setTab] = useState<TabKey>("todos");
   const [projector, setProjector] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(ROWS_STEP);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<PipelineRow | null>(null);
 
   // ── Filtros ──
@@ -367,7 +386,7 @@ export function BillingPipeline() {
     filterOwners.length +
     filterTypes.length;
 
-  const resetPaging = () => setVisibleCount(ROWS_STEP);
+  const resetPaging = () => setPage(1);
 
   const clearFilters = () => {
     setPeriod("all");
@@ -480,7 +499,13 @@ export function BillingPipeline() {
     );
   }, [scoped, tab]);
 
-  const visible = filtered.slice(0, visibleCount);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Clampar em vez de usar useEffect: se um filtro encolhe a lista e a página
+  // atual passa a não existir, o render já cai na última válida.
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const visible = filtered.slice(startIndex, startIndex + pageSize);
+
   const maxMacroValue = Math.max(1, ...metrics.byMacro.map((m) => m.value));
 
   if (isLoading) {
@@ -1017,17 +1042,90 @@ export function BillingPipeline() {
                 </tbody>
               </table>
 
-              {filtered.length > visible.length && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setVisibleCount((c) => c + ROWS_STEP)}
-                  className="mt-3 text-xs text-muted-foreground"
-                >
-                  Mostrar mais {Math.min(ROWS_STEP, filtered.length - visible.length)}{" "}
-                  (de {filtered.length})
-                </Button>
-              )}
+              {/* ─── Paginação ─── */}
+              <div className="flex items-center justify-between gap-3 flex-wrap mt-3 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  Mostrando{" "}
+                  <span className="font-medium text-foreground">
+                    {startIndex + 1}–{startIndex + visible.length}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-medium text-foreground">
+                    {filtered.length}
+                  </span>{" "}
+                  projeto{filtered.length !== 1 ? "s" : ""}
+                </p>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => {
+                      setPageSize(Number(v));
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[124px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZES.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n} por página
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage === 1}
+                        onClick={() => setPage(currentPage - 1)}
+                        className="h-8 px-2"
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+
+                      {pageNumbers(currentPage, totalPages).map((p, i) =>
+                        p === "…" ? (
+                          <span
+                            key={`gap-${i}`}
+                            className="px-1 text-xs text-muted-foreground select-none"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <Button
+                            key={p}
+                            variant={p === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPage(p)}
+                            className="h-8 w-8 p-0 text-xs tabular-nums"
+                            aria-label={`Página ${p}`}
+                            aria-current={p === currentPage ? "page" : undefined}
+                          >
+                            {p}
+                          </Button>
+                        ),
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setPage(currentPage + 1)}
+                        className="h-8 px-2"
+                        aria-label="Próxima página"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
