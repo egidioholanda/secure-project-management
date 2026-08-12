@@ -32,6 +32,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   maintenance_contracts: 'Contratos',
   maintenance_orders:    'Ordens de Serviço',
   schedule_tasks:        'Tarefas',
+  project_phases:        'Fases de faturamento',
   profiles:              'Usuários',
   user_roles:            'Permissões',
   auth:                  'Autenticação',

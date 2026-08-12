@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminContracts, type AdminContract } from '@/hooks/useAdminDashboard';
+import { BillingPipeline } from '@/components/Financeiro/BillingPipeline';
 
 // ─── Utilitários ───────────────────────────────────────────
 
@@ -340,6 +341,9 @@ export default function DashboardAdmin() {
           iconColor="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
         />
       </div>
+
+      {/* ─── Pipeline administrativo-financeiro dos projetos ─── */}
+      <BillingPipeline />
 
       {/* ─── MRR Evolution ─── */}
       <Card className="border border-border">
