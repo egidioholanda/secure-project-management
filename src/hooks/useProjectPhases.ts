@@ -2,9 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+export type PhaseTrack = "produto" | "servico";
+
 export interface ProjectPhaseRecord {
   id: string;
   project_id: string;
+  /** produto e serviço são dois pedidos com relógios independentes */
+  track: PhaseTrack;
   phase: number;
   completed_at: string;
   completed_by: string | null;
@@ -22,6 +26,7 @@ export function useProjectPhases() {
       const { data, error } = await (supabase as any)
         .from("project_phases")
         .select("*")
+        .order("track")
         .order("phase");
       if (error) throw error;
       return data as ProjectPhaseRecord[];
@@ -33,6 +38,7 @@ export function useProjectPhases() {
   const completePhase = useMutation({
     mutationFn: async ({
       projectId,
+      track,
       phase,
       note,
       userId,
@@ -40,6 +46,7 @@ export function useProjectPhases() {
       alreadyDone,
     }: {
       projectId: string;
+      track: PhaseTrack;
       phase: number;
       note?: string | null;
       userId: string | null;
@@ -54,6 +61,7 @@ export function useProjectPhases() {
 
       const rows = missing.map((p) => ({
         project_id: projectId,
+        track,
         phase: p,
         completed_by: userId,
         completed_by_name: userName,
@@ -77,11 +85,14 @@ export function useProjectPhases() {
 
   // Reabrir uma fase remove ela e todas as posteriores, pelo mesmo motivo.
   const reopenPhase = useMutation({
-    mutationFn: async ({ projectId, phase }: { projectId: string; phase: number }) => {
+    mutationFn: async ({
+      projectId, track, phase,
+    }: { projectId: string; track: PhaseTrack; phase: number }) => {
       const { error } = await (supabase as any)
         .from("project_phases")
         .delete()
         .eq("project_id", projectId)
+        .eq("track", track)
         .gte("phase", phase);
       if (error) throw error;
     },

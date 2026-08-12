@@ -1,6 +1,17 @@
 import type { Project } from "@/types/project";
 import type { ProjectPhaseRecord } from "@/hooks/useProjectPhases";
 
+/**
+ * Todo projeto tem DOIS pedidos — produto e serviço — enviados em momentos
+ * diferentes e faturados separadamente. Cada um corre na sua trilha, com o
+ * próprio pedido, o próprio atraso e a própria nota fiscal.
+ *
+ * Numa fila única, um projeto com o material entregue e a obra nem começada
+ * aparecia como "fase 6" — escondendo que o pedido de serviço nem tinha saído.
+ */
+
+export type TrackKey = "produto" | "servico";
+
 // ── Donos de cada fase ───────────────────────────────────────────────────────
 // Tag curta em TEXTO (não em cor): a cor já está toda gasta nas macro-etapas, e
 // 7 categorias de cor seriam ilegíveis no projetor e péssimas para daltônicos.
@@ -19,86 +30,122 @@ export const OWNERS: Record<OwnerKey, string> = {
 
 // ── Macro-etapas ─────────────────────────────────────────────────────────────
 // Paleta validada com scripts/validate_palette.js (6 checks, modo dark):
-// banda de luminosidade, piso de croma, separação CVD (deutan/protan/tritan),
-// piso de visão normal e contraste com a superfície — todos PASS.
+// banda de luminosidade, piso de croma, separação CVD e contraste — todos PASS.
 
 export type MacroKey = "pedido" | "material" | "obra" | "faturamento";
 
-export const MACROS: {
-  key: MacroKey;
-  label: string;
-  phases: number[];
-  color: string;
-}[] = [
-  { key: "pedido",      label: "Pedido",      phases: [1, 2],     color: "#3b82f6" },
-  { key: "material",    label: "Material",    phases: [3, 4, 5],  color: "#d97706" },
-  { key: "obra",        label: "Obra",        phases: [6, 7],     color: "#8b5cf6" },
-  { key: "faturamento", label: "Faturamento", phases: [8, 9, 10], color: "#059669" },
-];
+export const MACRO_COLORS: Record<MacroKey, string> = {
+  pedido: "#3b82f6",
+  material: "#d97706",
+  obra: "#8b5cf6",
+  faturamento: "#059669",
+};
 
-// ── As 10 fases ──────────────────────────────────────────────────────────────
-// Os rótulos descrevem um ESTADO ALCANÇADO, não uma ação — é o que permite ler a
-// linha como "onde o projeto está", e não "o que aconteceu".
+export const MACRO_LABELS: Record<MacroKey, string> = {
+  pedido: "Pedido",
+  material: "Material",
+  obra: "Obra",
+  faturamento: "Faturamento",
+};
 
 export interface PhaseDef {
   n: number;
-  label: string;      // rótulo da legenda
-  short: string;      // rótulo curto, para espaços apertados
+  label: string;
+  short: string;
   description: string;
   owner: OwnerKey;
   macro: MacroKey;
   slaDays: number;
-  noteLabel?: string; // quando a fase carrega um dado (nº de conformidade, NF)
+  noteLabel?: string;
 }
 
-export const PHASES: PhaseDef[] = [
-  { n: 1,  label: "Pedido recebido",     short: "Pedido",    owner: "COM", macro: "pedido",      slaDays: 2,
-    description: "Pedido do cliente recebido" },
-  { n: 2,  label: "Pedido fechado",      short: "Fechado",   owner: "COM", macro: "pedido",      slaDays: 3,
-    description: "Pedido fechado dentro do nosso sistema" },
-  { n: 3,  label: "Compra emitida",      short: "Comprado",  owner: "CMP", macro: "material",    slaDays: 15,
+export interface TrackDef {
+  key: TrackKey;
+  label: string;
+  /** o que está sendo vendido nesta trilha */
+  what: string;
+  color: string;
+  phases: PhaseDef[];
+  /** fase em que esta trilha vira nota fiscal */
+  billingPhase: number;
+  macros: MacroKey[];
+}
+
+// ── Trilha PRODUTO ───────────────────────────────────────────────────────────
+
+const PRODUCT_PHASES: PhaseDef[] = [
+  { n: 1, label: "Pedido recebido", short: "Pedido", owner: "COM", macro: "pedido", slaDays: 2,
+    description: "Pedido de produto recebido do cliente" },
+  { n: 2, label: "Pedido fechado", short: "Fechado", owner: "COM", macro: "pedido", slaDays: 3,
+    description: "Pedido de produto fechado dentro do nosso sistema" },
+  { n: 3, label: "Compra emitida", short: "Comprado", owner: "CMP", macro: "material", slaDays: 15,
     description: "Material comprado junto ao fornecedor" },
-  { n: 4,  label: "Material em estoque", short: "Estoque",   owner: "EST", macro: "material",    slaDays: 2,
+  { n: 4, label: "Material em estoque", short: "Estoque", owner: "EST", macro: "material", slaDays: 2,
     description: "Material chegou no estoque" },
-  { n: 5,  label: "Material entregue",   short: "Entregue",  owner: "EST", macro: "material",    slaDays: 3,
-    description: "Material faturado e entregue à equipe de instalação" },
-  { n: 6,  label: "Obra em execução",    short: "Obra",      owner: "OBR", macro: "obra",        slaDays: 30,
-    description: "Obra em andamento no cliente" },
-  { n: 7,  label: "Termo de aceite",     short: "Aceite",    owner: "CLI", macro: "obra",        slaDays: 7,
-    description: "Obra finalizada e termo de aceite assinado pelo cliente" },
-  { n: 8,  label: "Aval do gestor",      short: "Aval OK",   owner: "GES", macro: "faturamento", slaDays: 3,
-    description: "Gestor notificou que está tudo OK" },
-  { n: 9,  label: "Nº de conformidade",  short: "Conform.",  owner: "CLI", macro: "faturamento", slaDays: 10,
-    description: "Setor de compras do cliente enviou o número de conformidade",
-    noteLabel: "Número de conformidade" },
-  { n: 10, label: "NF no portal",        short: "NF",        owner: "ADM", macro: "faturamento", slaDays: 2,
-    description: "Nota fiscal de serviço emitida e anexada no portal do cliente",
-    noteLabel: "Número da nota fiscal" },
+  { n: 5, label: "Entregue + NF", short: "NF Produto", owner: "EST", macro: "faturamento", slaDays: 3,
+    description: "Material faturado e entregue à equipe de instalação",
+    noteLabel: "Número da nota fiscal de produto" },
 ];
 
-export const TOTAL_PHASES = PHASES.length;
-export const DONE_PHASE = TOTAL_PHASES + 1; // fase "virtual" de projeto concluído
+// ── Trilha SERVIÇO ───────────────────────────────────────────────────────────
 
-/**
- * Os dois eventos de faturamento do projeto. O pedido de produto é faturado
- * quando o material sai para a equipe (fase 5); o de serviço só depois da obra
- * aceita, na emissão da NF (fase 10). Por isso o dinheiro do projeto não é um
- * bloco único que "vira" no fim — entra em dois momentos.
- */
-export const PRODUCT_BILLING_PHASE = 5;
-export const SERVICE_BILLING_PHASE = 10;
+const SERVICE_PHASES: PhaseDef[] = [
+  { n: 1, label: "Pedido recebido", short: "Pedido", owner: "COM", macro: "pedido", slaDays: 2,
+    description: "Pedido de serviço recebido do cliente" },
+  { n: 2, label: "Pedido fechado", short: "Fechado", owner: "COM", macro: "pedido", slaDays: 3,
+    description: "Pedido de serviço fechado dentro do nosso sistema" },
+  { n: 3, label: "Obra em execução", short: "Obra", owner: "OBR", macro: "obra", slaDays: 30,
+    description: "Obra em andamento no cliente" },
+  { n: 4, label: "Termo de aceite", short: "Aceite", owner: "CLI", macro: "obra", slaDays: 7,
+    description: "Obra finalizada e termo de aceite assinado pelo cliente" },
+  { n: 5, label: "Aval do gestor", short: "Aval OK", owner: "GES", macro: "faturamento", slaDays: 3,
+    description: "Gestor notificou que está tudo OK" },
+  { n: 6, label: "Nº de conformidade", short: "Conform.", owner: "CLI", macro: "faturamento", slaDays: 10,
+    description: "Setor de compras do cliente enviou o número de conformidade",
+    noteLabel: "Número de conformidade" },
+  { n: 7, label: "NF no portal", short: "NF Serviço", owner: "ADM", macro: "faturamento", slaDays: 2,
+    description: "Nota fiscal de serviço emitida e anexada no portal do cliente",
+    noteLabel: "Número da nota fiscal de serviço" },
+];
 
-export const getPhase = (n: number) => PHASES.find((p) => p.n === n);
-export const getMacro = (key: MacroKey) => MACROS.find((m) => m.key === key)!;
+export const TRACKS: Record<TrackKey, TrackDef> = {
+  produto: {
+    key: "produto",
+    label: "Produto",
+    what: "equipamentos",
+    color: "#8b5cf6",
+    phases: PRODUCT_PHASES,
+    billingPhase: 5,
+    macros: ["pedido", "material", "faturamento"],
+  },
+  servico: {
+    key: "servico",
+    label: "Serviço",
+    what: "instalação",
+    color: "#3b82f6",
+    phases: SERVICE_PHASES,
+    billingPhase: 7,
+    macros: ["pedido", "obra", "faturamento"],
+  },
+};
+
+export const TRACK_LIST: TrackDef[] = [TRACKS.produto, TRACKS.servico];
+
+export const getTrack = (k: TrackKey) => TRACKS[k];
+export const getPhase = (track: TrackKey, n: number) =>
+  TRACKS[track].phases.find((p) => p.n === n);
+
+/** macro-etapas de uma trilha, com as fases que caem em cada uma */
+export const trackMacros = (track: TrackKey) =>
+  TRACKS[track].macros.map((key) => ({
+    key,
+    label: MACRO_LABELS[key],
+    color: MACRO_COLORS[key],
+    phases: TRACKS[track].phases.filter((p) => p.macro === key).map((p) => p.n),
+  }));
 
 // ── Helpers de valor ─────────────────────────────────────────────────────────
-// projects.value é TEXT livre ("R$ 480.000,00", "480000", "480 mil"...), então o
-// parse é best-effort e projetos sem valor legível são EXCLUÍDOS dos KPIs de R$
-// (e contados à parte, para o painel não mentir sobre o total).
 
-// Mesma implementação do parseBRL de DashboardComercial.tsx, de propósito: se os
-// dois painéis lessem o mesmo campo de formas diferentes, mostrariam totais
-// divergentes para o mesmo projeto.
 export function parseBRL(value: string | null | undefined): number {
   if (!value) return 0;
   const n = parseFloat(
@@ -120,78 +167,81 @@ export const BRL_FULL = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-// ── Derivação do estado de um projeto ────────────────────────────────────────
+/**
+ * Valor de cada trilha. Projetos anteriores ao split não têm produto/serviço
+ * separados: o total legado é tratado como produto, para o dinheiro não sumir.
+ */
+export function trackValue(project: Project, track: TrackKey): number {
+  const hasSplit =
+    (project.productValue ?? null) !== null || (project.serviceValue ?? null) !== null;
+  if (!hasSplit) return track === "produto" ? parseBRL(project.value) : 0;
+  return (track === "produto" ? project.productValue : project.serviceValue) ?? 0;
+}
 
-export interface PipelineRow {
+// ── Derivação do estado de uma trilha ────────────────────────────────────────
+
+export interface TrackRow {
   project: Project;
-  /** total do projeto (produto + serviço, ou o campo `value` legado) */
+  track: TrackKey;
   value: number;
-  productValue: number;
-  serviceValue: number;
-  /** já faturado: produto após a fase 5, serviço após a fase 10 */
-  billedValue: number;
-  /** o que ainda não virou nota — é este o dinheiro que está em risco */
-  pendingValue: number;
   hasValue: boolean;
+  /** esta trilha já virou nota fiscal */
+  billed: boolean;
+  /** o que ainda não foi faturado nesta trilha — o dinheiro em risco */
+  pendingValue: number;
   donePhases: number[];
-  /** 1..10, ou DONE_PHASE (11) quando as 10 estão concluídas */
+  /** 1..N, ou totalPhases+1 quando a trilha terminou */
   currentPhase: number;
   isFinished: boolean;
-  /** true quando nenhuma fase foi marcada ainda */
   notStarted: boolean;
   owner: OwnerKey | null;
   dependsOnClient: boolean;
-  /** dias na fase atual; null quando não há data-base confiável */
   daysInPhase: number | null;
   isLate: boolean;
   isVeryLate: boolean;
-  /** dias entre a fase 1 e a fase 10, quando ambas concluídas */
+  /** dias entre o pedido e a nota fiscal desta trilha */
   leadTimeDays: number | null;
   lastRecord: ProjectPhaseRecord | null;
-  /** valor × dias parados — usado como índice de urgência financeira */
   urgency: number;
-  /**
-   * Entrada no pipeline: a data da fase 1, ou o cadastro do projeto enquanto
-   * ela não foi marcada. É a base do filtro de período — `start_date` não serve,
-   * está NULL em todos os projetos da base.
-   */
   enteredAt: Date | null;
 }
 
 const DAY_MS = 86_400_000;
 
-export function buildPipelineRow(
+export function buildTrackRow(
   project: Project,
   records: ProjectPhaseRecord[],
+  track: TrackKey,
   today: Date = new Date(),
-): PipelineRow {
-  const byPhase = new Map(records.map((r) => [r.phase, r]));
-  const donePhases = records.map((r) => r.phase).sort((a, b) => a - b);
+): TrackRow {
+  const def = TRACKS[track];
+  const total = def.phases.length;
+  const mine = records.filter((r) => r.track === track);
+  const byPhase = new Map(mine.map((r) => [r.phase, r]));
+  const donePhases = mine.map((r) => r.phase).sort((a, b) => a - b);
 
-  let currentPhase = DONE_PHASE;
-  for (let p = 1; p <= TOTAL_PHASES; p++) {
+  let currentPhase = total + 1;
+  for (let p = 1; p <= total; p++) {
     if (!byPhase.has(p)) {
       currentPhase = p;
       break;
     }
   }
 
-  const isFinished = currentPhase === DONE_PHASE;
+  const isFinished = currentPhase > total;
   const notStarted = donePhases.length === 0;
-  const def = isFinished ? null : getPhase(currentPhase)!;
+  const phaseDef = isFinished ? null : getPhase(track, currentPhase)!;
 
   const lastDone = donePhases.length
-    ? records.reduce<ProjectPhaseRecord | null>(
+    ? mine.reduce<ProjectPhaseRecord | null>(
         (acc, r) =>
           !acc || new Date(r.completed_at) > new Date(acc.completed_at) ? r : acc,
         null,
       )
     : null;
 
-  // "Dias parado" é medido a partir da última fase concluída — de propósito.
-  // Usar a data de início do projeto como base faria todo projeto legado (sem
-  // nenhuma fase marcada) nascer "atrasado há centenas de dias" e inundaria a
-  // aba Travados de ruído. Sem marcação não há medição: mostra-se `notStarted`.
+  // Sem marcação não há medição: usar a data de início do projeto faria todo
+  // projeto legado nascer "atrasado há centenas de dias".
   const daysInPhase =
     isFinished || !lastDone
       ? null
@@ -202,41 +252,27 @@ export function buildPipelineRow(
           ),
         );
 
-  const sla = def?.slaDays ?? 0;
+  const sla = phaseDef?.slaDays ?? 0;
   const isLate = daysInPhase !== null && sla > 0 && daysInPhase > sla;
   const isVeryLate = daysInPhase !== null && sla > 0 && daysInPhase > sla * 2;
 
   const first = byPhase.get(1);
-  const last = byPhase.get(TOTAL_PHASES);
+  const billing = byPhase.get(def.billingPhase);
   const leadTimeDays =
-    first && last
+    first && billing
       ? Math.max(
           0,
           Math.round(
-            (new Date(last.completed_at).getTime() -
+            (new Date(billing.completed_at).getTime() -
               new Date(first.completed_at).getTime()) /
               DAY_MS,
           ),
         )
       : null;
 
-  // Projetos anteriores ao split não têm produto/serviço separados: o total
-  // legado é tratado como produto, para o dinheiro não sumir dos KPIs.
-  const legacyTotal = parseBRL(project.value);
-  const hasSplit =
-    project.productValue !== null && project.productValue !== undefined
-      ? true
-      : project.serviceValue !== null && project.serviceValue !== undefined;
-
-  const productValue = hasSplit ? (project.productValue ?? 0) : legacyTotal;
-  const serviceValue = hasSplit ? (project.serviceValue ?? 0) : 0;
-  const value = productValue + serviceValue;
-
-  const productBilled = byPhase.has(PRODUCT_BILLING_PHASE);
-  const serviceBilled = byPhase.has(SERVICE_BILLING_PHASE);
-  const billedValue =
-    (productBilled ? productValue : 0) + (serviceBilled ? serviceValue : 0);
-  const pendingValue = value - billedValue;
+  const value = trackValue(project, track);
+  const billed = byPhase.has(def.billingPhase);
+  const pendingValue = billed ? 0 : value;
 
   const enteredAt = first
     ? new Date(first.completed_at)
@@ -246,28 +282,43 @@ export function buildPipelineRow(
 
   return {
     project,
+    track,
     value,
-    productValue,
-    serviceValue,
-    billedValue,
-    pendingValue,
     hasValue: value > 0,
+    billed,
+    pendingValue,
     donePhases,
     currentPhase,
     isFinished,
     notStarted,
-    owner: def?.owner ?? null,
-    dependsOnClient: def?.owner === "CLI",
+    owner: phaseDef?.owner ?? null,
+    dependsOnClient: phaseDef?.owner === "CLI",
     daysInPhase,
     isLate,
     isVeryLate,
     leadTimeDays,
     lastRecord: lastDone,
-    // urgência é sobre o dinheiro AINDA NÃO faturado: um projeto travado na
-    // fase 9 com o produto já pago tem menos em risco do que o total sugere
+    // urgência é sobre o dinheiro ainda não faturado desta trilha
     urgency: pendingValue * (daysInPhase ?? 0),
     enteredAt,
   };
+}
+
+export function buildTrackRows(
+  projects: Project[],
+  allRecords: ProjectPhaseRecord[],
+  track: TrackKey,
+  today: Date = new Date(),
+): TrackRow[] {
+  const byProject = new Map<string, ProjectPhaseRecord[]>();
+  for (const r of allRecords) {
+    const list = byProject.get(r.project_id);
+    if (list) list.push(r);
+    else byProject.set(r.project_id, [r]);
+  }
+  return projects.map((p) =>
+    buildTrackRow(p, byProject.get(p.id) ?? [], track, today),
+  );
 }
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
@@ -283,42 +334,15 @@ export const PERIOD_OPTIONS = [
 export const getDateThreshold = (period: string): Date | null => {
   const now = new Date();
   if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (period === "3months") {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 3);
-    return d;
-  }
-  if (period === "6months") {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 6);
-    return d;
-  }
+  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
+  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
   if (period === "year") return new Date(now.getFullYear(), 0, 1);
   return null;
 };
 
 /** `projects.type` guarda vários tipos separados por vírgula ("CFTV,Alarme") */
 export const projectTypes = (raw: string | undefined): string[] =>
-  (raw ?? "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
+  (raw ?? "").split(",").map((t) => t.trim()).filter(Boolean);
 
 export const toggleArr = <T,>(arr: T[], val: T): T[] =>
   arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-
-export function buildPipelineRows(
-  projects: Project[],
-  allRecords: ProjectPhaseRecord[],
-  today: Date = new Date(),
-): PipelineRow[] {
-  const byProject = new Map<string, ProjectPhaseRecord[]>();
-  for (const r of allRecords) {
-    const list = byProject.get(r.project_id);
-    if (list) list.push(r);
-    else byProject.set(r.project_id, [r]);
-  }
-  return projects.map((p) =>
-    buildPipelineRow(p, byProject.get(p.id) ?? [], today),
-  );
-}

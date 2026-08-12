@@ -43,20 +43,22 @@ import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
 import {
   BRL_COMPACT,
   BRL_FULL,
-  MACROS,
+  MACRO_COLORS,
+  MACRO_LABELS,
   OWNERS,
   PERIOD_OPTIONS,
-  PHASES,
-  TOTAL_PHASES,
-  buildPipelineRows,
+  TRACKS,
+  TRACK_LIST,
+  buildTrackRows,
   getDateThreshold,
-  getMacro,
   getPhase,
   projectTypes,
   toggleArr,
+  trackMacros,
   type MacroKey,
   type OwnerKey,
-  type PipelineRow,
+  type TrackKey,
+  type TrackRow,
 } from "./billingPhases";
 
 type TabKey = "todos" | "travados" | "cliente" | "faturar";
@@ -80,24 +82,26 @@ function pageNumbers(current: number, total: number): (number | "…")[] {
   return out;
 }
 
-// ── Trilha de 10 marcadores ──────────────────────────────────────────────────
-// Nunca 10 rótulos por linha: os nomes vivem na legenda, aqui cada fase é um
-// numeral agrupado por macro-etapa colorida. A fase atual é maior e meio-cheia,
-// então a posição é legível por FORMA e TAMANHO, não só por cor.
+// ── Trilha de marcadores ─────────────────────────────────────────────────────
+// Os nomes das fases vivem na legenda; aqui cada fase é um numeral agrupado por
+// macro-etapa colorida. A fase atual é maior e vazada, então a posição é
+// legível por FORMA e TAMANHO, não só por cor.
 
-function PhaseTrack({ row, big }: { row: PipelineRow; big: boolean }) {
+function PhaseTrack({ row, big }: { row: TrackRow; big: boolean }) {
   const dot = big ? 13 : 9;
   const currentDot = big ? 19 : 14;
+  const macros = trackMacros(row.track);
+  const total = TRACKS[row.track].phases.length;
 
   return (
     <div className="flex items-center" role="img"
       aria-label={
         row.isFinished
-          ? "Todas as 10 fases concluídas"
-          : `Fase ${row.currentPhase} de ${TOTAL_PHASES}`
+          ? `Trilha de ${TRACKS[row.track].label.toLowerCase()} concluída`
+          : `Fase ${row.currentPhase} de ${total}`
       }
     >
-      {MACROS.map((macro, mi) => (
+      {macros.map((macro, mi) => (
         <div
           key={macro.key}
           className={cn("flex items-center", mi > 0 && (big ? "ml-3" : "ml-2"))}
@@ -143,7 +147,7 @@ function PhaseTrack({ row, big }: { row: PipelineRow; big: boolean }) {
 
 // ── Tag de dono ──────────────────────────────────────────────────────────────
 
-function OwnerTag({ row }: { row: PipelineRow }) {
+function OwnerTag({ row }: { row: TrackRow }) {
   if (!row.owner) return <span className="text-muted-foreground">—</span>;
   return (
     <Badge
@@ -296,11 +300,14 @@ export function BillingPipeline() {
   const { phases, isLoading: phasesLoading } = useProjectPhases();
   const { groups } = useClientGroups();
 
+  // Produto e serviço são pedidos independentes: cada aba tem seus próprios
+  // KPIs, seu próprio gargalo e seu próprio atraso.
+  const [track, setTrack] = useState<TrackKey>("produto");
   const [tab, setTab] = useState<TabKey>("todos");
   const [projector, setProjector] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [selected, setSelected] = useState<PipelineRow | null>(null);
+  const [selected, setSelected] = useState<TrackRow | null>(null);
 
   // ── Filtros ──
   const [period, setPeriod] = useState("all");
@@ -313,9 +320,13 @@ export function BillingPipeline() {
   const isLoading = projectsLoading || phasesLoading;
 
   const rows = useMemo(
-    () => buildPipelineRows(projects, phases),
-    [projects, phases],
+    () => buildTrackRows(projects, phases, track),
+    [projects, phases, track],
   );
+
+  const trackDef = TRACKS[track];
+  /** fase a partir da qual só falta a nota fiscal desta trilha */
+  const readyPhase = trackDef.billingPhase;
 
   /** Projetos ainda no pipeline (as 10 fases não concluídas) */
   const open = useMemo(() => rows.filter((r) => !r.isFinished), [rows]);
@@ -349,6 +360,9 @@ export function BillingPipeline() {
   const scoped = useMemo(() => {
     const threshold = getDateThreshold(period);
     return open.filter((r) => {
+      // um projeto sem valor nesta trilha não tem esse pedido: mostrá-lo aqui
+      // encheria a aba de linhas que nunca vão faturar
+      if (!r.hasValue) return false;
       if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
@@ -360,7 +374,7 @@ export function BillingPipeline() {
         if (!types.some((t) => filterTypes.includes(t))) return false;
       }
       if (filterMacros.length) {
-        const def = getPhase(r.currentPhase);
+        const def = getPhase(track, r.currentPhase);
         if (!def || !filterMacros.includes(def.macro)) return false;
       }
       if (filterOwners.length) {
@@ -370,6 +384,7 @@ export function BillingPipeline() {
     });
   }, [
     open,
+    track,
     period,
     clientFilter,
     filterGroups,
@@ -377,6 +392,12 @@ export function BillingPipeline() {
     filterMacros,
     filterOwners,
   ]);
+
+  /** projetos que não têm pedido desta trilha — omitidos, mas informados */
+  const withoutThisTrack = useMemo(
+    () => open.filter((r) => !r.hasValue).length,
+    [open],
+  );
 
   const activeFilterCount =
     (period !== "all" ? 1 : 0) +
@@ -422,15 +443,15 @@ export function BillingPipeline() {
   const metrics = useMemo(() => {
     // Fase 7+ = obra aceita, aguardando a NF de serviço. O que falta faturar
     // aqui é o serviço — o material saiu na fase 5.
-    const readyToBill = scoped.filter((r) => r.currentPhase >= 7);
+    const readyToBill = scoped.filter((r) => r.currentPhase >= readyPhase);
     const late = scoped.filter((r) => r.isLate);
     const lateClient = late.filter((r) => r.dependsOnClient);
     const lateOurs = late.filter((r) => !r.dependsOnClient);
 
     // Somamos o PENDENTE, não o total: a partir da fase 5 o produto já foi
     // faturado, e contá-lo de novo inflava todos os KPIs de dinheiro parado.
-    const sum = (list: PipelineRow[]) => list.reduce((s, r) => s + r.pendingValue, 0);
-    const sumTotal = (list: PipelineRow[]) => list.reduce((s, r) => s + r.value, 0);
+    const sum = (list: TrackRow[]) => list.reduce((s, r) => s + r.pendingValue, 0);
+    const sumTotal = (list: TrackRow[]) => list.reduce((s, r) => s + r.value, 0);
 
     const oldestReady = readyToBill.reduce(
       (max, r) => Math.max(max, r.daysInPhase ?? 0),
@@ -457,9 +478,9 @@ export function BillingPipeline() {
       (a, b) => b[1].value - a[1].value,
     )[0];
 
-    const byMacro = MACROS.map((m) => {
+    const byMacro = trackMacros(track).map((m) => {
       const list = scoped.filter((r) => {
-        const def = getPhase(r.currentPhase);
+        const def = getPhase(track, r.currentPhase);
         return def?.macro === m.key;
       });
       return {
@@ -487,24 +508,24 @@ export function BillingPipeline() {
       byMacro,
       pipelineTotal: sum(scoped),
       contractedTotal: sumTotal(scoped),
-      billedTotal: scoped.reduce((s, r) => s + r.billedValue, 0),
+      billedTotal: scoped.reduce((s, r) => s + (r.billed ? r.value : 0), 0),
       openCount: scoped.length,
       finishedCount: scopedFinished.length,
       noValueCount: scoped.filter((r) => !r.hasValue).length,
     };
-  }, [scoped, scopedFinished]);
+  }, [scoped, scopedFinished, track, readyPhase]);
 
   const filtered = useMemo(() => {
     let list = scoped;
     if (tab === "travados") list = list.filter((r) => r.isLate);
     if (tab === "cliente") list = list.filter((r) => r.dependsOnClient);
-    if (tab === "faturar") list = list.filter((r) => r.currentPhase >= 7);
+    if (tab === "faturar") list = list.filter((r) => r.currentPhase >= readyPhase);
 
     // Ordena por urgência financeira (R$ × dias parados); empate cai no valor
     return [...list].sort(
       (a, b) => b.urgency - a.urgency || b.pendingValue - a.pendingValue,
     );
-  }, [scoped, tab]);
+  }, [scoped, tab, readyPhase]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   // Clampar em vez de usar useEffect: se um filtro encolhe a lista e a página
@@ -533,7 +554,7 @@ export function BillingPipeline() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Faturamento de projetos
+          Faturamento de projetos · pedido de {trackDef.label.toLowerCase()}
         </h2>
         <Button
           variant="outline"
@@ -633,7 +654,7 @@ export function BillingPipeline() {
               <Separator className="my-3" />
 
               <FilterSection title="Macro-etapa">
-                {MACROS.map((m) => (
+                {trackMacros(track).map((m) => (
                   <FilterCheck
                     key={m.key}
                     id={`macro-${m.key}`}
@@ -724,8 +745,8 @@ export function BillingPipeline() {
         {filterMacros.map((k) => (
           <FilterChip
             key={k}
-            label={getMacro(k).label}
-            color={getMacro(k).color}
+            label={MACRO_LABELS[k]}
+            color={MACRO_COLORS[k]}
             onRemove={() => {
               setFilterMacros((p) => p.filter((x) => x !== k));
               resetPaging();
@@ -763,6 +784,36 @@ export function BillingPipeline() {
           </Button>
         )}
       </div>
+
+      {/* ─── Trilhas: dois pedidos, dois relógios ─── */}
+      <Tabs
+        value={track}
+        onValueChange={(v) => {
+          setTrack(v as TrackKey);
+          setFilterMacros([]);
+          setTab("todos");
+          resetPaging();
+        }}
+      >
+        <TabsList className="h-10">
+          {TRACK_LIST.map((t) => (
+            <TabsTrigger
+              key={t.key}
+              value={t.key}
+              className={cn("gap-2 px-4", projector && "text-base")}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: t.color }}
+              />
+              Pedido de {t.label}
+              <span className="text-[11px] text-muted-foreground">
+                {t.phases.length} fases
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* ─── KPIs de faturamento de projetos ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -813,7 +864,7 @@ export function BillingPipeline() {
           label="Gargalo"
           value={
             metrics.bottleneck
-              ? `${metrics.bottleneck.phase} ${getPhase(metrics.bottleneck.phase)?.short ?? ""}`
+              ? `${metrics.bottleneck.phase} ${getPhase(track, metrics.bottleneck.phase)?.short ?? ""}`
               : "—"
           }
           sub={
@@ -888,10 +939,11 @@ export function BillingPipeline() {
             {metrics.finishedCount > 0 && (
               <> · {metrics.finishedCount} já faturado{metrics.finishedCount !== 1 ? "s" : ""}</>
             )}
-            {metrics.noValueCount > 0 && (
-              <span className="text-amber-500">
+            {withoutThisTrack > 0 && (
+              <span className="text-muted-foreground/70">
                 {" "}
-                · ⚠ {metrics.noValueCount} sem valor informado, fora dos totais
+                · {withoutThisTrack} projeto{withoutThisTrack !== 1 ? "s" : ""} sem
+                pedido de {trackDef.label.toLowerCase()}
               </span>
             )}
           </p>
@@ -941,8 +993,8 @@ export function BillingPipeline() {
                 </thead>
                 <tbody>
                   {visible.map((row) => {
-                    const def = getPhase(row.currentPhase);
-                    const macroColor = def ? getMacro(def.macro).color : undefined;
+                    const def = getPhase(track, row.currentPhase);
+                    const macroColor = def ? MACRO_COLORS[def.macro] : undefined;
 
                     return (
                       <tr
@@ -980,19 +1032,18 @@ export function BillingPipeline() {
                             !row.hasValue && "text-muted-foreground",
                           )}
                         >
-                          {row.hasValue ? (
-                            <>
-                              {BRL_COMPACT(row.pendingValue)}
-                              {/* parte já faturada aparece à parte, senão a
-                                  linha some com dinheiro que já entrou */}
-                              {row.billedValue > 0 && (
-                                <span className="block text-[11px] text-emerald-500 font-normal">
-                                  {BRL_COMPACT(row.billedValue)} faturado
-                                </span>
-                              )}
-                            </>
-                          ) : (
+                          {!row.hasValue ? (
                             "—"
+                          ) : row.billed ? (
+                            // trilha já virou nota: o dinheiro entrou, não está em risco
+                            <span className="text-emerald-500">
+                              {BRL_COMPACT(row.value)}
+                              <span className="block text-[11px] font-normal">
+                                faturado
+                              </span>
+                            </span>
+                          ) : (
+                            BRL_COMPACT(row.pendingValue)
                           )}
                         </td>
 
@@ -1155,14 +1206,14 @@ export function BillingPipeline() {
           {/* ─── Legenda fixa: é o que torna os numerais compreensíveis ─── */}
           <div className="border-t border-border mt-4 pt-3 space-y-1.5">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {PHASES.map((p) => (
+              {TRACKS[track].phases.map((p) => (
                 <span
                   key={p.n}
                   className="text-[11px] text-muted-foreground whitespace-nowrap"
                 >
                   <span
                     className="font-mono font-bold"
-                    style={{ color: getMacro(p.macro).color }}
+                    style={{ color: MACRO_COLORS[p.macro] }}
                   >
                     {p.n}
                   </span>{" "}
