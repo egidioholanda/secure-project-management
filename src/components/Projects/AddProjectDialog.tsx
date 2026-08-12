@@ -32,6 +32,9 @@ export interface ProjectFormData {
   responsible?: string;
   opportunityId?: string;
   clientGroupId?: string | null;
+  /** vêm da oportunidade: os dois pedidos faturam em fases diferentes */
+  productValue?: number | null;
+  serviceValue?: number | null;
 }
 
 interface AddProjectDialogProps {
@@ -91,6 +94,8 @@ const AddProjectDialog = ({
     state: "",
     opportunityId: "",
     clientGroupId: null as string | null,
+    productValue: null as number | null,
+    serviceValue: null as number | null,
   });
 
   useEffect(() => {
@@ -110,6 +115,8 @@ const AddProjectDialog = ({
         state,
         opportunityId: "",
         clientGroupId: editingProject.clientGroupId ?? null,
+        productValue: editingProject.productValue ?? null,
+        serviceValue: editingProject.serviceValue ?? null,
       });
     } else if (initialData) {
       setFormData({
@@ -126,6 +133,8 @@ const AddProjectDialog = ({
         state: "",
         opportunityId: initialData.opportunityId || "",
         clientGroupId: initialData.clientGroupId ?? null,
+        productValue: initialData.productValue ?? null,
+        serviceValue: initialData.serviceValue ?? null,
       });
     } else {
       setFormData({
@@ -142,6 +151,8 @@ const AddProjectDialog = ({
         state: "",
         opportunityId: "",
         clientGroupId: null,
+        productValue: null,
+        serviceValue: null,
       });
     }
   }, [editingProject, initialData, open]);
@@ -184,6 +195,8 @@ const AddProjectDialog = ({
       value: formData.value,
       address: composeAddress(formData.street, formData.city, formData.state),
       opportunityId: formData.opportunityId || undefined,
+      productValue: formData.productValue ?? null,
+      serviceValue: formData.serviceValue ?? null,
       clientGroupId: formData.clientGroupId || null,
     };
 

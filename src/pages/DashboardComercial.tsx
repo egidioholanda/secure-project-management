@@ -30,16 +30,19 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { STAGES } from "@/lib/salesStages";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const STAGE_CONFIG = [
-  { key: "prospeccao",     matchKeys: ["prospeccao", "qualificacao"],                     label: "Oportunidade",            color: "#6366f1" },
-  { key: "proposta",       matchKeys: ["proposta"],                                        label: "Proposta Enviada",         color: "#f59e0b" },
-  { key: "pedido_cliente", matchKeys: ["pedido_cliente"],                                  label: "Pedido Cliente Enviado",   color: "#8b5cf6" },
-  { key: "negociacao",     matchKeys: ["negociacao", "pedido_produto", "pedido_servico"],  label: "Pedido Comercial Criado",  color: "#f97316" },
-  { key: "ganha",          matchKeys: ["ganha", "faturado_produto", "faturado_servico"],   label: "Pedido Faturado",          color: "#10b981" },
-];
+
+// Etapas vêm de @/lib/salesStages — antes este arquivo tinha a própria cópia
+// do funil, com cores que já haviam divergido do Kanban e do card.
+const STAGE_CONFIG = STAGES.map((s) => ({
+  key: s.key,
+  matchKeys: [s.key] as string[],
+  label: s.label,
+  color: s.color,
+}));
 
 const TYPE_COLORS = ["#6366f1", "#3b82f6", "#f59e0b", "#f97316", "#10b981", "#ec4899", "#06b6d4"];
 const ALL_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Sistema Integrado", "Automação"];
@@ -52,15 +55,8 @@ const PERIOD_OPTIONS = [
   { value: "year",    label: "Este ano" },
 ];
 
-const WON_STATUSES = ["ganha", "faturado_produto", "faturado_servico"];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const parseBRL = (raw: string) => {
-  if (!raw) return 0;
-  const n = parseFloat(raw.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
-  return isNaN(n) ? 0 : n;
-};
 
 const formatCurrency = (value: number) => {
   if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`;
@@ -184,23 +180,27 @@ const DashboardComercial = () => {
 
   // ── Core aggregations ─────────────────────────────────────────────────────
 
-  const won    = useMemo(() => filteredOpps.filter((o) => WON_STATUSES.includes(o.status)), [filteredOpps]);
-  const active = useMemo(() => filteredOpps.filter((o) => !WON_STATUSES.includes(o.status)), [filteredOpps]);
+  const won    = useMemo(() => filteredOpps.filter((o) => o.status === "ganha"), [filteredOpps]);
+  const lost   = useMemo(() => filteredOpps.filter((o) => o.status === "perdida"), [filteredOpps]);
+  const active = useMemo(() => filteredOpps.filter((o) => o.status !== "ganha" && o.status !== "perdida"), [filteredOpps]);
 
-  const pipelineValue        = useMemo(() => active.reduce((s, o) => s + parseBRL(o.value), 0), [active]);
-  const wonValue             = useMemo(() => won.reduce((s, o) => s + parseBRL(o.value), 0), [won]);
-  const wonProductValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.productValue), 0), [won]);
-  const wonServiceValue      = useMemo(() => won.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [won]);
-  const pipelineProductValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.productValue), 0), [active]);
-  const pipelineServiceValue = useMemo(() => active.reduce((s, o) => s + parseBRL(o.serviceValue), 0), [active]);
-  const conversionRate       = filteredOpps.length > 0 ? Math.round((won.length / filteredOpps.length) * 100) : 0;
+  const pipelineValue        = useMemo(() => active.reduce((s, o) => s + o.value, 0), [active]);
+  const wonValue             = useMemo(() => won.reduce((s, o) => s + o.value, 0), [won]);
+  const wonProductValue      = useMemo(() => won.reduce((s, o) => s + (o.productValue ?? 0), 0), [won]);
+  const wonServiceValue      = useMemo(() => won.reduce((s, o) => s + (o.serviceValue ?? 0), 0), [won]);
+  const pipelineProductValue = useMemo(() => active.reduce((s, o) => s + (o.productValue ?? 0), 0), [active]);
+  const pipelineServiceValue = useMemo(() => active.reduce((s, o) => s + (o.serviceValue ?? 0), 0), [active]);
+  // Só negócios DECIDIDOS entram na conta: dividir pelo total (incluindo os
+  // em aberto) fazia a taxa piorar a cada oportunidade nova cadastrada.
+  const decidedCount         = won.length + lost.length;
+  const conversionRate       = decidedCount > 0 ? Math.round((won.length / decidedCount) * 100) : 0;
   const ticketMedio          = won.length > 0 ? wonValue / won.length : 0;
 
   // ── Funnel by value ───────────────────────────────────────────────────────
   const funnelData = useMemo(() =>
     STAGE_CONFIG.map((stage) => {
       const opps  = filteredOpps.filter((o) => stage.matchKeys.includes(o.status));
-      const value = opps.reduce((s, o) => s + parseBRL(o.value), 0);
+      const value = opps.reduce((s, o) => s + o.value, 0);
       return { ...stage, count: opps.length, value };
     }),
     [filteredOpps]
@@ -213,7 +213,7 @@ const DashboardComercial = () => {
     const map: Record<string, number> = {};
     active.forEach((o) => {
       const r = o.responsible || "Sem responsável";
-      map[r] = (map[r] || 0) + parseBRL(o.value);
+      map[r] = (map[r] || 0) + o.value;
     });
     return Object.entries(map)
       .map(([name, value]) => ({ name: name.split(" ")[0], value }))
@@ -237,7 +237,7 @@ const DashboardComercial = () => {
   // ── Top opportunities by value ────────────────────────────────────────────
   const topOpps = useMemo(() =>
     [...filteredOpps]
-      .sort((a, b) => parseBRL(b.value) - parseBRL(a.value))
+      .sort((a, b) => b.value - a.value)
       .slice(0, 8),
     [filteredOpps]
   );
@@ -641,11 +641,11 @@ const DashboardComercial = () => {
                         </div>
                       </td>
                       <td className="py-3.5 pr-4 text-right">
-                        <p className="font-bold tabular-nums">{opp.value || "—"}</p>
+                        <p className="font-bold tabular-nums">{opp.value ? formatCurrencyFull(opp.value) : "—"}</p>
                         {(opp.productValue || opp.serviceValue) && (
                           <div className="flex gap-2 justify-end mt-0.5">
-                            {opp.productValue && <span className="text-xs text-violet-500 tabular-nums">P: {formatCurrency(parseBRL(opp.productValue))}</span>}
-                            {opp.serviceValue && <span className="text-xs text-blue-500 tabular-nums">S: {formatCurrency(parseBRL(opp.serviceValue))}</span>}
+                            {opp.productValue && <span className="text-xs text-violet-500 tabular-nums">P: {formatCurrency((opp.productValue ?? 0))}</span>}
+                            {opp.serviceValue && <span className="text-xs text-blue-500 tabular-nums">S: {formatCurrency((opp.serviceValue ?? 0))}</span>}
                           </div>
                         )}
                       </td>

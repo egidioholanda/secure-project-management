@@ -420,12 +420,17 @@ export function BillingPipeline() {
   }, [rows, period, clientFilter, filterGroups, filterTypes]);
 
   const metrics = useMemo(() => {
+    // Fase 7+ = obra aceita, aguardando a NF de serviço. O que falta faturar
+    // aqui é o serviço — o material saiu na fase 5.
     const readyToBill = scoped.filter((r) => r.currentPhase >= 7);
     const late = scoped.filter((r) => r.isLate);
     const lateClient = late.filter((r) => r.dependsOnClient);
     const lateOurs = late.filter((r) => !r.dependsOnClient);
 
-    const sum = (list: PipelineRow[]) => list.reduce((s, r) => s + r.value, 0);
+    // Somamos o PENDENTE, não o total: a partir da fase 5 o produto já foi
+    // faturado, e contá-lo de novo inflava todos os KPIs de dinheiro parado.
+    const sum = (list: PipelineRow[]) => list.reduce((s, r) => s + r.pendingValue, 0);
+    const sumTotal = (list: PipelineRow[]) => list.reduce((s, r) => s + r.value, 0);
 
     const oldestReady = readyToBill.reduce(
       (max, r) => Math.max(max, r.daysInPhase ?? 0),
@@ -444,7 +449,7 @@ export function BillingPipeline() {
     const byPhase = new Map<number, { value: number; count: number }>();
     for (const r of scoped) {
       const cur = byPhase.get(r.currentPhase) ?? { value: 0, count: 0 };
-      cur.value += r.value;
+      cur.value += r.pendingValue;
       cur.count += 1;
       byPhase.set(r.currentPhase, cur);
     }
@@ -481,6 +486,8 @@ export function BillingPipeline() {
         : null,
       byMacro,
       pipelineTotal: sum(scoped),
+      contractedTotal: sumTotal(scoped),
+      billedTotal: scoped.reduce((s, r) => s + r.billedValue, 0),
       openCount: scoped.length,
       finishedCount: scopedFinished.length,
       noValueCount: scoped.filter((r) => !r.hasValue).length,
@@ -495,7 +502,7 @@ export function BillingPipeline() {
 
     // Ordena por urgência financeira (R$ × dias parados); empate cai no valor
     return [...list].sort(
-      (a, b) => b.urgency - a.urgency || b.value - a.value,
+      (a, b) => b.urgency - a.urgency || b.pendingValue - a.pendingValue,
     );
   }, [scoped, tab]);
 
@@ -873,8 +880,11 @@ export function BillingPipeline() {
             <span className="font-semibold text-foreground">
               {BRL_FULL.format(metrics.pipelineTotal)}
             </span>{" "}
-            em {metrics.openCount} projeto
-            {metrics.openCount !== 1 ? "s" : ""} no pipeline
+            a faturar em {metrics.openCount} projeto
+            {metrics.openCount !== 1 ? "s" : ""}
+            {metrics.billedTotal > 0 && (
+              <> · <span className="text-emerald-500">{BRL_FULL.format(metrics.billedTotal)} já faturado</span></>
+            )}
             {metrics.finishedCount > 0 && (
               <> · {metrics.finishedCount} já faturado{metrics.finishedCount !== 1 ? "s" : ""}</>
             )}
@@ -921,7 +931,7 @@ export function BillingPipeline() {
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="pb-2 pr-3">Cliente · Projeto</th>
-                    <th className="pb-2 pr-3 text-right">Valor</th>
+                    <th className="pb-2 pr-3 text-right">A faturar</th>
                     <th className="pb-2 pr-3">Fases 1–10</th>
                     <th className="pb-2 pr-3">Fase atual</th>
                     <th className="pb-2 pr-3">Dono</th>
@@ -970,7 +980,20 @@ export function BillingPipeline() {
                             !row.hasValue && "text-muted-foreground",
                           )}
                         >
-                          {row.hasValue ? BRL_COMPACT(row.value) : "—"}
+                          {row.hasValue ? (
+                            <>
+                              {BRL_COMPACT(row.pendingValue)}
+                              {/* parte já faturada aparece à parte, senão a
+                                  linha some com dinheiro que já entrou */}
+                              {row.billedValue > 0 && (
+                                <span className="block text-[11px] text-emerald-500 font-normal">
+                                  {BRL_COMPACT(row.billedValue)} faturado
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            "—"
+                          )}
                         </td>
 
                         <td className="py-3 pr-3">

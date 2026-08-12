@@ -14,6 +14,13 @@ export interface Project {
   clientGroupId?: string | null;
   /** ISO — data de cadastro no sistema */
   createdAt?: string;
+  /**
+   * Produto e serviço são dois pedidos do mesmo projeto, faturados em
+   * momentos diferentes: o material na fase 5 e a NF de serviço na fase 10
+   * do pipeline de faturamento.
+   */
+  productValue?: number | null;
+  serviceValue?: number | null;
 }
 
 export interface DeviceCategory {

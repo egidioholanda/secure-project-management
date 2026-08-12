@@ -17,6 +17,8 @@ interface DbProject {
   opportunity_id: string | null;
   client_id: string | null;
   client_group_id: string | null;
+  product_value: number | string | null;
+  service_value: number | string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +44,13 @@ const parseDateFromDisplay = (dateStr: string): string | null => {
   return null;
 };
 
+/** numeric do Postgres chega como string no supabase-js */
+const numOrNull = (v: number | string | null | undefined): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+};
+
 const mapDbToProject = (db: DbProject): Project => ({
   id: db.id,
   name: db.name,
@@ -57,6 +66,8 @@ const mapDbToProject = (db: DbProject): Project => ({
   clientId: db.client_id,
   clientGroupId: db.client_group_id,
   createdAt: db.created_at,
+  productValue: numOrNull(db.product_value),
+  serviceValue: numOrNull(db.service_value),
 });
 
 export const linkProjectToClient = async (projectId: string, clientId: string | null) => {
@@ -116,7 +127,9 @@ export const useProjects = (allowedClientIds?: string[] | null, allowedClientGro
           description: project.address || null,
           opportunity_id: project.opportunityId || null,
           client_group_id: project.clientGroupId || null,
-        })
+          product_value: project.productValue ?? null,
+          service_value: project.serviceValue ?? null,
+        } as any)
         .select()
         .single();
 
@@ -147,7 +160,9 @@ export const useProjects = (allowedClientIds?: string[] | null, allowedClientGro
           value: project.value || null,
           description: project.address || null,
           client_group_id: project.clientGroupId || null,
-        })
+          product_value: project.productValue ?? null,
+          service_value: project.serviceValue ?? null,
+        } as any)
         .eq("id", project.id);
 
       if (error) throw error;

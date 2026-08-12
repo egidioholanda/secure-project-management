@@ -79,6 +79,15 @@ export const PHASES: PhaseDef[] = [
 export const TOTAL_PHASES = PHASES.length;
 export const DONE_PHASE = TOTAL_PHASES + 1; // fase "virtual" de projeto concluído
 
+/**
+ * Os dois eventos de faturamento do projeto. O pedido de produto é faturado
+ * quando o material sai para a equipe (fase 5); o de serviço só depois da obra
+ * aceita, na emissão da NF (fase 10). Por isso o dinheiro do projeto não é um
+ * bloco único que "vira" no fim — entra em dois momentos.
+ */
+export const PRODUCT_BILLING_PHASE = 5;
+export const SERVICE_BILLING_PHASE = 10;
+
 export const getPhase = (n: number) => PHASES.find((p) => p.n === n);
 export const getMacro = (key: MacroKey) => MACROS.find((m) => m.key === key)!;
 
@@ -115,7 +124,14 @@ export const BRL_FULL = new Intl.NumberFormat("pt-BR", {
 
 export interface PipelineRow {
   project: Project;
+  /** total do projeto (produto + serviço, ou o campo `value` legado) */
   value: number;
+  productValue: number;
+  serviceValue: number;
+  /** já faturado: produto após a fase 5, serviço após a fase 10 */
+  billedValue: number;
+  /** o que ainda não virou nota — é este o dinheiro que está em risco */
+  pendingValue: number;
   hasValue: boolean;
   donePhases: number[];
   /** 1..10, ou DONE_PHASE (11) quando as 10 estão concluídas */
@@ -204,7 +220,23 @@ export function buildPipelineRow(
         )
       : null;
 
-  const value = parseBRL(project.value);
+  // Projetos anteriores ao split não têm produto/serviço separados: o total
+  // legado é tratado como produto, para o dinheiro não sumir dos KPIs.
+  const legacyTotal = parseBRL(project.value);
+  const hasSplit =
+    project.productValue !== null && project.productValue !== undefined
+      ? true
+      : project.serviceValue !== null && project.serviceValue !== undefined;
+
+  const productValue = hasSplit ? (project.productValue ?? 0) : legacyTotal;
+  const serviceValue = hasSplit ? (project.serviceValue ?? 0) : 0;
+  const value = productValue + serviceValue;
+
+  const productBilled = byPhase.has(PRODUCT_BILLING_PHASE);
+  const serviceBilled = byPhase.has(SERVICE_BILLING_PHASE);
+  const billedValue =
+    (productBilled ? productValue : 0) + (serviceBilled ? serviceValue : 0);
+  const pendingValue = value - billedValue;
 
   const enteredAt = first
     ? new Date(first.completed_at)
@@ -215,6 +247,10 @@ export function buildPipelineRow(
   return {
     project,
     value,
+    productValue,
+    serviceValue,
+    billedValue,
+    pendingValue,
     hasValue: value > 0,
     donePhases,
     currentPhase,
@@ -227,7 +263,9 @@ export function buildPipelineRow(
     isVeryLate,
     leadTimeDays,
     lastRecord: lastDone,
-    urgency: value * (daysInPhase ?? 0),
+    // urgência é sobre o dinheiro AINDA NÃO faturado: um projeto travado na
+    // fase 9 com o produto já pago tem menos em risco do que o total sugere
+    urgency: pendingValue * (daysInPhase ?? 0),
     enteredAt,
   };
 }
