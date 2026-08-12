@@ -12,6 +12,8 @@ export interface Project {
   opportunityId?: string;
   clientId?: string | null;
   clientGroupId?: string | null;
+  /** ISO — data de cadastro no sistema */
+  createdAt?: string;
 }
 
 export interface DeviceCategory {

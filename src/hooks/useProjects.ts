@@ -56,6 +56,7 @@ const mapDbToProject = (db: DbProject): Project => ({
   opportunityId: db.opportunity_id || undefined,
   clientId: db.client_id,
   clientGroupId: db.client_group_id,
+  createdAt: db.created_at,
 });
 
 export const linkProjectToClient = async (projectId: string, clientId: string | null) => {

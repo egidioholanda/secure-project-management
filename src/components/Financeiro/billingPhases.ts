@@ -134,6 +134,12 @@ export interface PipelineRow {
   lastRecord: ProjectPhaseRecord | null;
   /** valor × dias parados — usado como índice de urgência financeira */
   urgency: number;
+  /**
+   * Entrada no pipeline: a data da fase 1, ou o cadastro do projeto enquanto
+   * ela não foi marcada. É a base do filtro de período — `start_date` não serve,
+   * está NULL em todos os projetos da base.
+   */
+  enteredAt: Date | null;
 }
 
 const DAY_MS = 86_400_000;
@@ -200,6 +206,12 @@ export function buildPipelineRow(
 
   const value = parseBRL(project.value);
 
+  const enteredAt = first
+    ? new Date(first.completed_at)
+    : project.createdAt
+      ? new Date(project.createdAt)
+      : null;
+
   return {
     project,
     value,
@@ -216,8 +228,46 @@ export function buildPipelineRow(
     leadTimeDays,
     lastRecord: lastDone,
     urgency: value * (daysInPhase ?? 0),
+    enteredAt,
   };
 }
+
+// ── Filtros ──────────────────────────────────────────────────────────────────
+
+export const PERIOD_OPTIONS = [
+  { value: "all", label: "Todos os períodos" },
+  { value: "month", label: "Este mês" },
+  { value: "3months", label: "Últimos 3 meses" },
+  { value: "6months", label: "Últimos 6 meses" },
+  { value: "year", label: "Este ano" },
+];
+
+export const getDateThreshold = (period: string): Date | null => {
+  const now = new Date();
+  if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (period === "3months") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 3);
+    return d;
+  }
+  if (period === "6months") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 6);
+    return d;
+  }
+  if (period === "year") return new Date(now.getFullYear(), 0, 1);
+  return null;
+};
+
+/** `projects.type` guarda vários tipos separados por vírgula ("CFTV,Alarme") */
+export const projectTypes = (raw: string | undefined): string[] =>
+  (raw ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+export const toggleArr = <T,>(arr: T[], val: T): T[] =>
+  arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
 export function buildPipelineRows(
   projects: Project[],

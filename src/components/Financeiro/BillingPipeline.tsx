@@ -4,11 +4,13 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Filter,
   Lock,
   Maximize2,
   Minimize2,
   Timer,
   Wallet,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +24,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useProjects } from "@/hooks/useProjects";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { useProjectPhases } from "@/hooks/useProjectPhases";
 import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
 import {
@@ -32,11 +44,17 @@ import {
   BRL_FULL,
   MACROS,
   OWNERS,
+  PERIOD_OPTIONS,
   PHASES,
   TOTAL_PHASES,
   buildPipelineRows,
+  getDateThreshold,
   getMacro,
   getPhase,
+  projectTypes,
+  toggleArr,
+  type MacroKey,
+  type OwnerKey,
   type PipelineRow,
 } from "./billingPhases";
 
@@ -124,6 +142,81 @@ function OwnerTag({ row }: { row: PipelineRow }) {
   );
 }
 
+// ── Peças da barra de filtros ────────────────────────────────────────────────
+
+function FilterSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+        {title}
+      </p>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function FilterCheck({
+  id,
+  label,
+  checked,
+  onToggle,
+  color,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+  color?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <Checkbox id={id} checked={checked} onCheckedChange={onToggle} />
+      {color && (
+        <span
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ backgroundColor: color }}
+        />
+      )}
+      <Label htmlFor={id} className="text-sm font-normal cursor-pointer">
+        {label}
+      </Label>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  onRemove,
+  color,
+}: {
+  label: string;
+  onRemove: () => void;
+  color?: string;
+}) {
+  return (
+    <Badge
+      variant="secondary"
+      onClick={onRemove}
+      className="gap-1 cursor-pointer h-9 px-3 font-normal"
+    >
+      {color && (
+        <span
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ backgroundColor: color }}
+        />
+      )}
+      <span className="truncate max-w-[160px]">{label}</span>
+      <X className="w-3 h-3 flex-shrink-0" />
+    </Badge>
+  );
+}
+
 // ── Mini KPI ─────────────────────────────────────────────────────────────────
 
 function MiniKPI({
@@ -183,12 +276,20 @@ export function BillingPipeline() {
     allowedClientGroupIds,
   );
   const { phases, isLoading: phasesLoading } = useProjectPhases();
+  const { groups } = useClientGroups();
 
   const [tab, setTab] = useState<TabKey>("todos");
-  const [clientFilter, setClientFilter] = useState("all");
   const [projector, setProjector] = useState(false);
   const [visibleCount, setVisibleCount] = useState(ROWS_STEP);
   const [selected, setSelected] = useState<PipelineRow | null>(null);
+
+  // ── Filtros ──
+  const [period, setPeriod] = useState("all");
+  const [clientFilter, setClientFilter] = useState("all");
+  const [filterGroups, setFilterGroups] = useState<string[]>([]);
+  const [filterMacros, setFilterMacros] = useState<MacroKey[]>([]);
+  const [filterOwners, setFilterOwners] = useState<OwnerKey[]>([]);
+  const [filterTypes, setFilterTypes] = useState<string[]>([]);
 
   const isLoading = projectsLoading || phasesLoading;
 
@@ -206,9 +307,102 @@ export function BillingPipeline() {
     [rows],
   );
 
+  const allTypes = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.flatMap((r) => projectTypes(r.project.type))),
+      ).sort(),
+    [rows],
+  );
+
+  /** Só os grupos que o perfil do usuário pode ver */
+  const visibleGroups = useMemo(
+    () =>
+      allowedClientGroupIds === null
+        ? groups
+        : groups.filter((g) => allowedClientGroupIds.includes(g.id)),
+    [groups, allowedClientGroupIds],
+  );
+
+  // Todos os filtros recortam o universo: KPIs, faixa de macro-etapas,
+  // contagens das abas e tabela olham para o MESMO conjunto. A aba é navegação
+  // dentro do recorte, não mais um filtro.
+  const scoped = useMemo(() => {
+    const threshold = getDateThreshold(period);
+    return open.filter((r) => {
+      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
+      if (filterGroups.length) {
+        const g = r.project.clientGroupId ?? "none";
+        if (!filterGroups.includes(g)) return false;
+      }
+      if (filterTypes.length) {
+        const types = projectTypes(r.project.type);
+        if (!types.some((t) => filterTypes.includes(t))) return false;
+      }
+      if (filterMacros.length) {
+        const def = getPhase(r.currentPhase);
+        if (!def || !filterMacros.includes(def.macro)) return false;
+      }
+      if (filterOwners.length) {
+        if (!r.owner || !filterOwners.includes(r.owner)) return false;
+      }
+      return true;
+    });
+  }, [
+    open,
+    period,
+    clientFilter,
+    filterGroups,
+    filterTypes,
+    filterMacros,
+    filterOwners,
+  ]);
+
+  const activeFilterCount =
+    (period !== "all" ? 1 : 0) +
+    (clientFilter !== "all" ? 1 : 0) +
+    filterGroups.length +
+    filterMacros.length +
+    filterOwners.length +
+    filterTypes.length;
+
+  const resetPaging = () => setVisibleCount(ROWS_STEP);
+
+  const clearFilters = () => {
+    setPeriod("all");
+    setClientFilter("all");
+    setFilterGroups([]);
+    setFilterMacros([]);
+    setFilterOwners([]);
+    setFilterTypes([]);
+    resetPaging();
+  };
+
+  // Projetos JÁ faturados sob o mesmo recorte de período/cliente/grupo/tipo —
+  // filtros de fase e dono não se aplicam a quem já terminou as 10 fases.
+  // Sem isso o "prazo pedido → NF" ignoraria os filtros e contradiria os outros KPIs.
+  const scopedFinished = useMemo(() => {
+    const threshold = getDateThreshold(period);
+    return rows.filter((r) => {
+      if (!r.isFinished) return false;
+      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
+      if (filterGroups.length) {
+        const g = r.project.clientGroupId ?? "none";
+        if (!filterGroups.includes(g)) return false;
+      }
+      if (filterTypes.length) {
+        const types = projectTypes(r.project.type);
+        if (!types.some((t) => filterTypes.includes(t))) return false;
+      }
+      return true;
+    });
+  }, [rows, period, clientFilter, filterGroups, filterTypes]);
+
   const metrics = useMemo(() => {
-    const readyToBill = open.filter((r) => r.currentPhase >= 7);
-    const late = open.filter((r) => r.isLate);
+    const readyToBill = scoped.filter((r) => r.currentPhase >= 7);
+    const late = scoped.filter((r) => r.isLate);
     const lateClient = late.filter((r) => r.dependsOnClient);
     const lateOurs = late.filter((r) => !r.dependsOnClient);
 
@@ -220,7 +414,7 @@ export function BillingPipeline() {
     );
 
     // Lead time pedido → NF, entre projetos que já fecharam o ciclo
-    const leads = rows
+    const leads = scopedFinished
       .map((r) => r.leadTimeDays)
       .filter((n): n is number => n !== null);
     const avgLead = leads.length
@@ -229,7 +423,7 @@ export function BillingPipeline() {
 
     // Gargalo: fase com maior valor parado
     const byPhase = new Map<number, { value: number; count: number }>();
-    for (const r of open) {
+    for (const r of scoped) {
       const cur = byPhase.get(r.currentPhase) ?? { value: 0, count: 0 };
       cur.value += r.value;
       cur.count += 1;
@@ -240,7 +434,7 @@ export function BillingPipeline() {
     )[0];
 
     const byMacro = MACROS.map((m) => {
-      const list = open.filter((r) => {
+      const list = scoped.filter((r) => {
         const def = getPhase(r.currentPhase);
         return def?.macro === m.key;
       });
@@ -267,18 +461,15 @@ export function BillingPipeline() {
         ? { phase: bottleneck[0], ...bottleneck[1] }
         : null,
       byMacro,
-      pipelineTotal: sum(open),
-      openCount: open.length,
-      finishedCount: rows.length - open.length,
-      noValueCount: open.filter((r) => !r.hasValue).length,
+      pipelineTotal: sum(scoped),
+      openCount: scoped.length,
+      finishedCount: scopedFinished.length,
+      noValueCount: scoped.filter((r) => !r.hasValue).length,
     };
-  }, [rows, open]);
+  }, [scoped, scopedFinished]);
 
   const filtered = useMemo(() => {
-    let list = open;
-    if (clientFilter !== "all") {
-      list = list.filter((r) => r.project.client === clientFilter);
-    }
+    let list = scoped;
     if (tab === "travados") list = list.filter((r) => r.isLate);
     if (tab === "cliente") list = list.filter((r) => r.dependsOnClient);
     if (tab === "faturar") list = list.filter((r) => r.currentPhase >= 7);
@@ -287,7 +478,7 @@ export function BillingPipeline() {
     return [...list].sort(
       (a, b) => b.urgency - a.urgency || b.value - a.value,
     );
-  }, [open, tab, clientFilter]);
+  }, [scoped, tab]);
 
   const visible = filtered.slice(0, visibleCount);
   const maxMacroValue = Math.max(1, ...metrics.byMacro.map((m) => m.value));
@@ -326,6 +517,219 @@ export function BillingPipeline() {
           )}
           {projector ? "Modo normal" : "Modo projetor"}
         </Button>
+      </div>
+
+      {/* ─── Barra de filtros ─── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Select
+          value={period}
+          onValueChange={(v) => {
+            setPeriod(v);
+            resetPaging();
+          }}
+        >
+          <SelectTrigger className="h-9 w-48 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={clientFilter}
+          onValueChange={(v) => {
+            setClientFilter(v);
+            resetPaging();
+          }}
+        >
+          <SelectTrigger className="h-9 w-56 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os clientes</SelectItem>
+            {clients.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-9 text-sm">
+              <Filter className="w-3.5 h-3.5 mr-1.5" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <Badge className="ml-2 h-5 px-1.5 text-[10px]">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-4" align="start">
+            <ScrollArea className="max-h-[52vh] pr-3 -mr-3">
+              <FilterSection title="Grupo de clientes">
+                {visibleGroups.map((g) => (
+                  <FilterCheck
+                    key={g.id}
+                    id={`grp-${g.id}`}
+                    label={g.name}
+                    checked={filterGroups.includes(g.id)}
+                    onToggle={() => {
+                      setFilterGroups((p) => toggleArr(p, g.id));
+                      resetPaging();
+                    }}
+                  />
+                ))}
+                <FilterCheck
+                  id="grp-none"
+                  label="Sem grupo"
+                  checked={filterGroups.includes("none")}
+                  onToggle={() => {
+                    setFilterGroups((p) => toggleArr(p, "none"));
+                    resetPaging();
+                  }}
+                />
+              </FilterSection>
+
+              <Separator className="my-3" />
+
+              <FilterSection title="Macro-etapa">
+                {MACROS.map((m) => (
+                  <FilterCheck
+                    key={m.key}
+                    id={`macro-${m.key}`}
+                    label={`${m.label} (${m.phases[0]}–${m.phases[m.phases.length - 1]})`}
+                    color={m.color}
+                    checked={filterMacros.includes(m.key)}
+                    onToggle={() => {
+                      setFilterMacros((p) => toggleArr(p, m.key));
+                      resetPaging();
+                    }}
+                  />
+                ))}
+              </FilterSection>
+
+              <Separator className="my-3" />
+
+              <FilterSection title="Setor responsável">
+                {(Object.keys(OWNERS) as OwnerKey[]).map((o) => (
+                  <FilterCheck
+                    key={o}
+                    id={`own-${o}`}
+                    label={`${OWNERS[o]} (${o})`}
+                    checked={filterOwners.includes(o)}
+                    onToggle={() => {
+                      setFilterOwners((p) => toggleArr(p, o));
+                      resetPaging();
+                    }}
+                  />
+                ))}
+              </FilterSection>
+
+              {allTypes.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <FilterSection title="Tipo de projeto">
+                    {allTypes.map((t) => (
+                      <FilterCheck
+                        key={t}
+                        id={`type-${t}`}
+                        label={t}
+                        checked={filterTypes.includes(t)}
+                        onToggle={() => {
+                          setFilterTypes((p) => toggleArr(p, t));
+                          resetPaging();
+                        }}
+                      />
+                    ))}
+                  </FilterSection>
+                </>
+              )}
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Chips dos filtros ativos — clicar remove */}
+        {period !== "all" && (
+          <FilterChip
+            label={PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period}
+            onRemove={() => {
+              setPeriod("all");
+              resetPaging();
+            }}
+          />
+        )}
+        {clientFilter !== "all" && (
+          <FilterChip
+            label={clientFilter}
+            onRemove={() => {
+              setClientFilter("all");
+              resetPaging();
+            }}
+          />
+        )}
+        {filterGroups.map((id) => (
+          <FilterChip
+            key={id}
+            label={
+              id === "none"
+                ? "Sem grupo"
+                : (visibleGroups.find((g) => g.id === id)?.name ?? id)
+            }
+            onRemove={() => {
+              setFilterGroups((p) => p.filter((x) => x !== id));
+              resetPaging();
+            }}
+          />
+        ))}
+        {filterMacros.map((k) => (
+          <FilterChip
+            key={k}
+            label={getMacro(k).label}
+            color={getMacro(k).color}
+            onRemove={() => {
+              setFilterMacros((p) => p.filter((x) => x !== k));
+              resetPaging();
+            }}
+          />
+        ))}
+        {filterOwners.map((o) => (
+          <FilterChip
+            key={o}
+            label={OWNERS[o]}
+            onRemove={() => {
+              setFilterOwners((p) => p.filter((x) => x !== o));
+              resetPaging();
+            }}
+          />
+        ))}
+        {filterTypes.map((t) => (
+          <FilterChip
+            key={t}
+            label={t}
+            onRemove={() => {
+              setFilterTypes((p) => p.filter((x) => x !== t));
+              resetPaging();
+            }}
+          />
+        ))}
+        {activeFilterCount > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-9 text-xs text-muted-foreground"
+          >
+            Limpar filtros
+          </Button>
+        )}
       </div>
 
       {/* ─── KPIs de faturamento de projetos ─── */}
@@ -457,13 +861,13 @@ export function BillingPipeline() {
             )}
           </p>
 
-          {/* ─── Abas + filtro ─── */}
-          <div className="flex items-center justify-between gap-3 flex-wrap mt-4">
+          {/* ─── Abas ─── */}
+          <div className="mt-4">
             <Tabs
               value={tab}
               onValueChange={(v) => {
                 setTab(v as TabKey);
-                setVisibleCount(ROWS_STEP);
+                resetPaging();
               }}
             >
               <TabsList className="h-9">
@@ -481,26 +885,6 @@ export function BillingPipeline() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-
-            <Select
-              value={clientFilter}
-              onValueChange={(v) => {
-                setClientFilter(v);
-                setVisibleCount(ROWS_STEP);
-              }}
-            >
-              <SelectTrigger className="h-9 w-52 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os clientes</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* ─── Matriz ─── */}
