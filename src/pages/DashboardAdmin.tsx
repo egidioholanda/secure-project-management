@@ -12,12 +12,12 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   DollarSign, TrendingUp, FileText, AlertTriangle,
-  Calendar, Users, Wrench,
+  Calendar,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAdminContracts, useAdminOrders, type AdminContract } from '@/hooks/useAdminDashboard';
+import { useAdminContracts, type AdminContract } from '@/hooks/useAdminDashboard';
 
 // ─── Utilitários ───────────────────────────────────────────
 
@@ -33,10 +33,6 @@ const BRL = new Intl.NumberFormat('pt-BR', {
   style: 'currency', currency: 'BRL',
   minimumFractionDigits: 0, maximumFractionDigits: 0,
 });
-
-const isScheduled  = (s: string) => ['scheduled', 'agendada'].includes(s);
-const isInProgress = (s: string) => ['in_progress', 'em_andamento'].includes(s);
-const isCompleted  = (s: string) => ['completed', 'concluida', 'concluída'].includes(s);
 
 // ─── Tooltips customizados ────────────────────────────────
 
@@ -145,10 +141,7 @@ function DashboardSkeleton() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Skeleton className="h-72 rounded-xl col-span-2" />
-        <Skeleton className="h-72 rounded-xl" />
-      </div>
+      <Skeleton className="h-72 rounded-xl" />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
       </div>
@@ -168,9 +161,8 @@ function DashboardSkeleton() {
 export default function DashboardAdmin() {
   const { isLoading: authLoading } = useAuthContext();
   const { data: contracts = [], isLoading: contractsLoading } = useAdminContracts();
-  const { data: orders = [],   isLoading: ordersLoading   } = useAdminOrders();
 
-  const isLoading = authLoading || contractsLoading || ordersLoading;
+  const isLoading = authLoading || contractsLoading;
 
   // ─── Métricas computadas ─────────────────────────────────
 
@@ -273,17 +265,6 @@ export default function DashboardAdmin() {
       .sort((a, b) => b.mrr - a.mrr)
       .slice(0, 5);
 
-    // OS stats
-    const osScheduled  = orders.filter(o => isScheduled(o.status)).length;
-    const osInProgress = orders.filter(o => isInProgress(o.status)).length;
-    const osCompleted  = orders.filter(o => isCompleted(o.status) && new Date(o.created_at) >= monthStart).length;
-    const osTotal      = orders.length;
-
-    const osByType = [
-      { name: 'Preventivas', value: orders.filter(o => o.type === 'preventive' || o.type === 'preventiva').length, color: '#3b82f6' },
-      { name: 'Corretivas',  value: orders.filter(o => o.type === 'corrective' || o.type === 'corretiva').length,  color: '#f97316' },
-    ].filter(d => d.value > 0);
-
     return {
       mrr, arr, avgTicket,
       activeCount: active.length,
@@ -291,9 +272,8 @@ export default function DashboardAdmin() {
       mrrEvolution, byStatus, revenueByType, byPeriodicity,
       expiring30, expiring60, expiring90,
       forecast, top5,
-      osScheduled, osInProgress, osCompleted, osTotal, osByType,
     };
-  }, [contracts, orders]);
+  }, [contracts]);
 
   // ─── Guards ──────────────────────────────────────────────
   // Acesso à rota já é controlado pelo ProtectedRoute com base nas
@@ -361,84 +341,43 @@ export default function DashboardAdmin() {
         />
       </div>
 
-      {/* ─── MRR Evolution + OS Overview ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* MRR Evolution */}
-        <Card className="border border-border lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Evolução do MRR — últimos 12 meses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={metrics.mrrEvolution} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false} tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => BRL.format(v)}
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false} tickLine={false} width={80}
-                />
-                <Tooltip content={<CurrencyTooltip />} />
-                <Area
-                  type="monotone" dataKey="mrr" name="MRR"
-                  stroke="#10b981" strokeWidth={2}
-                  fill="url(#mrrGrad)"
-                  dot={{ fill: '#10b981', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* OS Overview */}
-        <Card className="border border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Ordens de Serviço</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Agendadas',     value: metrics.osScheduled,  color: 'text-blue-600',  bg: 'bg-blue-50 dark:bg-blue-900/20' },
-                { label: 'Em Andamento',  value: metrics.osInProgress, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-                { label: 'Concluídas/mês',value: metrics.osCompleted,  color: 'text-emerald-600',bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-                { label: 'Total',         value: metrics.osTotal,      color: 'text-foreground', bg: 'bg-muted/50' },
-              ].map((s) => (
-                <div key={s.label} className={`${s.bg} rounded-lg p-3 text-center`}>
-                  <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-xs text-muted-foreground leading-tight mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {metrics.osByType.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-1">Por tipo</p>
-                <ResponsiveContainer width="100%" height={100}>
-                  <PieChart>
-                    <Pie data={metrics.osByType} cx="50%" cy="50%" innerRadius={28} outerRadius={44} paddingAngle={4} dataKey="value" strokeWidth={0}>
-                      {metrics.osByType.map((d, i) => <Cell key={i} fill={d.color} />)}
-                    </Pie>
-                    <Tooltip content={<CountTooltip />} />
-                    <Legend iconType="circle" iconSize={7} formatter={(v) => <span className="text-xs text-foreground">{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* ─── MRR Evolution ─── */}
+      <Card className="border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">Evolução do MRR — últimos 12 meses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={metrics.mrrEvolution} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
+              <defs>
+                <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false} tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => BRL.format(v)}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false} tickLine={false} width={80}
+              />
+              <Tooltip content={<CurrencyTooltip />} />
+              <Area
+                type="monotone" dataKey="mrr" name="MRR"
+                stroke="#10b981" strokeWidth={2}
+                fill="url(#mrrGrad)"
+                dot={{ fill: '#10b981', r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* ─── Distribution charts ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

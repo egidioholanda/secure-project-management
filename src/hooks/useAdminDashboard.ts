@@ -16,15 +16,6 @@ export interface AdminContract {
   clients: { id: string; name: string } | null;
 }
 
-export interface AdminOrder {
-  id: string;
-  type: string;
-  status: string;
-  scheduled_date: string | null;
-  completed_date: string | null;
-  created_at: string;
-}
-
 export function useAdminContracts() {
   return useQuery({
     queryKey: ['admin-dashboard-contracts'],
@@ -34,19 +25,6 @@ export function useAdminContracts() {
         .select('*, clients(id, name)');
       if (error) throw error;
       return (data ?? []) as AdminContract[];
-    },
-  });
-}
-
-export function useAdminOrders() {
-  return useQuery({
-    queryKey: ['admin-dashboard-orders'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('maintenance_orders')
-        .select('id, type, status, scheduled_date, completed_date, created_at');
-      if (error) throw error;
-      return (data ?? []) as AdminOrder[];
     },
   });
 }
