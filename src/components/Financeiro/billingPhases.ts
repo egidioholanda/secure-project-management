@@ -138,16 +138,6 @@ export interface PipelineRow {
 
 const DAY_MS = 86_400_000;
 
-const parseDisplayDate = (s: string | undefined): Date | null => {
-  if (!s) return null;
-  const parts = s.split("/");
-  if (parts.length !== 3) return null;
-  const [d, m, y] = parts.map(Number);
-  if (!d || !m || !y) return null;
-  const date = new Date(y, m - 1, d);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
 export function buildPipelineRow(
   project: Project,
   records: ProjectPhaseRecord[],
@@ -168,7 +158,6 @@ export function buildPipelineRow(
   const notStarted = donePhases.length === 0;
   const def = isFinished ? null : getPhase(currentPhase)!;
 
-  // Base para "dias parado": a última fase concluída, ou o início do projeto
   const lastDone = donePhases.length
     ? records.reduce<ProjectPhaseRecord | null>(
         (acc, r) =>
@@ -177,14 +166,19 @@ export function buildPipelineRow(
       )
     : null;
 
-  const base = lastDone
-    ? new Date(lastDone.completed_at)
-    : parseDisplayDate(project.startDate);
-
+  // "Dias parado" é medido a partir da última fase concluída — de propósito.
+  // Usar a data de início do projeto como base faria todo projeto legado (sem
+  // nenhuma fase marcada) nascer "atrasado há centenas de dias" e inundaria a
+  // aba Travados de ruído. Sem marcação não há medição: mostra-se `notStarted`.
   const daysInPhase =
-    isFinished || !base
+    isFinished || !lastDone
       ? null
-      : Math.max(0, Math.floor((today.getTime() - base.getTime()) / DAY_MS));
+      : Math.max(
+          0,
+          Math.floor(
+            (today.getTime() - new Date(lastDone.completed_at).getTime()) / DAY_MS,
+          ),
+        );
 
   const sla = def?.slaDays ?? 0;
   const isLate = daysInPhase !== null && sla > 0 && daysInPhase > sla;
