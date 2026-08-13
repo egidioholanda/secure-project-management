@@ -250,6 +250,8 @@ export interface TrackRow {
   hasValue: boolean;
   /** esta trilha já virou nota fiscal */
   billed: boolean;
+  /** quando virou nota — base do acompanhamento pós-faturamento */
+  billedAt: Date | null;
   /** o que ainda não foi faturado nesta trilha — o dinheiro em risco */
   pendingValue: number;
   donePhases: number[];
@@ -334,7 +336,9 @@ export function buildTrackRow(
       : null;
 
   const value = trackValue(project, track);
-  const billed = byPhase.has(def.billingPhase);
+  const billingRecord = byPhase.get(def.billingPhase) ?? null;
+  const billed = !!billingRecord;
+  const billedAt = billingRecord ? new Date(billingRecord.completed_at) : null;
   const pendingValue = billed ? 0 : value;
 
   const enteredAt = first
@@ -349,6 +353,7 @@ export function buildTrackRow(
     value,
     hasValue: value > 0,
     billed,
+    billedAt,
     pendingValue,
     donePhases,
     currentPhase,

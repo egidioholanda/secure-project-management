@@ -460,6 +460,18 @@ export function BillingPipeline() {
       0,
     );
 
+    // Faturado precisa olhar TAMBÉM as trilhas encerradas: elas saem de
+    // `scoped` (que só tem pipeline aberto) mas o dinheiro delas entrou.
+    const billedRows = [
+      ...scoped.filter((r) => r.billed),
+      ...scopedFinished,
+    ];
+    const billedValue = billedRows.reduce((s, r) => s + r.value, 0);
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const billedThisMonth = billedRows.filter(
+      (r) => r.billedAt && r.billedAt >= monthStart,
+    );
+
     // Lead time pedido → NF, entre projetos que já fecharam o ciclo
     const leads = scopedFinished
       .map((r) => r.leadTimeDays)
@@ -510,7 +522,10 @@ export function BillingPipeline() {
       byMacro,
       pipelineTotal: sum(scoped),
       contractedTotal: sumTotal(scoped),
-      billedTotal: scoped.reduce((s, r) => s + (r.billed ? r.value : 0), 0),
+      billedTotal: billedValue,
+      billedCount: billedRows.length,
+      billedMonthValue: billedThisMonth.reduce((s, r) => s + r.value, 0),
+      billedMonthCount: billedThisMonth.length,
       openCount: scoped.length,
       finishedCount: scopedFinished.length,
       noValueCount: scoped.filter((r) => !r.hasValue).length,
@@ -819,7 +834,7 @@ export function BillingPipeline() {
       </Tabs>
 
       {/* ─── KPIs de faturamento de projetos ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <MiniKPI
           label="Pronto para faturar"
           value={BRL_COMPACT(metrics.readyToBillValue)}
@@ -861,6 +876,30 @@ export function BillingPipeline() {
           }
           icon={Timer}
           iconColor="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          big={projector}
+        />
+        <MiniKPI
+          label={`Faturado · ${trackDef.label.toLowerCase()}`}
+          value={BRL_COMPACT(metrics.billedTotal)}
+          sub={
+            metrics.billedCount > 0 ? (
+              <>
+                {metrics.billedCount} nota{metrics.billedCount !== 1 ? "s" : ""}
+                {metrics.billedMonthCount > 0 && (
+                  <>
+                    {" · "}
+                    <span className="text-emerald-500">
+                      {BRL_COMPACT(metrics.billedMonthValue)} no mês
+                    </span>
+                  </>
+                )}
+              </>
+            ) : (
+              "Nenhuma nota emitida ainda"
+            )
+          }
+          icon={CheckCircle2}
+          iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
           big={projector}
         />
         <MiniKPI
