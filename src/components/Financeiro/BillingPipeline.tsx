@@ -440,9 +440,12 @@ export function BillingPipeline() {
   }, [rows, period, clientFilter, filterGroups, filterTypes]);
 
   const metrics = useMemo(() => {
-    // Fase 7+ = obra aceita, aguardando a NF de serviço. O que falta faturar
-    // aqui é o serviço — o material saiu na fase 5.
-    const readyToBill = scoped.filter((r) => r.currentPhase >= readyPhase);
+    // Chegou na fase que fatura e ainda não faturou. O `!billed` é essencial:
+    // no produto a nota sai na fase 5 e ainda restam duas fases depois, então
+    // sem ele o KPI contaria como "a faturar" o que já virou nota.
+    const readyToBill = scoped.filter(
+      (r) => !r.billed && r.currentPhase >= readyPhase,
+    );
     const late = scoped.filter((r) => r.isLate);
     const lateClient = late.filter((r) => r.dependsOnClient);
     const lateOurs = late.filter((r) => !r.dependsOnClient);
@@ -518,7 +521,8 @@ export function BillingPipeline() {
     let list = scoped;
     if (tab === "travados") list = list.filter((r) => r.isLate);
     if (tab === "cliente") list = list.filter((r) => r.dependsOnClient);
-    if (tab === "faturar") list = list.filter((r) => r.currentPhase >= readyPhase);
+    if (tab === "faturar")
+      list = list.filter((r) => !r.billed && r.currentPhase >= readyPhase);
 
     // Ordena por urgência financeira (R$ × dias parados); empate cai no valor
     return [...list].sort(
