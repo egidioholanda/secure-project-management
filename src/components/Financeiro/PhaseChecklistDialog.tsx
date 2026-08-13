@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -222,8 +221,11 @@ export function PhaseChecklistDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      {/* DialogContent é `grid` sem altura máxima: com 8 fases o conteúdo
+          crescia para fora da viewport e não havia o que rolar. Vira uma
+          coluna flex limitada, com só a lista de fases rolando. */}
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh] gap-0">
+        <DialogHeader className="flex-shrink-0 pb-3">
           <DialogTitle className="pr-6">
             <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {project.client || "Sem cliente"}
@@ -234,8 +236,12 @@ export function PhaseChecklistDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TrackKey)}>
-          <TabsList className="w-full">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as TrackKey)}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <TabsList className="w-full flex-shrink-0">
             {TRACK_LIST.map((t) => (
               <TabsTrigger key={t.key} value={t.key} className="flex-1 gap-1.5">
                 {t.key === "produto" ? (
@@ -251,16 +257,17 @@ export function PhaseChecklistDialog({
             ))}
           </TabsList>
 
-          <ScrollArea className="max-h-[58vh] pr-3 -mr-3 mt-3">
+          {/* min-h-0 é o que permite este filho encolher e o overflow valer */}
+          <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
             {TRACK_LIST.map((t) => (
               <TabsContent key={t.key} value={t.key} className="mt-0">
                 <TrackChecklist project={project} track={t.key} />
               </TabsContent>
             ))}
-          </ScrollArea>
+          </div>
         </Tabs>
 
-        <p className="text-xs text-muted-foreground border-t border-border pt-3">
+        <p className="text-xs text-muted-foreground border-t border-border pt-3 mt-3 flex-shrink-0">
           As duas trilhas são independentes: o pedido de produto e o de serviço
           são enviados e faturados em momentos diferentes. Marcar uma fase
           conclui as anteriores em branco da mesma trilha.

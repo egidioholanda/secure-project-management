@@ -33,7 +33,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useProjects } from "@/hooks/useProjects";
@@ -626,7 +625,7 @@ export function BillingPipeline() {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-4" align="start">
-            <ScrollArea className="max-h-[52vh] pr-3 -mr-3">
+            <div className="max-h-[52vh] overflow-y-auto pr-1">
               <FilterSection title="Grupo de clientes">
                 {visibleGroups.map((g) => (
                   <FilterCheck
@@ -705,7 +704,7 @@ export function BillingPipeline() {
                   </FilterSection>
                 </>
               )}
-            </ScrollArea>
+            </div>
           </PopoverContent>
         </Popover>
 
