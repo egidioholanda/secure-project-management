@@ -82,9 +82,14 @@ const PRODUCT_PHASES: PhaseDef[] = [
     description: "Material comprado junto ao fornecedor" },
   { n: 4, label: "Material em estoque", short: "Estoque", owner: "EST", macro: "material", slaDays: 2,
     description: "Material chegou no estoque" },
-  { n: 5, label: "Entregue + NF", short: "NF Produto", owner: "EST", macro: "faturamento", slaDays: 3,
-    description: "Material faturado e entregue à equipe de instalação",
-    noteLabel: "Número da nota fiscal de produto" },
+  { n: 5, label: "Material entregue", short: "Entregue", owner: "EST", macro: "material", slaDays: 3,
+    description: "Material faturado e entregue à equipe de instalação" },
+  { n: 6, label: "Nº de conformidade", short: "Conform.", owner: "CLI", macro: "faturamento", slaDays: 10,
+    description: "Setor de compras do cliente enviou o número de conformidade",
+    noteLabel: "Número de conformidade" },
+  { n: 7, label: "NF no portal", short: "NF Produto", owner: "ADM", macro: "faturamento", slaDays: 2,
+    description: "Nota fiscal de produto emitida e anexada no portal do cliente",
+    noteLabel: "Número da nota fiscal" },
 ];
 
 // ── Trilha SERVIÇO ───────────────────────────────────────────────────────────
@@ -103,9 +108,11 @@ const SERVICE_PHASES: PhaseDef[] = [
   { n: 6, label: "Nº de conformidade", short: "Conform.", owner: "CLI", macro: "faturamento", slaDays: 10,
     description: "Setor de compras do cliente enviou o número de conformidade",
     noteLabel: "Número de conformidade" },
-  { n: 7, label: "NF no portal", short: "NF Serviço", owner: "ADM", macro: "faturamento", slaDays: 2,
-    description: "Nota fiscal de serviço emitida e anexada no portal do cliente",
-    noteLabel: "Número da nota fiscal de serviço" },
+  { n: 7, label: "NF faturada", short: "NF emitida", owner: "ADM", macro: "faturamento", slaDays: 2,
+    description: "Nota fiscal de serviço emitida",
+    noteLabel: "Número da nota fiscal" },
+  { n: 8, label: "NF no portal", short: "No portal", owner: "ADM", macro: "faturamento", slaDays: 2,
+    description: "Nota fiscal anexada no portal do cliente" },
 ];
 
 export const TRACKS: Record<TrackKey, TrackDef> = {
@@ -115,7 +122,8 @@ export const TRACKS: Record<TrackKey, TrackDef> = {
     what: "equipamentos",
     color: "#8b5cf6",
     phases: PRODUCT_PHASES,
-    billingPhase: 5,
+    // o dinheiro do produto entra quando a NF é emitida e anexada
+    billingPhase: 7,
     macros: ["pedido", "material", "faturamento"],
   },
   servico: {
@@ -124,6 +132,8 @@ export const TRACKS: Record<TrackKey, TrackDef> = {
     what: "instalação",
     color: "#3b82f6",
     phases: SERVICE_PHASES,
+    // fatura na emissão da nota (7); anexar no portal (8) é o encerramento,
+    // e um projeto parado ali já teve o dinheiro reconhecido
     billingPhase: 7,
     macros: ["pedido", "obra", "faturamento"],
   },
