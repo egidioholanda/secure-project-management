@@ -247,6 +247,8 @@ function MiniKPI({
   icon: Icon,
   iconColor,
   big,
+  hint,
+  textValue,
 }: {
   label: string;
   value: string;
@@ -254,9 +256,13 @@ function MiniKPI({
   icon: React.ElementType;
   iconColor: string;
   big: boolean;
+  /** explicação no hover, para KPIs cujo nome não se explica sozinho */
+  hint?: string;
+  /** valor é texto (nome de fase), não número: precisa caber e quebrar */
+  textValue?: boolean;
 }) {
   return (
-    <Card className="border border-border">
+    <Card className="border border-border" title={hint}>
       <CardContent className={cn("p-4", big && "p-5")}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -265,8 +271,10 @@ function MiniKPI({
             </p>
             <p
               className={cn(
-                "font-bold text-foreground mt-1 leading-none tabular-nums",
-                big ? "text-2xl" : "text-xl",
+                "font-bold text-foreground mt-1 leading-tight",
+                textValue
+                  ? big ? "text-lg" : "text-base"
+                  : cn("tabular-nums leading-none", big ? "text-2xl" : "text-xl"),
               )}
             >
               {value}
@@ -903,16 +911,18 @@ export function BillingPipeline() {
           big={projector}
         />
         <MiniKPI
-          label="Gargalo"
+          label="Maior gargalo"
+          hint="Fase que está segurando mais dinheiro nesta trilha"
+          textValue
           value={
             metrics.bottleneck
-              ? `${metrics.bottleneck.phase} ${getPhase(track, metrics.bottleneck.phase)?.short ?? ""}`
+              ? (getPhase(track, metrics.bottleneck.phase)?.label ?? "—")
               : "—"
           }
           sub={
             metrics.bottleneck
-              ? `${BRL_COMPACT(metrics.bottleneck.value)} · ${metrics.bottleneck.count} projeto${metrics.bottleneck.count !== 1 ? "s" : ""}`
-              : "Pipeline vazio"
+              ? `fase ${metrics.bottleneck.phase} · ${BRL_COMPACT(metrics.bottleneck.value)} parados · ${metrics.bottleneck.count} projeto${metrics.bottleneck.count !== 1 ? "s" : ""}`
+              : "Nada parado nesta trilha"
           }
           icon={Clock}
           iconColor="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
