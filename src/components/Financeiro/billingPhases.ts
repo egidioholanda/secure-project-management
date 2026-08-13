@@ -57,6 +57,11 @@ export interface PhaseDef {
   macro: MacroKey;
   slaDays: number;
   noteLabel?: string;
+  /**
+   * Fase que pode acontecer fora da ordem. Marcá-la NÃO conclui as anteriores
+   * — mas ela é concluída junto quando uma fase posterior é marcada.
+   */
+  outOfOrder?: boolean;
 }
 
 export interface TrackDef {
@@ -99,8 +104,11 @@ const SERVICE_PHASES: PhaseDef[] = [
     description: "Pedido de serviço recebido do cliente" },
   { n: 2, label: "Pedido fechado", short: "Fechado", owner: "COM", macro: "pedido", slaDays: 3,
     description: "Pedido de serviço fechado dentro do nosso sistema" },
+  // Na prática a instalação costuma começar antes de o pedido chegar — não é
+  // regra, mas é comum. Marcar a obra não pode inventar um pedido que não
+  // existe, então esta fase corre solta.
   { n: 3, label: "Obra em execução", short: "Obra", owner: "OBR", macro: "obra", slaDays: 30,
-    description: "Obra em andamento no cliente" },
+    description: "Obra em andamento no cliente", outOfOrder: true },
   { n: 4, label: "Termo de aceite", short: "Aceite", owner: "CLI", macro: "obra", slaDays: 7,
     description: "Obra finalizada e termo de aceite assinado pelo cliente" },
   { n: 5, label: "Aval do gestor", short: "Aval OK", owner: "GES", macro: "faturamento", slaDays: 3,
@@ -144,6 +152,47 @@ export const TRACK_LIST: TrackDef[] = [TRACKS.produto, TRACKS.servico];
 export const getTrack = (k: TrackKey) => TRACKS[k];
 export const getPhase = (track: TrackKey, n: number) =>
   TRACKS[track].phases.find((p) => p.n === n);
+
+/**
+ * Quais fases gravar ao concluir `target`.
+ *
+ * O checklist é sequencial, então marcar a fase 5 conclui as anteriores que
+ * ficaram em branco — não faz sentido ter buraco no meio da trilha. A exceção
+ * são as fases `outOfOrder`: marcá-las registra só elas, porque acontecerem
+ * antes é justamente o ponto.
+ */
+export function phasesToComplete(
+  track: TrackKey,
+  target: number,
+  done: number[],
+): number[] {
+  const def = TRACKS[track];
+  const t = def.phases.find((p) => p.n === target);
+  if (!t || done.includes(target)) return [];
+  if (t.outOfOrder) return [target];
+  return def.phases
+    .filter((p) => p.n <= target && !done.includes(p.n))
+    .map((p) => p.n);
+}
+
+/**
+ * Quais fases remover ao reabrir `target`.
+ *
+ * As posteriores caem junto (sem obra não há aceite), mas uma fase
+ * `outOfOrder` sobrevive: ela não dependia desta para ter acontecido.
+ */
+export function phasesToReopen(
+  track: TrackKey,
+  target: number,
+  done: number[],
+): number[] {
+  const def = TRACKS[track];
+  return done.filter((n) => {
+    if (n < target) return false;
+    if (n === target) return true;
+    return !def.phases.find((p) => p.n === n)?.outOfOrder;
+  });
+}
 
 /** macro-etapas de uma trilha, com as fases que caem em cada uma */
 export const trackMacros = (track: TrackKey) =>

@@ -21,6 +21,8 @@ import {
   OWNERS,
   TRACKS,
   TRACK_LIST,
+  phasesToComplete,
+  phasesToReopen,
   trackValue,
   type TrackKey,
   type TrackRow,
@@ -52,17 +54,21 @@ function TrackChecklist({
 
   const handleToggle = (n: number, done: boolean) => {
     if (done) {
-      reopenPhase.mutate({ projectId: project.id, track, phase: n });
+      reopenPhase.mutate({
+        projectId: project.id,
+        track,
+        phases: phasesToReopen(track, n, donePhases),
+      });
       return;
     }
     completePhase.mutate({
       projectId: project.id,
       track,
       phase: n,
+      phases: phasesToComplete(track, n, donePhases),
       note: noteDraft[n],
       userId: user?.id ?? null,
       userName: profile?.full_name ?? profile?.email ?? null,
-      alreadyDone: donePhases,
     });
     setNoteDraft((prev) => ({ ...prev, [n]: "" }));
   };
@@ -133,6 +139,15 @@ function TrackChecklist({
                     )}
                     {isCurrent && (
                       <Badge className="text-[10px] h-5 px-1.5">fase atual</Badge>
+                    )}
+                    {phase.outOfOrder && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-5 px-1.5 border-dashed"
+                        title="Pode ser marcada antes das fases anteriores"
+                      >
+                        fora de ordem
+                      </Badge>
                     )}
                   </div>
 
@@ -270,7 +285,9 @@ export function PhaseChecklistDialog({
         <p className="text-xs text-muted-foreground border-t border-border pt-3 mt-3 flex-shrink-0">
           As duas trilhas são independentes: o pedido de produto e o de serviço
           são enviados e faturados em momentos diferentes. Marcar uma fase
-          conclui as anteriores em branco da mesma trilha.
+          conclui as anteriores em branco da mesma trilha — exceto as marcadas
+          como "fora de ordem", que podem acontecer antes e são registradas
+          sozinhas.
         </p>
       </DialogContent>
     </Dialog>

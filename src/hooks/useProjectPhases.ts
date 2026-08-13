@@ -33,33 +33,31 @@ export function useProjectPhases() {
     },
   });
 
-  // Concluir uma fase também conclui as anteriores que ficaram em branco —
-  // um checklist sequencial não pode ter buracos no meio da trilha.
+  // Quais fases entram fica com o modelo (phasesToComplete): a regra depende
+  // de cada trilha — na de serviço a obra pode ter começado antes do pedido.
   const completePhase = useMutation({
     mutationFn: async ({
       projectId,
       track,
       phase,
+      phases: toInsert,
       note,
       userId,
       userName,
-      alreadyDone,
     }: {
       projectId: string;
       track: PhaseTrack;
+      /** a fase que o usuário marcou — é dela que a observação é */
       phase: number;
+      /** todas as fases a gravar, já resolvidas pelo modelo */
+      phases: number[];
       note?: string | null;
       userId: string | null;
       userName: string | null;
-      alreadyDone: number[];
     }) => {
-      const missing = [];
-      for (let p = 1; p <= phase; p++) {
-        if (!alreadyDone.includes(p)) missing.push(p);
-      }
-      if (missing.length === 0) return;
+      if (toInsert.length === 0) return;
 
-      const rows = missing.map((p) => ({
+      const rows = toInsert.map((p) => ({
         project_id: projectId,
         track,
         phase: p,
@@ -86,14 +84,15 @@ export function useProjectPhases() {
   // Reabrir uma fase remove ela e todas as posteriores, pelo mesmo motivo.
   const reopenPhase = useMutation({
     mutationFn: async ({
-      projectId, track, phase,
-    }: { projectId: string; track: PhaseTrack; phase: number }) => {
+      projectId, track, phases: toRemove,
+    }: { projectId: string; track: PhaseTrack; phases: number[] }) => {
+      if (toRemove.length === 0) return;
       const { error } = await (supabase as any)
         .from("project_phases")
         .delete()
         .eq("project_id", projectId)
         .eq("track", track)
-        .gte("phase", phase);
+        .in("phase", toRemove);
       if (error) throw error;
     },
     onSuccess: () => {
