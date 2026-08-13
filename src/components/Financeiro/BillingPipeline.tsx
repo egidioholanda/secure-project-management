@@ -361,6 +361,57 @@ export function BillingPipeline() {
     [groups, allowedClientGroupIds],
   );
 
+  /**
+   * Faturado é o único KPI que soma as DUAS trilhas: o resultado da empresa não
+   * é por aba, e produto e serviço do mesmo projeto viram dinheiro em momentos
+   * diferentes. Respeita os filtros de escopo (período, cliente, grupo, tipo),
+   * mas não os de fase e dono, que só existem dentro de uma trilha.
+   *
+   * Conta PROJETOS, não notas: um pedido pode ser faturado em várias notas
+   * pequenas, então contar notas dá um número que não significa nada.
+   */
+  const billedSummary = useMemo(() => {
+    const threshold = getDateThreshold(period);
+    const inScope = (r: TrackRow) => {
+      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
+      if (filterGroups.length) {
+        const g = r.project.clientGroupId ?? "none";
+        if (!filterGroups.includes(g)) return false;
+      }
+      if (filterTypes.length) {
+        const types = projectTypes(r.project.type);
+        if (!types.some((t) => filterTypes.includes(t))) return false;
+      }
+      return true;
+    };
+
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const projectIds = new Set<string>();
+    const byTrack: Record<string, number> = { produto: 0, servico: 0 };
+    let monthValue = 0;
+
+    for (const t of TRACK_LIST) {
+      // sem recorte de isFinished: trilhas encerradas também faturaram
+      const billed = buildTrackRows(projects, phases, t.key).filter(
+        (r) => r.billed && r.hasValue && inScope(r),
+      );
+      byTrack[t.key] = billed.reduce((sum, r) => sum + r.value, 0);
+      billed.forEach((r) => projectIds.add(r.project.id));
+      monthValue += billed
+        .filter((r) => r.billedAt && r.billedAt >= monthStart)
+        .reduce((sum, r) => sum + r.value, 0);
+    }
+
+    return {
+      produto: byTrack.produto,
+      servico: byTrack.servico,
+      total: byTrack.produto + byTrack.servico,
+      projectCount: projectIds.size,
+      monthValue,
+    };
+  }, [projects, phases, period, clientFilter, filterGroups, filterTypes]);
+
   // Todos os filtros recortam o universo: KPIs, faixa de macro-etapas,
   // contagens das abas e tabela olham para o MESMO conjunto. A aba é navegação
   // dentro do recorte, não mais um filtro.
@@ -475,10 +526,6 @@ export function BillingPipeline() {
       ...scopedFinished,
     ];
     const billedValue = billedRows.reduce((s, r) => s + r.value, 0);
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const billedThisMonth = billedRows.filter(
-      (r) => r.billedAt && r.billedAt >= monthStart,
-    );
 
     // Lead time pedido → NF, entre projetos que já fecharam o ciclo
     const leads = scopedFinished
@@ -531,9 +578,6 @@ export function BillingPipeline() {
       pipelineTotal: sum(scoped),
       contractedTotal: sumTotal(scoped),
       billedTotal: billedValue,
-      billedCount: billedRows.length,
-      billedMonthValue: billedThisMonth.reduce((s, r) => s + r.value, 0),
-      billedMonthCount: billedThisMonth.length,
       openCount: scoped.length,
       finishedCount: scopedFinished.length,
       noValueCount: scoped.filter((r) => !r.hasValue).length,
@@ -887,23 +931,33 @@ export function BillingPipeline() {
           big={projector}
         />
         <MiniKPI
-          label={`Faturado · ${trackDef.label.toLowerCase()}`}
-          value={BRL_COMPACT(metrics.billedTotal)}
+          label="Faturado"
+          hint="Soma do que já virou nota nas duas trilhas, produto e serviço"
+          value={BRL_COMPACT(billedSummary.total)}
           sub={
-            metrics.billedCount > 0 ? (
+            billedSummary.projectCount > 0 ? (
               <>
-                {metrics.billedCount} nota{metrics.billedCount !== 1 ? "s" : ""}
-                {metrics.billedMonthCount > 0 && (
-                  <>
-                    {" · "}
+                <span className="text-violet-400">
+                  Produto {BRL_COMPACT(billedSummary.produto)}
+                </span>
+                {" · "}
+                <span className="text-blue-400">
+                  Serviço {BRL_COMPACT(billedSummary.servico)}
+                </span>
+                <span className="block">
+                  {billedSummary.projectCount} projeto
+                  {billedSummary.projectCount !== 1 ? "s" : ""} faturado
+                  {billedSummary.projectCount !== 1 ? "s" : ""}
+                  {billedSummary.monthValue > 0 && (
                     <span className="text-emerald-500">
-                      {BRL_COMPACT(metrics.billedMonthValue)} no mês
+                      {" · "}
+                      {BRL_COMPACT(billedSummary.monthValue)} no mês
                     </span>
-                  </>
-                )}
+                  )}
+                </span>
               </>
             ) : (
-              "Nenhuma nota emitida ainda"
+              "Nenhum faturamento ainda"
             )
           }
           icon={CheckCircle2}
@@ -986,7 +1040,13 @@ export function BillingPipeline() {
             a faturar em {metrics.openCount} projeto
             {metrics.openCount !== 1 ? "s" : ""}
             {metrics.billedTotal > 0 && (
-              <> · <span className="text-emerald-500">{BRL_FULL.format(metrics.billedTotal)} já faturado</span></>
+              <>
+                {" · "}
+                <span className="text-emerald-500">
+                  {BRL_FULL.format(metrics.billedTotal)} já faturado em{" "}
+                  {trackDef.label.toLowerCase()}
+                </span>
+              </>
             )}
             {metrics.finishedCount > 0 && (
               <> · {metrics.finishedCount} já faturado{metrics.finishedCount !== 1 ? "s" : ""}</>
