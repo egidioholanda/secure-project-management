@@ -7,7 +7,8 @@ export interface Project {
   startDate: string;
   endDate: string;
   manager: string;
-  value: string;
+  /** total do projeto; quando há split, é produto + serviço */
+  value: number;
   address?: string;
   opportunityId?: string;
   clientId?: string | null;

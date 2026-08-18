@@ -237,7 +237,8 @@ export const BRL_FULL = new Intl.NumberFormat("pt-BR", {
 export function trackValue(project: Project, track: TrackKey): number {
   const hasSplit =
     (project.productValue ?? null) !== null || (project.serviceValue ?? null) !== null;
-  if (!hasSplit) return track === "produto" ? parseBRL(project.value) : 0;
+  // sem split, o total legado conta como produto para o dinheiro não sumir
+  if (!hasSplit) return track === "produto" ? (project.value ?? 0) : 0;
   return (track === "produto" ? project.productValue : project.serviceValue) ?? 0;
 }
 

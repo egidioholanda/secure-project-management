@@ -42,10 +42,14 @@ function statusLabel(s: string) {
   return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
 }
 
-function formatValue(v: string) {
-  const n = parseFloat(v);
-  if (isNaN(n)) return v;
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
+function formatValue(v: number) {
+  if (!v) return "—";
+  return v.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function ProjectListRow({

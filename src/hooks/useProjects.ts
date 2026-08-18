@@ -12,7 +12,7 @@ interface DbProject {
   start_date: string | null;
   end_date: string | null;
   manager: string | null;
-  value: string | null;
+  value: number | string | null;
   description: string | null;
   opportunity_id: string | null;
   client_id: string | null;
@@ -60,7 +60,7 @@ const mapDbToProject = (db: DbProject): Project => ({
   startDate: formatDateForDisplay(db.start_date),
   endDate: formatDateForDisplay(db.end_date),
   manager: db.manager || "",
-  value: db.value || "",
+  value: numOrNull(db.value) ?? 0,
   address: db.description || "",
   opportunityId: db.opportunity_id || undefined,
   clientId: db.client_id,
@@ -102,7 +102,7 @@ export const useProjects = (allowedClientIds?: string[] | null, allowedClientGro
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setAllProjects((data || []).map(mapDbToProject));
+      setAllProjects((data || []).map((d: any) => mapDbToProject(d)));
     } catch (error) {
       console.error("Error fetching projects:", error);
       toast.error("Erro ao carregar projetos");
@@ -123,7 +123,7 @@ export const useProjects = (allowedClientIds?: string[] | null, allowedClientGro
           start_date: parseDateFromDisplay(project.startDate),
           end_date: parseDateFromDisplay(project.endDate),
           manager: project.manager || null,
-          value: project.value || null,
+          value: project.value ?? null,
           description: project.address || null,
           opportunity_id: project.opportunityId || null,
           client_group_id: project.clientGroupId || null,
@@ -157,7 +157,7 @@ export const useProjects = (allowedClientIds?: string[] | null, allowedClientGro
           start_date: parseDateFromDisplay(project.startDate),
           end_date: parseDateFromDisplay(project.endDate),
           manager: project.manager || null,
-          value: project.value || null,
+          value: project.value ?? null,
           description: project.address || null,
           client_group_id: project.clientGroupId || null,
           product_value: project.productValue ?? null,

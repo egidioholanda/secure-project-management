@@ -239,8 +239,8 @@ export default function Opportunities() {
           client: opp.client,
           type: opp.type,
           // o split viaja para o projeto: produto e serviço são faturados em
-          // fases diferentes do pipeline do Financeiro (5 e 10)
-          value: String(opp.value),
+          // fases diferentes do pipeline do Financeiro
+          value: opp.value,
           productValue: opp.productValue,
           serviceValue: opp.serviceValue,
           responsible: opp.responsible,

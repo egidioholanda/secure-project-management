@@ -28,7 +28,7 @@ export interface ProjectFormData {
   name: string;
   client: string;
   type: string;
-  value: string;
+  value: number;
   responsible?: string;
   opportunityId?: string;
   clientGroupId?: string | null;
@@ -88,7 +88,7 @@ const AddProjectDialog = ({
     startDate: "",
     endDate: "",
     manager: "",
-    value: "",
+    value: 0,
     street: "",
     city: "",
     state: "",
@@ -145,7 +145,7 @@ const AddProjectDialog = ({
         startDate: "",
         endDate: "",
         manager: "",
-        value: "",
+        value: 0,
         street: "",
         city: "",
         state: "",
@@ -192,7 +192,11 @@ const AddProjectDialog = ({
       startDate: formData.startDate,
       endDate: formData.endDate,
       manager: formData.manager,
-      value: formData.value,
+      // total é derivado quando há split, para não divergir das parcelas
+      value:
+        formData.productValue !== null || formData.serviceValue !== null
+          ? (formData.productValue ?? 0) + (formData.serviceValue ?? 0)
+          : formData.value,
       address: composeAddress(formData.street, formData.city, formData.state),
       opportunityId: formData.opportunityId || undefined,
       productValue: formData.productValue ?? null,
