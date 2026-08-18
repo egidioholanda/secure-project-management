@@ -104,6 +104,8 @@ export default function Opportunities() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
+  const [duplicatingOpportunity, setDuplicatingOpportunity] =
+    useState<Opportunity | null>(null);
   const [lostTarget, setLostTarget] = useState<Opportunity | null>(null);
   const [lostReason, setLostReason] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Opportunity | null>(null);
@@ -211,6 +213,22 @@ export default function Opportunities() {
   const lostList = useMemo(() => filtered.filter((o) => o.status === "perdida"), [filtered]);
 
   // ── Ações ──
+  const openEdit = (id: string) => {
+    const o = opportunities.find((x) => x.id === id);
+    if (!o) return;
+    setDuplicatingOpportunity(null);
+    setEditingOpportunity(o);
+    setIsAddDialogOpen(true);
+  };
+
+  const openDuplicate = (id: string) => {
+    const o = opportunities.find((x) => x.id === id);
+    if (!o) return;
+    setEditingOpportunity(null);
+    setDuplicatingOpportunity(o);
+    setIsAddDialogOpen(true);
+  };
+
   const handleConvertToProject = (id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (!opp) return;
@@ -417,7 +435,14 @@ export default function Opportunities() {
           </Button>
         )}
 
-        <Button onClick={() => { setEditingOpportunity(null); setIsAddDialogOpen(true); }} className="h-9">
+        <Button
+          onClick={() => {
+            setEditingOpportunity(null);
+            setDuplicatingOpportunity(null);
+            setIsAddDialogOpen(true);
+          }}
+          className="h-9"
+        >
           <Plus className="w-4 h-4 mr-1.5" />
           Nova Oportunidade
         </Button>
@@ -466,7 +491,7 @@ export default function Opportunities() {
                     draggable
                     onDragStart={() => setDraggedId(opp.id)}
                     onDragEnd={() => setDraggedId(null)}
-                    onClick={() => { setEditingOpportunity(opp); setIsAddDialogOpen(true); }}
+                    onClick={() => openEdit(opp.id)}
                     className={cn(draggedId === opp.id && "opacity-40")}
                   >
                     <OpportunityCard
@@ -484,10 +509,8 @@ export default function Opportunities() {
                       status={opp.status}
                       daysInStage={daysSince(opp.updatedAtIso)}
                       awaitingProject={opp.status === "ganha" && !convertedIds.has(opp.id)}
-                      onEdit={(id) => {
-                        const o = opportunities.find((x) => x.id === id);
-                        if (o) { setEditingOpportunity(o); setIsAddDialogOpen(true); }
-                      }}
+                      onEdit={openEdit}
+                      onDuplicate={openDuplicate}
                       onDelete={(id) => {
                         const o = opportunities.find((x) => x.id === id);
                         if (o) setDeleteTarget(o);
@@ -538,10 +561,8 @@ export default function Opportunities() {
                     clientGroupName={opp.clientGroupId ? groupMap[opp.clientGroupId] : null}
                     status={opp.status}
                     daysInStage={daysSince(opp.updatedAtIso)}
-                    onEdit={(id) => {
-                      const o = opportunities.find((x) => x.id === id);
-                      if (o) { setEditingOpportunity(o); setIsAddDialogOpen(true); }
-                    }}
+                    onEdit={openEdit}
+                    onDuplicate={openDuplicate}
                     onDelete={(id) => {
                       const o = opportunities.find((x) => x.id === id);
                       if (o) setDeleteTarget(o);
@@ -558,11 +579,15 @@ export default function Opportunities() {
         open={isAddDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
-          if (!open) setEditingOpportunity(null);
+          if (!open) {
+            setEditingOpportunity(null);
+            setDuplicatingOpportunity(null);
+          }
         }}
         onAdd={addOpportunity}
         onEdit={async (o) => { await updateOpportunity(o); setEditingOpportunity(null); }}
         editingOpportunity={editingOpportunity}
+        duplicatingOpportunity={duplicatingOpportunity}
         existingOpportunities={opportunities}
       />
 

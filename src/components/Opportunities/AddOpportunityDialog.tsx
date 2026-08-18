@@ -42,6 +42,8 @@ interface AddOpportunityDialogProps {
   onAdd: (opportunity: Omit<Opportunity, "id" | "createdAt">) => void;
   onEdit?: (opportunity: Opportunity) => void;
   editingOpportunity?: Opportunity | null;
+  /** copia um negócio existente — mesmo pacote vendido para outra base */
+  duplicatingOpportunity?: Opportunity | null;
   /** para detectar que o usuário está recriando um negócio que já existe */
   existingOpportunities?: Opportunity[];
 }
@@ -61,6 +63,7 @@ export function AddOpportunityDialog({
   onAdd,
   onEdit,
   editingOpportunity,
+  duplicatingOpportunity,
   existingOpportunities = [],
 }: AddOpportunityDialogProps) {
   const { groups } = useClientGroups();
@@ -85,9 +88,12 @@ export function AddOpportunityDialog({
   const [description, setDescription] = useState("");
 
   const isEditing = !!editingOpportunity;
+  const isDuplicating = !!duplicatingOpportunity;
 
   useEffect(() => {
-    const s = editingOpportunity;
+    // Duplicar preenche tudo igual: o usuário troca só o que muda, em geral o
+    // título (a base) — por isso a validação de nome repetido é o coração disto.
+    const s = editingOpportunity ?? duplicatingOpportunity;
     if (s) {
       setTitle(s.title);
       setClient(s.client);
@@ -117,7 +123,7 @@ export function AddOpportunityDialog({
       setLossReason("");
       setDescription("");
     }
-  }, [editingOpportunity, open]);
+  }, [editingOpportunity, duplicatingOpportunity, open]);
 
   const prod = noProduct ? null : parseInput(productValue);
   const serv = noService ? null : parseInput(serviceValue);
@@ -131,8 +137,18 @@ export function AddOpportunityDialog({
   const duplicateWarning = useMemo(() => {
     if (isEditing || !title.trim() || !client.trim()) return null;
     const key = dealKey(title, client);
-    return existingOpportunities.find((o) => dealKey(o.title, o.client) === key) ?? null;
-  }, [title, client, existingOpportunities, isEditing]);
+    return (
+      existingOpportunities.find(
+        (o) => o.id !== duplicatingOpportunity?.id && dealKey(o.title, o.client) === key,
+      ) ?? null
+    );
+  }, [title, client, existingOpportunities, isEditing, duplicatingOpportunity]);
+
+  /** duplicar mantendo o nome criaria dois negócios indistinguíveis */
+  const isSameAsOriginal =
+    isDuplicating &&
+    dealKey(title, client) ===
+      dealKey(duplicatingOpportunity!.title, duplicatingOpportunity!.client);
 
   const suffixWarning = hasProductServiceSuffix(title);
 
@@ -152,6 +168,12 @@ export function AddOpportunityDialog({
     if (suffixWarning) {
       toast.error(
         'Um negócio = uma oportunidade. Remova o "- Produtos"/"- Serviços" do título.',
+      );
+      return;
+    }
+    if (isSameAsOriginal || (isDuplicating && duplicateWarning)) {
+      toast.error(
+        "Já existe uma oportunidade com esse nome. Altere o título para salvar.",
       );
       return;
     }
@@ -193,11 +215,16 @@ export function AddOpportunityDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Editar Oportunidade" : "Nova Oportunidade"}
+            {isEditing
+              ? "Editar Oportunidade"
+              : isDuplicating
+                ? "Duplicar Oportunidade"
+                : "Nova Oportunidade"}
           </DialogTitle>
           <DialogDescription>
-            Um negócio = uma oportunidade. Produto e serviço são dois pedidos do
-            mesmo negócio — o faturamento de cada um é acompanhado no Financeiro.
+            {isDuplicating
+              ? `Cópia de "${duplicatingOpportunity!.title}". Altere o título para salvar.`
+              : "Um negócio = uma oportunidade. Produto e serviço são dois pedidos do mesmo negócio — o faturamento de cada um é acompanhado no Financeiro."}
           </DialogDescription>
         </DialogHeader>
 
@@ -455,8 +482,12 @@ export function AddOpportunityDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit}>
-            {isEditing ? "Salvar Alterações" : "Criar Oportunidade"}
+          <Button onClick={handleSubmit} disabled={isSameAsOriginal}>
+            {isEditing
+              ? "Salvar Alterações"
+              : isDuplicating
+                ? "Criar Cópia"
+                : "Criar Oportunidade"}
           </Button>
         </div>
       </DialogContent>

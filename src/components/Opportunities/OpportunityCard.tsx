@@ -1,5 +1,6 @@
 import {
   MoreVertical,
+  Copy,
   Pencil,
   Trash2,
   FolderKanban,
@@ -43,6 +44,7 @@ interface OpportunityCardProps {
   /** ganha e ainda sem projeto aberto — o vazamento entre comercial e obra */
   awaitingProject?: boolean;
   onEdit?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onConvertToProject?: (id: string) => void;
   onMarkLost?: (id: string) => void;
@@ -74,6 +76,7 @@ export const OpportunityCard = ({
   daysInStage,
   awaitingProject,
   onEdit,
+  onDuplicate,
   onDelete,
   onConvertToProject,
   onMarkLost,
@@ -125,6 +128,10 @@ export const OpportunityCard = ({
             <DropdownMenuItem onClick={() => onEdit?.(id)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDuplicate?.(id)}>
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onConvertToProject?.(id)}>
               <FolderKanban className="w-4 h-4 mr-2" />
