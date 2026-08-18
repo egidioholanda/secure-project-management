@@ -87,8 +87,10 @@ export function AddOpportunityDialog({
   const [lossReason, setLossReason] = useState("");
   const [description, setDescription] = useState("");
 
-  const isEditing = !!editingOpportunity;
   const isDuplicating = !!duplicatingOpportunity;
+  // Duplicar tem precedência sobre editar: se os dois estados se cruzarem,
+  // o pior caso é abrir o formulário errado — nunca sobrescrever a origem.
+  const isEditing = !!editingOpportunity && !isDuplicating;
 
   useEffect(() => {
     // Duplicar preenche tudo igual: o usuário troca só o que muda, em geral o

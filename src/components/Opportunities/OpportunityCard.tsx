@@ -115,7 +115,7 @@ export const OpportunityCard = ({
           <p className="text-sm text-muted-foreground truncate">{client}</p>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button
               variant="ghost"
               size="icon"
@@ -124,7 +124,11 @@ export const OpportunityCard = ({
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          {/* O menu é filho React do card e o evento borbulha pela árvore do
+              React mesmo estando em portal: sem parar aqui, clicar em
+              "Duplicar" também dispara o onClick do card, que abre o modo
+              edição por cima — e salvar substituía a oportunidade original. */}
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={() => onEdit?.(id)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
