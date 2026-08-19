@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useOpportunities } from "@/hooks/useOpportunities";
+import { useClientGroups } from "@/hooks/useClientGroups";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,17 +135,20 @@ const CurrencyTooltip = ({ active, payload, label }: any) => {
 const DashboardComercial = () => {
   const { allowedClientGroupIds } = useAuthContext();
   const { opportunities, loading } = useOpportunities(allowedClientGroupIds);
+  const { groups } = useClientGroups();
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterPeriod, setFilterPeriod]           = useState("all");
   const [filterTypes, setFilterTypes]             = useState<string[]>([]);
   const [filterResponsibles, setFilterResponsibles] = useState<string[]>([]);
   const [filterStages, setFilterStages]           = useState<string[]>([]);
+  const [filterGroups, setFilterGroups]           = useState<string[]>([]);
 
   const toggleArr = <T,>(arr: T[], val: T): T[] =>
     arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
   const activeFilterCount = filterTypes.length + filterResponsibles.length + filterStages.length +
+    filterGroups.length +
     (filterPeriod !== "all" ? 1 : 0);
 
   const clearFilters = () => {
@@ -152,9 +156,20 @@ const DashboardComercial = () => {
     setFilterTypes([]);
     setFilterResponsibles([]);
     setFilterStages([]);
+    setFilterGroups([]);
   };
 
   // Dynamic lists
+  const groupOptions = useMemo(() => {
+    const byId = new Map(groups.map((g) => [g.id, g.name]));
+    const ids = new Set(
+      opportunities.map((o) => o.clientGroupId).filter(Boolean) as string[],
+    );
+    return Array.from(ids)
+      .map((id) => ({ id, name: byId.get(id) ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [opportunities, groups]);
+
   const responsibleOptions = useMemo(() => {
     const s = new Set(opportunities.map((o) => o.responsible).filter(Boolean));
     return Array.from(s).sort();
@@ -170,13 +185,19 @@ const DashboardComercial = () => {
         if (!ptypes.some((t) => filterTypes.includes(t))) return false;
       }
       if (filterResponsibles.length > 0 && !filterResponsibles.includes(o.responsible)) return false;
+      if (filterGroups.length > 0) {
+        // "none" cobre as oportunidades ainda sem grupo, que senão sumiriam
+        // sem explicação ao filtrar
+        const g = o.clientGroupId ?? "none";
+        if (!filterGroups.includes(g)) return false;
+      }
       if (filterStages.length > 0) {
         const stage = STAGE_CONFIG.find((s) => s.matchKeys.includes(o.status));
         if (!stage || !filterStages.includes(stage.key)) return false;
       }
       return true;
     });
-  }, [opportunities, filterPeriod, filterTypes, filterResponsibles, filterStages]);
+  }, [opportunities, filterPeriod, filterTypes, filterResponsibles, filterStages, filterGroups]);
 
   // ── Core aggregations ─────────────────────────────────────────────────────
 
@@ -307,9 +328,9 @@ const DashboardComercial = () => {
             <Button variant="outline" size="sm" className="gap-2 h-9">
               <Filter className="w-3.5 h-3.5" />
               Filtros
-              {(filterTypes.length + filterResponsibles.length + filterStages.length) > 0 && (
+              {(filterTypes.length + filterResponsibles.length + filterStages.length + filterGroups.length) > 0 && (
                 <Badge className="ml-1 h-4 px-1.5 text-xs">
-                  {filterTypes.length + filterResponsibles.length + filterStages.length}
+                  {filterTypes.length + filterResponsibles.length + filterStages.length + filterGroups.length}
                 </Badge>
               )}
             </Button>
@@ -359,6 +380,33 @@ const DashboardComercial = () => {
               ))}
             </div>
 
+            {groupOptions.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Grupo de clientes</p>
+                  {groupOptions.map((g) => (
+                    <div key={g.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`grp-${g.id}`}
+                        checked={filterGroups.includes(g.id)}
+                        onCheckedChange={() => setFilterGroups((p) => toggleArr(p, g.id))}
+                      />
+                      <Label htmlFor={`grp-${g.id}`} className="text-sm font-normal cursor-pointer">{g.name}</Label>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="grp-none"
+                      checked={filterGroups.includes("none")}
+                      onCheckedChange={() => setFilterGroups((p) => toggleArr(p, "none"))}
+                    />
+                    <Label htmlFor="grp-none" className="text-sm font-normal cursor-pointer">Sem grupo</Label>
+                  </div>
+                </div>
+              </>
+            )}
+
             {responsibleOptions.length > 0 && (
               <>
                 <Separator className="my-3" />
@@ -399,6 +447,14 @@ const DashboardComercial = () => {
             {t} <X className="w-3 h-3" />
           </Badge>
         ))}
+        {filterGroups.map((id) => {
+          const nome = id === "none" ? "Sem grupo" : (groupOptions.find((g) => g.id === id)?.name ?? id);
+          return (
+            <Badge key={id} variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterGroups((p) => p.filter((x) => x !== id))}>
+              {nome} <X className="w-3 h-3" />
+            </Badge>
+          );
+        })}
         {filterResponsibles.map((r) => (
           <Badge key={r} variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterResponsibles((p) => p.filter((x) => x !== r))}>
             {r.split(" ")[0]} <X className="w-3 h-3" />
