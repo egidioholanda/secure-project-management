@@ -417,9 +417,9 @@ const DashboardComercial = () => {
         />
         <KpiCard
           icon={Award}
-          label="Pedido Faturado"
+          label="Oportunidades Ganhas"
           value={formatCurrency(wonValue)}
-          sub={`${won.length} pedido${won.length !== 1 ? "s" : ""} faturado${won.length !== 1 ? "s" : ""}`}
+          sub={`${won.length} oportunidade${won.length !== 1 ? "s" : ""} ganha${won.length !== 1 ? "s" : ""}`}
           color="text-emerald-500"
         />
         <KpiCard
@@ -451,7 +451,7 @@ const DashboardComercial = () => {
                 <tr className="border-b border-border">
                   <th className="text-left pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide w-32"></th>
                   <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Em Venda (pipeline)</th>
-                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-8">Faturado</th>
+                  <th className="text-right pb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide pl-8">Ganho</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -488,7 +488,7 @@ const DashboardComercial = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Distribuição do valor total por etapa do pipeline</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Total (ativo + faturado)</p>
+            <p className="text-xs text-muted-foreground">Total (ativo + ganho)</p>
             <p className="text-lg font-bold">{formatCurrency(pipelineValue + wonValue)}</p>
           </div>
         </div>
