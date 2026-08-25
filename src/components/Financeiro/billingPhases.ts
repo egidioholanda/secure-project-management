@@ -198,6 +198,36 @@ export function phasesToReopen(
   });
 }
 
+/**
+ * Ajustes de data necessários para a trilha continuar coerente ao mudar a data
+ * da fase `targetPhase`.
+ *
+ * A sequência tem que ser monotônica no tempo: não existe pedido recebido DEPOIS
+ * da nota fiscal. Ao lançar um faturamento retroativo, as fases anteriores que
+ * ficaram com data mais recente recuam junto; e uma fase posterior que ficasse
+ * antes da nova data avança, pelo mesmo motivo.
+ */
+export function datesToAlign(
+  records: { id: string; phase: number; completed_at: string }[],
+  targetPhase: number,
+  newDateISO: string,
+): { id: string; completedAt: string }[] {
+  const target = new Date(newDateISO).getTime();
+  const out: { id: string; completedAt: string }[] = [];
+
+  for (const r of records) {
+    const t = new Date(r.completed_at).getTime();
+    if (r.phase === targetPhase) {
+      out.push({ id: r.id, completedAt: newDateISO });
+    } else if (r.phase < targetPhase && t > target) {
+      out.push({ id: r.id, completedAt: newDateISO });
+    } else if (r.phase > targetPhase && t < target) {
+      out.push({ id: r.id, completedAt: newDateISO });
+    }
+  }
+  return out;
+}
+
 /** macro-etapas de uma trilha, com as fases que caem em cada uma */
 export const trackMacros = (track: TrackKey) =>
   TRACKS[track].macros.map((key) => ({

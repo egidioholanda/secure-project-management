@@ -33,6 +33,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { SearchSelect } from "@/components/ui/search-select";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useProjects } from "@/hooks/useProjects";
@@ -671,25 +672,19 @@ export function BillingPipeline() {
           </SelectContent>
         </Select>
 
-        <Select
+        {/* Combobox, não Select: com 60 clientes uma lista rolável não serve */}
+        <SearchSelect
           value={clientFilter}
           onValueChange={(v) => {
             setClientFilter(v);
             resetPaging();
           }}
-        >
-          <SelectTrigger className="h-9 w-56 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os clientes</SelectItem>
-            {clients.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={clients.map((c) => ({ value: c, label: c }))}
+          allLabel="Todos os clientes"
+          placeholder="Digite o nome do cliente..."
+          emptyLabel="Nenhum cliente com esse nome"
+          className="h-9 w-56 text-sm"
+        />
 
         <Popover>
           <PopoverTrigger asChild>

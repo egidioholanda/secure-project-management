@@ -22,6 +22,7 @@ import {
   OWNERS,
   TRACKS,
   TRACK_LIST,
+  datesToAlign,
   phasesToComplete,
   phasesToReopen,
   trackValue,
@@ -173,14 +174,18 @@ function TrackChecklist({
                         type="date"
                         value={format(parseISO(rec.completed_at), "yyyy-MM-dd")}
                         max={format(new Date(), "yyyy-MM-dd")}
-                        onChange={(e) =>
-                          e.target.value &&
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          // as demais fases acompanham para a ordem não inverter
                           updatePhaseDate.mutate({
-                            id: rec.id,
-                            completedAt: `${e.target.value}T12:00:00`,
-                          })
-                        }
-                        title="Data em que isto aconteceu de fato"
+                            updates: datesToAlign(
+                              records,
+                              phase.n,
+                              `${e.target.value}T12:00:00`,
+                            ),
+                          });
+                        }}
+                        title="Data em que isto aconteceu de fato. As outras fases acompanham para manter a ordem." 
                         className="bg-transparent border border-transparent hover:border-border focus:border-border rounded px-1 py-0.5 text-xs text-muted-foreground cursor-pointer"
                       />
                       {rec.completed_by_name && (

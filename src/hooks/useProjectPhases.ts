@@ -116,18 +116,35 @@ export function useProjectPhases() {
       }),
   });
 
-  /** Corrige a data de uma fase já registrada */
+  /**
+   * Corrige datas de fases já registradas. Recebe a lista pronta porque a
+   * regra de coerência (fases anteriores não podem ficar depois) mora no
+   * modelo, em datesToAlign.
+   */
   const updatePhaseDate = useMutation({
-    mutationFn: async ({ id, completedAt }: { id: string; completedAt: string }) => {
-      const { error } = await (supabase as any)
-        .from("project_phases")
-        .update({ completed_at: completedAt })
-        .eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({
+      updates,
+    }: {
+      updates: { id: string; completedAt: string }[];
+    }) => {
+      if (updates.length === 0) return;
+      for (const u of updates) {
+        const { error } = await (supabase as any)
+          .from("project_phases")
+          .update({ completed_at: u.completedAt })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+      return updates.length;
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["project_phases"] });
-      toast({ title: "Data atualizada" });
+      toast({
+        title:
+          typeof count === "number" && count > 1
+            ? `Data atualizada — ${count} fases ajustadas para manter a ordem`
+            : "Data atualizada",
+      });
     },
     onError: (err: any) =>
       toast({
