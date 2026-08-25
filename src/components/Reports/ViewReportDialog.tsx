@@ -268,14 +268,16 @@ export const ViewReportDialog = ({
                   >
                     <img
                       src={photo.url}
-                      alt={photo.caption}
+                      alt={photo.caption || "Foto do relatório"}
                       className="w-full h-32 object-cover"
                     />
-                    <div className="p-2 bg-muted/30">
-                      <p className="text-xs text-muted-foreground truncate">
-                        {photo.caption}
-                      </p>
-                    </div>
+                    {photo.caption?.trim() && (
+                      <div className="p-2 bg-muted/30">
+                        <p className="text-xs text-muted-foreground truncate">
+                          {photo.caption}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

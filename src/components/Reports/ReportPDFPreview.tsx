@@ -146,10 +146,12 @@ export const ReportPDFPreview = forwardRef<HTMLDivElement, ReportPDFPreviewProps
                 <div key={photo.id} className="border border-gray-300 rounded overflow-hidden">
                   <img
                     src={photo.url}
-                    alt={photo.caption}
+                    alt={photo.caption || "Foto do relatório"}
                     className="w-full h-40 object-cover"
                   />
-                  <p className="text-xs text-gray-600 p-2 bg-gray-50">{photo.caption}</p>
+                  {photo.caption?.trim() && (
+                    <p className="text-xs text-gray-600 p-2 bg-gray-50">{photo.caption}</p>
+                  )}
                 </div>
               ))}
             </div>

@@ -131,7 +131,8 @@ export const CreateReportDialog = ({
           return {
             id: crypto.randomUUID(),
             url: urlData.publicUrl,
-            caption: file.name.replace(/\.[^/.]+$/, ""),
+            // sem legenda: o nome do arquivo da câmera não descreve a foto
+            caption: "",
             createdAt: new Date(),
           } as ReportPhoto;
         })
@@ -443,13 +444,21 @@ export const CreateReportDialog = ({
               </label>
             </div>
 
+            {photos.length > 0 && photos.some((p) => !p.caption.trim()) && (
+              <p className="text-xs text-muted-foreground">
+                {photos.filter((p) => !p.caption.trim()).length} de {photos.length}{" "}
+                {photos.filter((p) => !p.caption.trim()).length === 1 ? "foto" : "fotos"}{" "}
+                sem nome. Fotos sem nome aparecem no relatório sem legenda.
+              </p>
+            )}
+
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 {photos.map(photo => (
                   <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-border">
                     <img
                       src={photo.url}
-                      alt={photo.caption}
+                      alt={photo.caption || "Foto do relatório"}
                       className="w-full h-32 object-cover"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -462,11 +471,18 @@ export const CreateReportDialog = ({
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="p-2">
+                    <div className="p-2 space-y-1">
+                      <Label
+                        htmlFor={`caption-${photo.id}`}
+                        className="text-[11px] text-muted-foreground"
+                      >
+                        Nome da foto
+                      </Label>
                       <Input
+                        id={`caption-${photo.id}`}
                         value={photo.caption}
                         onChange={(e) => handleUpdateCaption(photo.id, e.target.value)}
-                        placeholder="Legenda da foto"
+                        placeholder="Ex: Câmera instalada no portão"
                         className="text-xs h-8"
                       />
                     </div>
