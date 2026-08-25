@@ -45,11 +45,9 @@ import {
   MACRO_COLORS,
   MACRO_LABELS,
   OWNERS,
-  PERIOD_OPTIONS,
   TRACKS,
   TRACK_LIST,
   buildTrackRows,
-  getDateThreshold,
   getPhase,
   projectTypes,
   toggleArr,
@@ -59,6 +57,7 @@ import {
   type TrackKey,
   type TrackRow,
 } from "./billingPhases";
+import { ALL_PERIODS, buildMonthOptions, matchesPeriod } from "@/lib/periodFilter";
 
 type TabKey = "todos" | "travados" | "cliente" | "faturar";
 
@@ -317,7 +316,7 @@ export function BillingPipeline() {
   const [selected, setSelected] = useState<TrackRow | null>(null);
 
   // ── Filtros ──
-  const [period, setPeriod] = useState("all");
+  const [period, setPeriod] = useState(ALL_PERIODS);
   const [clientFilter, setClientFilter] = useState("all");
   const [filterGroups, setFilterGroups] = useState<string[]>([]);
   const [filterMacros, setFilterMacros] = useState<MacroKey[]>([]);
@@ -341,6 +340,18 @@ export function BillingPipeline() {
   const clients = useMemo(
     () =>
       Array.from(new Set(rows.map((r) => r.project.client).filter(Boolean))).sort(),
+    [rows],
+  );
+
+  /**
+   * Referência do período: para trilhas já faturadas vale o mês do
+   * faturamento; para as abertas, o mês de entrada no pipeline. É o mesmo
+   * critério do comercial (fechou / entrou), para as telas concordarem.
+   */
+  const periodRef = (r: TrackRow) => r.billedAt ?? r.enteredAt;
+
+  const periodOptions = useMemo(
+    () => buildMonthOptions(rows.map(periodRef)),
     [rows],
   );
 
@@ -371,9 +382,8 @@ export function BillingPipeline() {
    * pequenas, então contar notas dá um número que não significa nada.
    */
   const billedSummary = useMemo(() => {
-    const threshold = getDateThreshold(period);
     const inScope = (r: TrackRow) => {
-      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
         const g = r.project.clientGroupId ?? "none";
@@ -416,12 +426,11 @@ export function BillingPipeline() {
   // contagens das abas e tabela olham para o MESMO conjunto. A aba é navegação
   // dentro do recorte, não mais um filtro.
   const scoped = useMemo(() => {
-    const threshold = getDateThreshold(period);
     return open.filter((r) => {
       // um projeto sem valor nesta trilha não tem esse pedido: mostrá-lo aqui
       // encheria a aba de linhas que nunca vão faturar
       if (!r.hasValue) return false;
-      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
         const g = r.project.clientGroupId ?? "none";
@@ -458,7 +467,7 @@ export function BillingPipeline() {
   );
 
   const activeFilterCount =
-    (period !== "all" ? 1 : 0) +
+    (period !== ALL_PERIODS ? 1 : 0) +
     (clientFilter !== "all" ? 1 : 0) +
     filterGroups.length +
     filterMacros.length +
@@ -468,7 +477,7 @@ export function BillingPipeline() {
   const resetPaging = () => setPage(1);
 
   const clearFilters = () => {
-    setPeriod("all");
+    setPeriod(ALL_PERIODS);
     setClientFilter("all");
     setFilterGroups([]);
     setFilterMacros([]);
@@ -481,10 +490,9 @@ export function BillingPipeline() {
   // filtros de fase e dono não se aplicam a quem já terminou as 10 fases.
   // Sem isso o "prazo pedido → NF" ignoraria os filtros e contradiria os outros KPIs.
   const scopedFinished = useMemo(() => {
-    const threshold = getDateThreshold(period);
     return rows.filter((r) => {
       if (!r.isFinished) return false;
-      if (threshold && (!r.enteredAt || r.enteredAt < threshold)) return false;
+      if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
         const g = r.project.clientGroupId ?? "none";
@@ -655,7 +663,7 @@ export function BillingPipeline() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PERIOD_OPTIONS.map((o) => (
+            {periodOptions.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
               </SelectItem>
@@ -780,11 +788,11 @@ export function BillingPipeline() {
         </Popover>
 
         {/* Chips dos filtros ativos — clicar remove */}
-        {period !== "all" && (
+        {period !== ALL_PERIODS && (
           <FilterChip
-            label={PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period}
+            label={periodOptions.find((o) => o.value === period)?.label ?? period}
             onRemove={() => {
-              setPeriod("all");
+              setPeriod(ALL_PERIODS);
               resetPaging();
             }}
           />

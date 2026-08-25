@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useOpportunities } from "@/hooks/useOpportunities";
 import { useClientGroups } from "@/hooks/useClientGroups";
+import { ALL_PERIODS, buildMonthOptions, matchesPeriod } from "@/lib/periodFilter";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,14 +49,6 @@ const STAGE_CONFIG = STAGES.map((s) => ({
 const TYPE_COLORS = ["#6366f1", "#3b82f6", "#f59e0b", "#f97316", "#10b981", "#ec4899", "#06b6d4"];
 const ALL_TYPES = ["CFTV", "Controle de Acesso", "Alarme Perimetral", "Sistema Integrado", "Automação"];
 
-const PERIOD_OPTIONS = [
-  { value: "all",     label: "Todos os períodos" },
-  { value: "month",   label: "Este mês" },
-  { value: "3months", label: "Últimos 3 meses" },
-  { value: "6months", label: "Últimos 6 meses" },
-  { value: "year",    label: "Este ano" },
-];
-
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,15 +60,6 @@ const formatCurrency = (value: number) => {
 
 const formatCurrencyFull = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
-
-const getDateThreshold = (period: string): Date | null => {
-  const now = new Date();
-  if (period === "month")   return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
-  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
-  if (period === "year")    return new Date(now.getFullYear(), 0, 1);
-  return null;
-};
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -138,7 +122,7 @@ const DashboardComercial = () => {
   const { groups } = useClientGroups();
 
   // ── Filter state ──────────────────────────────────────────────────────────
-  const [filterPeriod, setFilterPeriod]           = useState("all");
+  const [filterPeriod, setFilterPeriod]           = useState(ALL_PERIODS);
   const [filterTypes, setFilterTypes]             = useState<string[]>([]);
   const [filterResponsibles, setFilterResponsibles] = useState<string[]>([]);
   const [filterStages, setFilterStages]           = useState<string[]>([]);
@@ -149,15 +133,21 @@ const DashboardComercial = () => {
 
   const activeFilterCount = filterTypes.length + filterResponsibles.length + filterStages.length +
     filterGroups.length +
-    (filterPeriod !== "all" ? 1 : 0);
+    (filterPeriod !== ALL_PERIODS ? 1 : 0);
 
   const clearFilters = () => {
-    setFilterPeriod("all");
+    setFilterPeriod(ALL_PERIODS);
     setFilterTypes([]);
     setFilterResponsibles([]);
     setFilterStages([]);
     setFilterGroups([]);
   };
+
+  /** Referência do período: quando o negócio fechou, ou quando entrou */
+  const periodOptions = useMemo(
+    () => buildMonthOptions(opportunities.map((o) => o.closedAt ?? o.createdAtIso)),
+    [opportunities],
+  );
 
   // Dynamic lists
   const groupOptions = useMemo(() => {
@@ -177,13 +167,11 @@ const DashboardComercial = () => {
 
   // ── Filtered opportunities ────────────────────────────────────────────────
   const filteredOpps = useMemo(() => {
-    const threshold = getDateThreshold(filterPeriod);
     return opportunities.filter((o) => {
-      // Data de referência do período: para negócios já decididos vale quando
-      // fecharam; para os em aberto, quando entraram. Sem isso um negócio
-      // fechado em junho e cadastrado agora cairia no mês do cadastro.
-      const refDate = new Date(o.closedAt ?? o.createdAtIso);
-      if (threshold && refDate < threshold) return false;
+      // Para negócios já decididos vale quando fecharam; para os em aberto,
+      // quando entraram — senão um negócio fechado em junho e cadastrado agora
+      // cairia no mês do cadastro.
+      if (!matchesPeriod(o.closedAt ?? o.createdAtIso, filterPeriod)) return false;
       if (filterTypes.length > 0) {
         const ptypes = o.type ? o.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
         if (!ptypes.some((t) => filterTypes.includes(t))) return false;
@@ -289,7 +277,7 @@ const DashboardComercial = () => {
   }
 
   const empty = filteredOpps.length === 0;
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === filterPeriod)?.label;
+  const periodLabel = periodOptions.find((p) => p.value === filterPeriod)?.label;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -320,7 +308,7 @@ const DashboardComercial = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PERIOD_OPTIONS.map((p) => (
+            {periodOptions.map((p) => (
               <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
             ))}
           </SelectContent>
@@ -433,8 +421,8 @@ const DashboardComercial = () => {
         </Popover>
 
         {/* Active chips */}
-        {filterPeriod !== "all" && (
-          <Badge variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterPeriod("all")}>
+        {filterPeriod !== ALL_PERIODS && (
+          <Badge variant="secondary" className="gap-1 cursor-pointer h-9 px-3" onClick={() => setFilterPeriod(ALL_PERIODS)}>
             {periodLabel} <X className="w-3 h-3" />
           </Badge>
         )}

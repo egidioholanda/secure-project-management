@@ -32,23 +32,7 @@ import { AddOpportunityDialog } from "@/components/Opportunities/AddOpportunityD
 import {
   BRL, LOSS_REASONS, STAGES, SYSTEM_TYPES, formatCompact,
 } from "@/lib/salesStages";
-
-const PERIOD_OPTIONS = [
-  { value: "all", label: "Todos os períodos" },
-  { value: "month", label: "Este mês" },
-  { value: "3months", label: "Últimos 3 meses" },
-  { value: "6months", label: "Últimos 6 meses" },
-  { value: "year", label: "Este ano" },
-];
-
-const getDateThreshold = (period: string): Date | null => {
-  const now = new Date();
-  if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
-  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
-  if (period === "year") return new Date(now.getFullYear(), 0, 1);
-  return null;
-};
+import { ALL_PERIODS, buildMonthOptions, matchesPeriod } from "@/lib/periodFilter";
 
 const DAY_MS = 86_400_000;
 const daysSince = (iso: string) =>
@@ -115,13 +99,18 @@ export default function Opportunities() {
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
   const [filterResponsibles, setFilterResponsibles] = useState<string[]>([]);
   const [filterGroups, setFilterGroups] = useState<string[]>([]);
-  const [filterPeriod, setFilterPeriod] = useState("all");
+  const [filterPeriod, setFilterPeriod] = useState(ALL_PERIODS);
   const [filterValueMin, setFilterValueMin] = useState("");
   const [filterValueMax, setFilterValueMax] = useState("");
   const [showLost, setShowLost] = useState(false);
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+  const periodOptions = useMemo(
+    () => buildMonthOptions(opportunities.map((o) => o.closedAt ?? o.createdAtIso)),
+    [opportunities],
+  );
 
   const responsibleOptions = useMemo(
     () => Array.from(new Set(opportunities.map((o) => o.responsible).filter(Boolean))).sort(),
@@ -135,19 +124,18 @@ export default function Opportunities() {
 
   const activeFilterCount =
     filterTypes.length + filterResponsibles.length + filterGroups.length +
-    (filterPeriod !== "all" ? 1 : 0) + (filterValueMin || filterValueMax ? 1 : 0);
+    (filterPeriod !== ALL_PERIODS ? 1 : 0) + (filterValueMin || filterValueMax ? 1 : 0);
 
   const toggleArr = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
   const clearFilters = () => {
     setFilterTypes([]); setFilterResponsibles([]); setFilterGroups([]);
-    setFilterPeriod("all"); setFilterValueMin(""); setFilterValueMax("");
+    setFilterPeriod(ALL_PERIODS); setFilterValueMin(""); setFilterValueMax("");
   };
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    const threshold = getDateThreshold(filterPeriod);
 
     return opportunities.filter((opp) => {
       if (term && !opp.title.toLowerCase().includes(term) && !opp.client.toLowerCase().includes(term))
@@ -159,7 +147,8 @@ export default function Opportunities() {
       if (filterResponsibles.length > 0 && !filterResponsibles.includes(opp.responsible)) return false;
       if (filterGroups.length > 0 && (!opp.clientGroupId || !filterGroups.includes(opp.clientGroupId)))
         return false;
-      if (threshold && new Date(opp.createdAtIso) < threshold) return false;
+      // mesma referência do Dashboard Comercial, para os dois concordarem
+      if (!matchesPeriod(opp.closedAt ?? opp.createdAtIso, filterPeriod)) return false;
       if (filterValueMin && opp.value < parseFloat(filterValueMin)) return false;
       if (filterValueMax && opp.value > parseFloat(filterValueMax)) return false;
       return true;
@@ -352,7 +341,7 @@ export default function Opportunities() {
         <Select value={filterPeriod} onValueChange={setFilterPeriod}>
           <SelectTrigger className="h-9 w-44 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {PERIOD_OPTIONS.map((o) => (
+            {periodOptions.map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
           </SelectContent>

@@ -391,23 +391,8 @@ export function buildTrackRows(
 }
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
+// As opções de período vêm de @/lib/periodFilter (mês a mês).
 
-export const PERIOD_OPTIONS = [
-  { value: "all", label: "Todos os períodos" },
-  { value: "month", label: "Este mês" },
-  { value: "3months", label: "Últimos 3 meses" },
-  { value: "6months", label: "Últimos 6 meses" },
-  { value: "year", label: "Este ano" },
-];
-
-export const getDateThreshold = (period: string): Date | null => {
-  const now = new Date();
-  if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (period === "3months") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
-  if (period === "6months") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
-  if (period === "year") return new Date(now.getFullYear(), 0, 1);
-  return null;
-};
 
 /** `projects.type` guarda vários tipos separados por vírgula ("CFTV,Alarme") */
 export const projectTypes = (raw: string | undefined): string[] =>
