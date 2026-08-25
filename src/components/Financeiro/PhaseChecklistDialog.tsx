@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, Lock, RotateCcw, User, Package, Wrench } from "lucide-react";
+import { Check, Lock, RotateCcw, User, Package, Wrench, CalendarDays } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -38,8 +39,11 @@ function TrackChecklist({
   track: TrackKey;
 }) {
   const { user, profile } = useAuthContext();
-  const { phases, completePhase, reopenPhase } = useProjectPhases();
+  const { phases, completePhase, reopenPhase, updatePhaseDate } = useProjectPhases();
   const [noteDraft, setNoteDraft] = useState<Record<number, string>>({});
+  // Data do evento, editável antes de marcar: projetos cadastrados meses depois
+  // do faturamento precisam entrar no mês em que faturaram de verdade.
+  const [dateDraft, setDateDraft] = useState<Record<number, string>>({});
 
   const def = TRACKS[track];
   const records = phases.filter(
@@ -51,6 +55,7 @@ function TrackChecklist({
 
   const busy = completePhase.isPending || reopenPhase.isPending;
   const value = trackValue(project, track);
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const handleToggle = (n: number, done: boolean) => {
     if (done) {
@@ -66,11 +71,13 @@ function TrackChecklist({
       track,
       phase: n,
       phases: phasesToComplete(track, n, donePhases),
+      completedAt: dateDraft[n] ? `${dateDraft[n]}T12:00:00` : null,
       note: noteDraft[n],
       userId: user?.id ?? null,
       userName: profile?.full_name ?? profile?.email ?? null,
     });
     setNoteDraft((prev) => ({ ...prev, [n]: "" }));
+    setDateDraft((prev) => ({ ...prev, [n]: "" }));
   };
 
   return (
@@ -162,7 +169,20 @@ function TrackChecklist({
                   {done && rec && (
                     <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
                       <Check className="w-3 h-3 text-emerald-500" />
-                      {format(parseISO(rec.completed_at), "dd/MM/yyyy", { locale: ptBR })}
+                      <input
+                        type="date"
+                        value={format(parseISO(rec.completed_at), "yyyy-MM-dd")}
+                        max={format(new Date(), "yyyy-MM-dd")}
+                        onChange={(e) =>
+                          e.target.value &&
+                          updatePhaseDate.mutate({
+                            id: rec.id,
+                            completedAt: `${e.target.value}T12:00:00`,
+                          })
+                        }
+                        title="Data em que isto aconteceu de fato"
+                        className="bg-transparent border border-transparent hover:border-border focus:border-border rounded px-1 py-0.5 text-xs text-muted-foreground cursor-pointer"
+                      />
                       {rec.completed_by_name && (
                         <>
                           <User className="w-3 h-3 ml-1" />
@@ -177,15 +197,47 @@ function TrackChecklist({
                     </p>
                   )}
 
-                  {!done && phase.noteLabel && isCurrent && (
-                    <Input
-                      value={noteDraft[phase.n] ?? ""}
-                      onChange={(e) =>
-                        setNoteDraft((prev) => ({ ...prev, [phase.n]: e.target.value }))
-                      }
-                      placeholder={`${phase.noteLabel} (opcional)`}
-                      className="h-8 text-sm mt-2 max-w-xs"
-                    />
+                  {!done && isCurrent && (
+                    <div className="mt-2 flex flex-wrap items-end gap-2">
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor={`date-${track}-${phase.n}`}
+                          className="text-[11px] text-muted-foreground flex items-center gap-1"
+                        >
+                          <CalendarDays className="w-3 h-3" />
+                          Data do evento
+                        </Label>
+                        <Input
+                          id={`date-${track}-${phase.n}`}
+                          type="date"
+                          value={dateDraft[phase.n] ?? today}
+                          max={today}
+                          onChange={(e) =>
+                            setDateDraft((prev) => ({ ...prev, [phase.n]: e.target.value }))
+                          }
+                          className="h-8 text-sm w-[150px]"
+                        />
+                      </div>
+                      {phase.noteLabel && (
+                        <div className="space-y-1 flex-1 min-w-[180px]">
+                          <Label
+                            htmlFor={`note-${track}-${phase.n}`}
+                            className="text-[11px] text-muted-foreground"
+                          >
+                            {phase.noteLabel}
+                          </Label>
+                          <Input
+                            id={`note-${track}-${phase.n}`}
+                            value={noteDraft[phase.n] ?? ""}
+                            onChange={(e) =>
+                              setNoteDraft((prev) => ({ ...prev, [phase.n]: e.target.value }))
+                            }
+                            placeholder="opcional"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -287,7 +339,8 @@ export function PhaseChecklistDialog({
           são enviados e faturados em momentos diferentes. Marcar uma fase
           conclui as anteriores em branco da mesma trilha — exceto as marcadas
           como "fora de ordem", que podem acontecer antes e são registradas
-          sozinhas.
+          sozinhas. A data pode ser corrigida a qualquer momento: é ela que
+          define em que mês o faturamento entra.
         </p>
       </DialogContent>
     </Dialog>

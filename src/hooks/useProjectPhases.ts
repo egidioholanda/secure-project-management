@@ -41,6 +41,7 @@ export function useProjectPhases() {
       track,
       phase,
       phases: toInsert,
+      completedAt,
       note,
       userId,
       userName,
@@ -51,6 +52,12 @@ export function useProjectPhases() {
       phase: number;
       /** todas as fases a gravar, já resolvidas pelo modelo */
       phases: number[];
+      /**
+       * Data real do evento (yyyy-MM-dd). Projetos lançados no sistema meses
+       * depois do faturamento precisam disso, senão o mês do faturamento fica
+       * sendo o mês do cadastro.
+       */
+      completedAt?: string | null;
       note?: string | null;
       userId: string | null;
       userName: string | null;
@@ -61,6 +68,9 @@ export function useProjectPhases() {
         project_id: projectId,
         track,
         phase: p,
+        // as fases arrastadas junto herdam a mesma data, senão o lead time
+        // sairia negativo ao lançar retroativo
+        ...(completedAt ? { completed_at: completedAt } : {}),
         completed_by: userId,
         completed_by_name: userName,
         // A observação pertence só à fase que o usuário marcou de fato
@@ -106,6 +116,27 @@ export function useProjectPhases() {
       }),
   });
 
+  /** Corrige a data de uma fase já registrada */
+  const updatePhaseDate = useMutation({
+    mutationFn: async ({ id, completedAt }: { id: string; completedAt: string }) => {
+      const { error } = await (supabase as any)
+        .from("project_phases")
+        .update({ completed_at: completedAt })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project_phases"] });
+      toast({ title: "Data atualizada" });
+    },
+    onError: (err: any) =>
+      toast({
+        title: "Erro ao atualizar a data",
+        description: err?.message,
+        variant: "destructive",
+      }),
+  });
+
   const updateNote = useMutation({
     mutationFn: async ({ id, note }: { id: string; note: string }) => {
       const { error } = await (supabase as any)
@@ -126,5 +157,5 @@ export function useProjectPhases() {
       }),
   });
 
-  return { phases, isLoading, completePhase, reopenPhase, updateNote };
+  return { phases, isLoading, completePhase, reopenPhase, updatePhaseDate, updateNote };
 }
