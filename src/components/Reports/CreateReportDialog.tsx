@@ -455,21 +455,28 @@ export const CreateReportDialog = ({
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 {photos.map(photo => (
-                  <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-border">
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || "Foto do relatório"}
-                      className="w-full h-32 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                  <div key={photo.id} className="rounded-lg overflow-hidden border border-border">
+                    {/* O overlay precisa ficar restrito à imagem. Quando era
+                        `absolute inset-0` no card inteiro, cobria também o campo
+                        de nome — e opacity-0 não impede o elemento de capturar
+                        cliques, então era impossível digitar a legenda. */}
+                    <div className="relative group">
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || "Foto do relatório"}
+                        className="w-full h-32 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRemovePhoto(photo.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="p-2 space-y-1">
                       <Label
