@@ -179,7 +179,11 @@ const DashboardComercial = () => {
   const filteredOpps = useMemo(() => {
     const threshold = getDateThreshold(filterPeriod);
     return opportunities.filter((o) => {
-      if (threshold && new Date(o.createdAtIso) < threshold) return false;
+      // Data de referência do período: para negócios já decididos vale quando
+      // fecharam; para os em aberto, quando entraram. Sem isso um negócio
+      // fechado em junho e cadastrado agora cairia no mês do cadastro.
+      const refDate = new Date(o.closedAt ?? o.createdAtIso);
+      if (threshold && refDate < threshold) return false;
       if (filterTypes.length > 0) {
         const ptypes = o.type ? o.type.split(",").map((t) => t.trim()).filter(Boolean) : [];
         if (!ptypes.some((t) => filterTypes.includes(t))) return false;

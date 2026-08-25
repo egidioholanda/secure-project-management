@@ -33,6 +33,11 @@ export interface Opportunity {
   status: SalesStage;
   description: string;
   expectedCloseDate: string | null;
+  /**
+   * Data em que o negócio foi decidido (ganho/perdido). É ela que define o mês
+   * no Dashboard Comercial — antes usávamos updated_at, que muda a cada edição.
+   */
+  closedAt: string | null;
   lossReason: string | null;
   archivedAt: string | null;
   mergedIntoId: string | null;
@@ -55,10 +60,15 @@ interface DbOpportunity {
   created_at: string;
   updated_at: string;
   expected_close_date: string | null;
+  closed_at: string | null;
   loss_reason: string | null;
   archived_at: string | null;
   merged_into_id: string | null;
 }
+
+const isDecided = (s: string) => s === "ganha" || s === "perdida";
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /** numeric do Postgres chega como string no supabase-js */
 const num = (v: number | string | null | undefined): number | null => {
@@ -90,6 +100,7 @@ const mapDbToOpportunity = (db: DbOpportunity): Opportunity => ({
   // era digitada no formulário e silenciosamente descartada em toda escrita.
   description: db.notes || "",
   expectedCloseDate: db.expected_close_date,
+  closedAt: db.closed_at,
   lossReason: db.loss_reason,
   archivedAt: db.archived_at,
   mergedIntoId: db.merged_into_id,
@@ -109,6 +120,8 @@ const toDbPayload = (opp: Omit<Opportunity, "id" | "createdAt">) => ({
   notes: opp.description || null,
   client_group_id: opp.clientGroupId || null,
   expected_close_date: opp.expectedCloseDate || null,
+  // decidido sem data informada assume hoje; em aberto não tem data de fecho
+  closed_at: isDecided(opp.status) ? opp.closedAt || todayISO() : null,
   loss_reason: opp.status === "perdida" ? opp.lossReason || null : null,
 });
 

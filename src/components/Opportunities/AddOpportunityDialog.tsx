@@ -85,6 +85,7 @@ export function AddOpportunityDialog({
   const [status, setStatus] = useState<SalesStage>("qualificacao");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [lossReason, setLossReason] = useState("");
+  const [closedAt, setClosedAt] = useState("");
   const [description, setDescription] = useState("");
 
   const isDuplicating = !!duplicatingOpportunity;
@@ -109,6 +110,7 @@ export function AddOpportunityDialog({
       setStatus(s.status);
       setExpectedCloseDate(s.expectedCloseDate ?? "");
       setLossReason(s.lossReason ?? "");
+      setClosedAt(s.closedAt ?? "");
       setDescription(s.description || "");
     } else {
       setTitle("");
@@ -123,6 +125,7 @@ export function AddOpportunityDialog({
       setStatus("qualificacao");
       setExpectedCloseDate("");
       setLossReason("");
+      setClosedAt("");
       setDescription("");
     }
   }, [editingOpportunity, duplicatingOpportunity, open]);
@@ -153,6 +156,8 @@ export function AddOpportunityDialog({
       dealKey(duplicatingOpportunity!.title, duplicatingOpportunity!.client);
 
   const suffixWarning = hasProductServiceSuffix(title);
+  /** ganho ou perdido: é o que dá sentido a uma data de fechamento */
+  const isDecided = status === "ganha" || status === "perdida";
 
   const handleSubmit = () => {
     if (!title.trim() || !client.trim() || types.length === 0 || !responsible.trim()) {
@@ -197,6 +202,8 @@ export function AddOpportunityDialog({
       description,
       expectedCloseDate: expectedCloseDate || null,
       lossReason: status === "perdida" ? lossReason : null,
+      // sem data informada num negócio decidido, o hook assume hoje
+      closedAt: isDecided ? closedAt || null : null,
       archivedAt: null,
       mergedIntoId: null,
     };
@@ -450,6 +457,26 @@ export function AddOpportunityDialog({
               />
             </div>
           </div>
+
+          {isDecided && (
+            <div className="space-y-2">
+              <Label htmlFor="closedAt">
+                Data do fechamento
+              </Label>
+              <Input
+                id="closedAt"
+                type="date"
+                value={closedAt}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setClosedAt(e.target.value)}
+                className="max-w-[200px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Define em que mês este negócio entra no Dashboard Comercial.
+                Deixe em branco para usar hoje.
+              </p>
+            </div>
+          )}
 
           {status === "perdida" && (
             <div className="space-y-2">

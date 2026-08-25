@@ -184,7 +184,11 @@ export default function Opportunities() {
     );
 
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const wonThisMonth = won.filter((o) => new Date(o.updatedAtIso) >= monthStart);
+    // closedAt, não updatedAt: renomear a oportunidade não pode mudar o mês
+    // em que ela foi ganha
+    const wonThisMonth = won.filter(
+      (o) => new Date(o.closedAt ?? o.updatedAtIso) >= monthStart,
+    );
 
     // Taxa de ganho = ganhas / (ganhas + perdidas). Dividir pelo total incluindo
     // negócios em aberto — como fazia o Dashboard Comercial — piora a taxa a
