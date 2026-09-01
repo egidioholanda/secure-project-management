@@ -41,6 +41,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useClientGroups } from "@/hooks/useClientGroups";
 import { useProjectPhases } from "@/hooks/useProjectPhases";
 import { useProjectOrders, UNSPLIT_CATEGORY } from "@/hooks/useProjectOrders";
+import { useOpportunities } from "@/hooks/useOpportunities";
 import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
 import { SplitOrderDialog } from "./SplitOrderDialog";
 import {
@@ -309,6 +310,7 @@ export function BillingPipeline() {
   );
   const { phases, isLoading: phasesLoading } = useProjectPhases();
   const { orders, categories, isLoading: ordersLoading } = useProjectOrders();
+  const { opportunities } = useOpportunities(allowedClientGroupIds);
   const { groups } = useClientGroups();
 
   // Produto e serviço são pedidos independentes: cada aba tem seus próprios
@@ -341,6 +343,49 @@ export function BillingPipeline() {
     () => buildTrackRows(orders, projects, phases, categoryLabels, track),
     [orders, projects, phases, categoryLabels, track],
   );
+
+  /**
+   * Divergência entre o que foi vendido e o que está no pipeline.
+   *
+   * Corrigir o valor na oportunidade depois de o projeto existir não propaga —
+   * e o faturamento usa o projeto. Isso já produziu um projeto R$ 2,3 mil
+   * acima da venda sem ninguém perceber. Avisamos em vez de sincronizar
+   * sozinhos: nem toda diferença é erro, pode ser aditivo depois da venda.
+   */
+  const soldByProject = useMemo(() => {
+    const byOpp = new Map(opportunities.map((o) => [o.id, o]));
+    const m = new Map<string, { produto: number; servico: number }>();
+    for (const p of projects) {
+      const opp = p.opportunityId ? byOpp.get(p.opportunityId) : null;
+      if (opp) {
+        m.set(p.id, {
+          produto: opp.productValue ?? 0,
+          servico: opp.serviceValue ?? 0,
+        });
+      }
+    }
+    return m;
+  }, [projects, opportunities]);
+
+  /** soma dos pedidos do projeto nesta trilha, para comparar com o vendido */
+  const orderedByProject = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of orders) {
+      if (o.kind !== track) continue;
+      m.set(o.project_id, (m.get(o.project_id) ?? 0) + o.value);
+    }
+    return m;
+  }, [orders, track]);
+
+  const divergence = (projectId: string): number | null => {
+    const sold = soldByProject.get(projectId);
+    if (!sold) return null;
+    const vendido = track === "produto" ? sold.produto : sold.servico;
+    if (!vendido) return null;
+    const noPipeline = orderedByProject.get(projectId) ?? 0;
+    const dif = noPipeline - vendido;
+    return Math.abs(dif) > 0.01 ? dif : null;
+  };
 
   const trackDef = TRACKS[track];
   /** fase a partir da qual só falta a nota fiscal desta trilha */
@@ -1263,6 +1308,22 @@ export function BillingPipeline() {
                             !row.hasValue && "text-muted-foreground",
                           )}
                         >
+                          {(() => {
+                            const dif = divergence(row.project.id);
+                            if (dif === null) return null;
+                            return (
+                              <span
+                                className="block text-[11px] font-normal text-amber-500"
+                                title={`A oportunidade tem ${BRL_FULL.format(
+                                  (row.value || 0) - dif,
+                                )} nesta trilha. Diferença de ${BRL_FULL.format(
+                                  Math.abs(dif),
+                                )} ${dif > 0 ? "a mais" : "a menos"} no pipeline.`}
+                              >
+                                ⚠ difere da venda
+                              </span>
+                            );
+                          })()}
                           {!row.hasValue ? (
                             "—"
                           ) : row.billed ? (
