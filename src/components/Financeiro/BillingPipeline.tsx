@@ -60,7 +60,7 @@ import {
 } from "./billingPhases";
 import { ALL_PERIODS, buildMonthOptions, matchesPeriod } from "@/lib/periodFilter";
 
-type TabKey = "todos" | "travados" | "cliente" | "faturar";
+type TabKey = "todos" | "travados" | "cliente" | "faturar" | "finalizados";
 
 const PAGE_SIZES = [10, 25, 50];
 const DEFAULT_PAGE_SIZE = 10;
@@ -493,6 +493,9 @@ export function BillingPipeline() {
   const scopedFinished = useMemo(() => {
     return rows.filter((r) => {
       if (!r.isFinished) return false;
+      // mesmo critério do pipeline aberto: sem valor nesta trilha, o projeto
+      // não tem esse pedido e não pertence a esta aba
+      if (!r.hasValue) return false;
       if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
@@ -594,6 +597,16 @@ export function BillingPipeline() {
   }, [scoped, scopedFinished, track, readyPhase]);
 
   const filtered = useMemo(() => {
+    // Trilhas concluídas não estão em `scoped` (que é o pipeline aberto):
+    // elas vêm de scopedFinished, com os mesmos filtros de escopo.
+    if (tab === "finalizados") {
+      return [...scopedFinished].sort(
+        (a, b) =>
+          (b.billedAt?.getTime() ?? 0) - (a.billedAt?.getTime() ?? 0) ||
+          b.value - a.value,
+      );
+    }
+
     let list = scoped;
     if (tab === "travados") list = list.filter((r) => r.isLate);
     if (tab === "cliente") list = list.filter((r) => r.dependsOnClient);
@@ -604,7 +617,7 @@ export function BillingPipeline() {
     return [...list].sort(
       (a, b) => b.urgency - a.urgency || b.pendingValue - a.pendingValue,
     );
-  }, [scoped, tab, readyPhase]);
+  }, [scoped, scopedFinished, tab, readyPhase]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   // Clampar em vez de usar useEffect: se um filtro encolhe a lista e a página
@@ -1085,6 +1098,9 @@ export function BillingPipeline() {
                 <TabsTrigger value="faturar" className="text-xs">
                   Prontos p/ NF ({metrics.readyToBillCount})
                 </TabsTrigger>
+                <TabsTrigger value="finalizados" className="text-xs">
+                  ✓ Finalizados ({metrics.finishedCount})
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -1102,7 +1118,9 @@ export function BillingPipeline() {
                     <th className="pb-2 pr-3">Fases 1–10</th>
                     <th className="pb-2 pr-3">Fase atual</th>
                     <th className="pb-2 pr-3">Dono</th>
-                    <th className="pb-2 pr-3 text-right">Parado</th>
+                    <th className="pb-2 pr-3 text-right">
+                      {tab === "finalizados" ? "Faturado em" : "Parado"}
+                    </th>
                     <th className="pb-2" />
                   </tr>
                 </thead>
@@ -1167,21 +1185,33 @@ export function BillingPipeline() {
                         </td>
 
                         <td className="py-3 pr-3 whitespace-nowrap">
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className="text-xs font-mono font-bold"
-                              style={{ color: macroColor }}
-                            >
-                              {row.currentPhase}
-                            </span>
+                          {row.isFinished ? (
                             <span
                               className={cn(
+                                "flex items-center gap-1.5 text-emerald-500",
                                 projector ? "text-sm" : "text-[13px]",
                               )}
                             >
-                              {def?.label ?? "—"}
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Concluído
                             </span>
-                          </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="text-xs font-mono font-bold"
+                                style={{ color: macroColor }}
+                              >
+                                {row.currentPhase}
+                              </span>
+                              <span
+                                className={cn(
+                                  projector ? "text-sm" : "text-[13px]",
+                                )}
+                              >
+                                {def?.label ?? "—"}
+                              </span>
+                            </span>
+                          )}
                           {row.notStarted && (
                             <span className="text-[11px] text-amber-500">
                               nada marcado ainda
@@ -1202,7 +1232,13 @@ export function BillingPipeline() {
                               : "text-muted-foreground",
                           )}
                         >
-                          {row.daysInPhase !== null ? (
+                          {row.isFinished ? (
+                            <span className="text-muted-foreground font-normal">
+                              {row.billedAt
+                                ? row.billedAt.toLocaleDateString("pt-BR")
+                                : "—"}
+                            </span>
+                          ) : row.daysInPhase !== null ? (
                             <>
                               {row.daysInPhase} d{row.isLate && " ⚠"}
                             </>
@@ -1356,6 +1392,13 @@ export function BillingPipeline() {
 }
 
 function EmptyState({ tab, hasProjects }: { tab: TabKey; hasProjects: boolean }) {
+  if (tab === "finalizados") {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground">
+        Nenhum pedido finalizado ainda nesta trilha.
+      </div>
+    );
+  }
   if (tab === "travados") {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
