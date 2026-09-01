@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useProjectPhases } from "@/hooks/useProjectPhases";
@@ -21,24 +20,23 @@ import {
   MACRO_COLORS,
   OWNERS,
   TRACKS,
-  TRACK_LIST,
   datesToAlign,
   phasesToComplete,
   phasesToReopen,
-  trackValue,
   type TrackKey,
   type TrackRow,
 } from "./billingPhases";
-import type { Project } from "@/types/project";
+import { useProjectOrders, type ProjectOrder } from "@/hooks/useProjectOrders";
 
-/** Uma trilha completa: as fases em ordem, marcáveis */
+/** As fases de UM pedido, em ordem, marcáveis */
 function TrackChecklist({
-  project,
-  track,
+  order,
+  categoryLabel,
 }: {
-  project: Project;
-  track: TrackKey;
+  order: ProjectOrder;
+  categoryLabel: string;
 }) {
+  const track = order.kind as TrackKey;
   const { user, profile } = useAuthContext();
   const { phases, completePhase, reopenPhase, updatePhaseDate } = useProjectPhases();
   const [noteDraft, setNoteDraft] = useState<Record<number, string>>({});
@@ -47,28 +45,26 @@ function TrackChecklist({
   const [dateDraft, setDateDraft] = useState<Record<number, string>>({});
 
   const def = TRACKS[track];
-  const records = phases.filter(
-    (p) => p.project_id === project.id && p.track === track,
-  );
+  const records = phases.filter((p) => p.order_id === order.id);
   const donePhases = records.map((r) => r.phase);
   const currentPhase =
     def.phases.find((p) => !donePhases.includes(p.n))?.n ?? def.phases.length + 1;
 
   const busy = completePhase.isPending || reopenPhase.isPending;
-  const value = trackValue(project, track);
+  const value = order.value;
   const today = format(new Date(), "yyyy-MM-dd");
 
   const handleToggle = (n: number, done: boolean) => {
     if (done) {
       reopenPhase.mutate({
-        projectId: project.id,
-        track,
+        orderId: order.id,
         phases: phasesToReopen(track, n, donePhases),
       });
       return;
     }
     completePhase.mutate({
-      projectId: project.id,
+      orderId: order.id,
+      projectId: order.project_id,
       track,
       phase: n,
       phases: phasesToComplete(track, n, donePhases),
@@ -85,7 +81,7 @@ function TrackChecklist({
     <div>
       <div className="flex items-center justify-between gap-2 pb-3">
         <p className="text-sm text-muted-foreground">
-          Pedido de {def.what}
+          {categoryLabel} · pedido de {def.what}
         </p>
         <p className="text-base font-bold tabular-nums">
           {value > 0 ? BRL_COMPACT(value) : "sem valor"}
@@ -277,22 +273,43 @@ export function PhaseChecklistDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { phases } = useProjectPhases();
-  // Abre na trilha de onde o usuário clicou, mas as duas ficam à mão:
-  // um pedido costuma travar por causa do outro.
-  const [tab, setTab] = useState<TrackKey>(row?.track ?? "produto");
+  const { orders, categories } = useProjectOrders();
+  /** o pedido aberto: começa no que foi clicado */
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  const labelOf = (slug: string) =>
+    categories.find((c) => c.slug === slug)?.label ?? slug;
 
   if (!row) return null;
   const project = row.project;
 
-  const progressOf = (track: TrackKey) => {
-    const done = phases.filter(
-      (p) => p.project_id === project.id && p.track === track,
-    ).length;
-    return `${done}/${TRACKS[track].phases.length}`;
+  /**
+   * Todos os pedidos deste projeto. Com 3 modalidades × 2 tipos seriam 6
+   * checklists — abas fixas não cabem, então a navegação é uma lista de
+   * pedidos irmãos e o conteúdo mostra um de cada vez.
+   */
+  const siblings = orders
+    .filter((o) => o.project_id === project.id)
+    .sort(
+      (a, b) =>
+        a.category.localeCompare(b.category) || a.kind.localeCompare(b.kind),
+    );
+
+  const current = siblings.find((o) => o.id === (orderId ?? row.order.id)) ?? row.order;
+
+  const progressOf = (oid: string, kind: string) => {
+    const done = phases.filter((p) => p.order_id === oid).length;
+    return `${done}/${TRACKS[kind as TrackKey].phases.length}`;
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) setOrderId(null);
+        onOpenChange(v);
+      }}
+    >
       {/* DialogContent é `grid` sem altura máxima: com 8 fases o conteúdo
           crescia para fora da viewport e não havia o que rolar. Vira uma
           coluna flex limitada, com só a lista de fases rolando. */}
@@ -308,44 +325,56 @@ export function PhaseChecklistDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as TrackKey)}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          <TabsList className="w-full flex-shrink-0">
-            {TRACK_LIST.map((t) => (
-              <TabsTrigger key={t.key} value={t.key} className="flex-1 gap-1.5">
-                {t.key === "produto" ? (
-                  <Package className="w-3.5 h-3.5" />
-                ) : (
-                  <Wrench className="w-3.5 h-3.5" />
-                )}
-                {t.label}
-                <span className="text-[11px] text-muted-foreground font-mono">
-                  {progressOf(t.key)}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {/* min-h-0 é o que permite este filho encolher e o overflow valer */}
-          <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
-            {TRACK_LIST.map((t) => (
-              <TabsContent key={t.key} value={t.key} className="mt-0">
-                <TrackChecklist project={project} track={t.key} />
-              </TabsContent>
-            ))}
+        {/* Seletor de pedidos: some quando o projeto só tem um */}
+        {siblings.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 flex-shrink-0 pb-1">
+            {siblings.map((o) => {
+              const isCurrent = o.id === current.id;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setOrderId(o.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                    isCurrent
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-muted-foreground",
+                  )}
+                >
+                  {o.kind === "produto" ? (
+                    <Package className="w-3.5 h-3.5" />
+                  ) : (
+                    <Wrench className="w-3.5 h-3.5" />
+                  )}
+                  <span className="font-medium">{labelOf(o.category)}</span>
+                  <span className="text-muted-foreground/70">
+                    {o.kind === "produto" ? "produto" : "serviço"}
+                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {progressOf(o.id, o.kind)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </Tabs>
+        )}
+
+        {/* min-h-0 é o que permite este filho encolher e o overflow valer */}
+        <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1">
+          <TrackChecklist
+            key={current.id}
+            order={current}
+            categoryLabel={labelOf(current.category)}
+          />
+        </div>
 
         <p className="text-xs text-muted-foreground border-t border-border pt-3 mt-3 flex-shrink-0">
-          As duas trilhas são independentes: o pedido de produto e o de serviço
-          são enviados e faturados em momentos diferentes. Marcar uma fase
-          conclui as anteriores em branco da mesma trilha — exceto as marcadas
-          como "fora de ordem", que podem acontecer antes e são registradas
-          sozinhas. A data pode ser corrigida a qualquer momento: é ela que
-          define em que mês o faturamento entra.
+          Cada pedido é faturado por conta própria — por modalidade e entre
+          produto e serviço. Marcar uma fase conclui as anteriores em branco do
+          mesmo pedido, exceto as marcadas como "fora de ordem". A data pode ser
+          corrigida a qualquer momento: é ela que define em que mês o
+          faturamento entra.
         </p>
       </DialogContent>
     </Dialog>

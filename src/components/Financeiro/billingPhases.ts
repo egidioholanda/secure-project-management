@@ -1,5 +1,6 @@
 import type { Project } from "@/types/project";
 import type { ProjectPhaseRecord } from "@/hooks/useProjectPhases";
+import type { ProjectOrder } from "@/hooks/useProjectOrders";
 
 /**
  * Todo projeto tem DOIS pedidos — produto e serviço — enviados em momentos
@@ -260,21 +261,16 @@ export const BRL_FULL = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-/**
- * Valor de cada trilha. Projetos anteriores ao split não têm produto/serviço
- * separados: o total legado é tratado como produto, para o dinheiro não sumir.
- */
-export function trackValue(project: Project, track: TrackKey): number {
-  const hasSplit =
-    (project.productValue ?? null) !== null || (project.serviceValue ?? null) !== null;
-  // sem split, o total legado conta como produto para o dinheiro não sumir
-  if (!hasSplit) return track === "produto" ? (project.value ?? 0) : 0;
-  return (track === "produto" ? project.productValue : project.serviceValue) ?? 0;
-}
 
 // ── Derivação do estado de uma trilha ────────────────────────────────────────
 
 export interface TrackRow {
+  /** o pedido é a unidade faturável; o projeto é o contexto dele */
+  order: ProjectOrder;
+  categoryLabel: string;
+  /** quantos pedidos este projeto tem nesta trilha — 2 linhas com o mesmo
+   *  nome de projeto parecem duplicata sem esse aviso */
+  siblings: number;
   project: Project;
   track: TrackKey;
   value: number;
@@ -305,14 +301,18 @@ export interface TrackRow {
 const DAY_MS = 86_400_000;
 
 export function buildTrackRow(
+  order: ProjectOrder,
   project: Project,
   records: ProjectPhaseRecord[],
-  track: TrackKey,
+  categoryLabel: string,
+  siblings: number,
   today: Date = new Date(),
 ): TrackRow {
+  const track = order.kind as TrackKey;
   const def = TRACKS[track];
   const total = def.phases.length;
-  const mine = records.filter((r) => r.track === track);
+  // as fases já pertencem ao pedido; nada de filtrar por trilha do projeto
+  const mine = records;
   const byPhase = new Map(mine.map((r) => [r.phase, r]));
   const donePhases = mine.map((r) => r.phase).sort((a, b) => a - b);
 
@@ -366,7 +366,7 @@ export function buildTrackRow(
         )
       : null;
 
-  const value = trackValue(project, track);
+  const value = order.value;
   const billingRecord = byPhase.get(def.billingPhase) ?? null;
   const billed = !!billingRecord;
   const billedAt = billingRecord ? new Date(billingRecord.completed_at) : null;
@@ -379,6 +379,9 @@ export function buildTrackRow(
       : null;
 
   return {
+    order,
+    categoryLabel,
+    siblings,
     project,
     track,
     value,
@@ -404,20 +407,43 @@ export function buildTrackRow(
 }
 
 export function buildTrackRows(
+  orders: ProjectOrder[],
   projects: Project[],
   allRecords: ProjectPhaseRecord[],
+  categoryLabels: Record<string, string>,
   track: TrackKey,
   today: Date = new Date(),
 ): TrackRow[] {
-  const byProject = new Map<string, ProjectPhaseRecord[]>();
+  const projectById = new Map(projects.map((p) => [p.id, p]));
+
+  const byOrder = new Map<string, ProjectPhaseRecord[]>();
   for (const r of allRecords) {
-    const list = byProject.get(r.project_id);
+    if (!r.order_id) continue;
+    const list = byOrder.get(r.order_id);
     if (list) list.push(r);
-    else byProject.set(r.project_id, [r]);
+    else byOrder.set(r.order_id, [r]);
   }
-  return projects.map((p) =>
-    buildTrackRow(p, byProject.get(p.id) ?? [], track, today),
-  );
+
+  const mine = orders.filter((o) => o.kind === track);
+  // quantos pedidos o projeto tem nesta mesma trilha
+  const perProject = new Map<string, number>();
+  for (const o of mine) {
+    perProject.set(o.project_id, (perProject.get(o.project_id) ?? 0) + 1);
+  }
+
+  return mine
+    // um pedido cujo projeto o perfil do usuário não pode ver não é dele
+    .filter((o) => projectById.has(o.project_id))
+    .map((o) =>
+      buildTrackRow(
+        o,
+        projectById.get(o.project_id)!,
+        byOrder.get(o.id) ?? [],
+        categoryLabels[o.category] ?? o.category,
+        perProject.get(o.project_id) ?? 1,
+        today,
+      ),
+    );
 }
 
 // ── Filtros ──────────────────────────────────────────────────────────────────

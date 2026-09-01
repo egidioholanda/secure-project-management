@@ -6,8 +6,10 @@ export type PhaseTrack = "produto" | "servico";
 
 export interface ProjectPhaseRecord {
   id: string;
+  /** a fase pertence ao PEDIDO; project_id/track ficam por um release como
+   *  rede de segurança da migração, mas não são mais lidos */
+  order_id: string | null;
   project_id: string;
-  /** produto e serviço são dois pedidos com relógios independentes */
   track: PhaseTrack;
   phase: number;
   completed_at: string;
@@ -37,6 +39,7 @@ export function useProjectPhases() {
   // de cada trilha — na de serviço a obra pode ter começado antes do pedido.
   const completePhase = useMutation({
     mutationFn: async ({
+      orderId,
       projectId,
       track,
       phase,
@@ -46,6 +49,7 @@ export function useProjectPhases() {
       userId,
       userName,
     }: {
+      orderId: string;
       projectId: string;
       track: PhaseTrack;
       /** a fase que o usuário marcou — é dela que a observação é */
@@ -65,6 +69,7 @@ export function useProjectPhases() {
       if (toInsert.length === 0) return;
 
       const rows = toInsert.map((p) => ({
+        order_id: orderId,
         project_id: projectId,
         track,
         phase: p,
@@ -94,14 +99,13 @@ export function useProjectPhases() {
   // Reabrir uma fase remove ela e todas as posteriores, pelo mesmo motivo.
   const reopenPhase = useMutation({
     mutationFn: async ({
-      projectId, track, phases: toRemove,
-    }: { projectId: string; track: PhaseTrack; phases: number[] }) => {
+      orderId, phases: toRemove,
+    }: { orderId: string; phases: number[] }) => {
       if (toRemove.length === 0) return;
       const { error } = await (supabase as any)
         .from("project_phases")
         .delete()
-        .eq("project_id", projectId)
-        .eq("track", track)
+        .eq("order_id", orderId)
         .in("phase", toRemove);
       if (error) throw error;
     },

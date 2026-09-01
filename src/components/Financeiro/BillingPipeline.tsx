@@ -39,6 +39,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useProjects } from "@/hooks/useProjects";
 import { useClientGroups } from "@/hooks/useClientGroups";
 import { useProjectPhases } from "@/hooks/useProjectPhases";
+import { useProjectOrders, UNSPLIT_CATEGORY } from "@/hooks/useProjectOrders";
 import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
 import {
   BRL_COMPACT,
@@ -305,6 +306,7 @@ export function BillingPipeline() {
     allowedClientGroupIds,
   );
   const { phases, isLoading: phasesLoading } = useProjectPhases();
+  const { orders, categories, isLoading: ordersLoading } = useProjectOrders();
   const { groups } = useClientGroups();
 
   // Produto e serviço são pedidos independentes: cada aba tem seus próprios
@@ -323,12 +325,18 @@ export function BillingPipeline() {
   const [filterMacros, setFilterMacros] = useState<MacroKey[]>([]);
   const [filterOwners, setFilterOwners] = useState<OwnerKey[]>([]);
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
 
-  const isLoading = projectsLoading || phasesLoading;
+  const isLoading = projectsLoading || phasesLoading || ordersLoading;
+
+  const categoryLabels = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.slug, c.label])),
+    [categories],
+  );
 
   const rows = useMemo(
-    () => buildTrackRows(projects, phases, track),
-    [projects, phases, track],
+    () => buildTrackRows(orders, projects, phases, categoryLabels, track),
+    [orders, projects, phases, categoryLabels, track],
   );
 
   const trackDef = TRACKS[track];
@@ -355,6 +363,14 @@ export function BillingPipeline() {
     () => buildMonthOptions(rows.map(periodRef)),
     [rows],
   );
+
+  /** só as modalidades que realmente aparecem nesta trilha */
+  const categoryOptions = useMemo(() => {
+    const present = new Set(rows.map((r) => r.order.category));
+    return categories
+      .filter((c) => present.has(c.slug))
+      .map((c) => ({ slug: c.slug, label: c.label }));
+  }, [rows, categories]);
 
   const allTypes = useMemo(
     () =>
@@ -394,21 +410,25 @@ export function BillingPipeline() {
         const types = projectTypes(r.project.type);
         if (!types.some((t) => filterTypes.includes(t))) return false;
       }
+      if (filterCategories.length && !filterCategories.includes(r.order.category))
+        return false;
       return true;
     };
 
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const projectIds = new Set<string>();
+    let orderTotal = 0;
     const byTrack: Record<string, number> = { produto: 0, servico: 0 };
     let monthValue = 0;
 
     for (const t of TRACK_LIST) {
       // sem recorte de isFinished: trilhas encerradas também faturaram
-      const billed = buildTrackRows(projects, phases, t.key).filter(
+      const billed = buildTrackRows(orders, projects, phases, categoryLabels, t.key).filter(
         (r) => r.billed && r.hasValue && inScope(r),
       );
       byTrack[t.key] = billed.reduce((sum, r) => sum + r.value, 0);
       billed.forEach((r) => projectIds.add(r.project.id));
+      orderTotal += billed.length;
       monthValue += billed
         .filter((r) => r.billedAt && r.billedAt >= monthStart)
         .reduce((sum, r) => sum + r.value, 0);
@@ -419,18 +439,16 @@ export function BillingPipeline() {
       servico: byTrack.servico,
       total: byTrack.produto + byTrack.servico,
       projectCount: projectIds.size,
+      orderCount: orderTotal,
       monthValue,
     };
-  }, [projects, phases, period, clientFilter, filterGroups, filterTypes]);
+  }, [orders, projects, phases, categoryLabels, period, clientFilter, filterGroups, filterTypes, filterCategories]);
 
   // Todos os filtros recortam o universo: KPIs, faixa de macro-etapas,
   // contagens das abas e tabela olham para o MESMO conjunto. A aba é navegação
   // dentro do recorte, não mais um filtro.
   const scoped = useMemo(() => {
     return open.filter((r) => {
-      // um projeto sem valor nesta trilha não tem esse pedido: mostrá-lo aqui
-      // encheria a aba de linhas que nunca vão faturar
-      if (!r.hasValue) return false;
       if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
@@ -441,6 +459,8 @@ export function BillingPipeline() {
         const types = projectTypes(r.project.type);
         if (!types.some((t) => filterTypes.includes(t))) return false;
       }
+      if (filterCategories.length && !filterCategories.includes(r.order.category))
+        return false;
       if (filterMacros.length) {
         const def = getPhase(track, r.currentPhase);
         if (!def || !filterMacros.includes(def.macro)) return false;
@@ -457,20 +477,22 @@ export function BillingPipeline() {
     clientFilter,
     filterGroups,
     filterTypes,
+    filterCategories,
     filterMacros,
     filterOwners,
   ]);
 
-  /** projetos que não têm pedido desta trilha — omitidos, mas informados */
-  const withoutThisTrack = useMemo(
-    () => open.filter((r) => !r.hasValue).length,
-    [open],
-  );
+  /** projetos sem nenhum pedido desta trilha — omitidos, mas informados */
+  const withoutThisTrack = useMemo(() => {
+    const comPedido = new Set(rows.map((r) => r.project.id));
+    return projects.filter((p) => !comPedido.has(p.id)).length;
+  }, [rows, projects]);
 
   const activeFilterCount =
     (period !== ALL_PERIODS ? 1 : 0) +
     (clientFilter !== "all" ? 1 : 0) +
     filterGroups.length +
+    filterCategories.length +
     filterMacros.length +
     filterOwners.length +
     filterTypes.length;
@@ -481,6 +503,7 @@ export function BillingPipeline() {
     setPeriod(ALL_PERIODS);
     setClientFilter("all");
     setFilterGroups([]);
+    setFilterCategories([]);
     setFilterMacros([]);
     setFilterOwners([]);
     setFilterTypes([]);
@@ -493,9 +516,6 @@ export function BillingPipeline() {
   const scopedFinished = useMemo(() => {
     return rows.filter((r) => {
       if (!r.isFinished) return false;
-      // mesmo critério do pipeline aberto: sem valor nesta trilha, o projeto
-      // não tem esse pedido e não pertence a esta aba
-      if (!r.hasValue) return false;
       if (!matchesPeriod(periodRef(r), period)) return false;
       if (clientFilter !== "all" && r.project.client !== clientFilter) return false;
       if (filterGroups.length) {
@@ -506,9 +526,11 @@ export function BillingPipeline() {
         const types = projectTypes(r.project.type);
         if (!types.some((t) => filterTypes.includes(t))) return false;
       }
+      if (filterCategories.length && !filterCategories.includes(r.order.category))
+        return false;
       return true;
     });
-  }, [rows, period, clientFilter, filterGroups, filterTypes]);
+  }, [rows, period, clientFilter, filterGroups, filterTypes, filterCategories]);
 
   const metrics = useMemo(() => {
     // Chegou na fase que fatura e ainda não faturou. O `!billed` é essencial:
@@ -737,6 +759,26 @@ export function BillingPipeline() {
                 />
               </FilterSection>
 
+              {categoryOptions.length > 1 && (
+                <>
+                  <Separator className="my-3" />
+                  <FilterSection title="Modalidade">
+                    {categoryOptions.map((c) => (
+                      <FilterCheck
+                        key={c.slug}
+                        id={`cat-${c.slug}`}
+                        label={c.label}
+                        checked={filterCategories.includes(c.slug)}
+                        onToggle={() => {
+                          setFilterCategories((p) => toggleArr(p, c.slug));
+                          resetPaging();
+                        }}
+                      />
+                    ))}
+                  </FilterSection>
+                </>
+              )}
+
               <Separator className="my-3" />
 
               <FilterSection title="Macro-etapa">
@@ -824,6 +866,16 @@ export function BillingPipeline() {
             }
             onRemove={() => {
               setFilterGroups((p) => p.filter((x) => x !== id));
+              resetPaging();
+            }}
+          />
+        ))}
+        {filterCategories.map((slug) => (
+          <FilterChip
+            key={slug}
+            label={categoryLabels[slug] ?? slug}
+            onRemove={() => {
+              setFilterCategories((p) => p.filter((x) => x !== slug));
               resetPaging();
             }}
           />
@@ -962,8 +1014,9 @@ export function BillingPipeline() {
                 </span>
                 <span className="block">
                   {billedSummary.projectCount} projeto
-                  {billedSummary.projectCount !== 1 ? "s" : ""} faturado
-                  {billedSummary.projectCount !== 1 ? "s" : ""}
+                  {billedSummary.projectCount !== 1 ? "s" : ""} ·{" "}
+                  {billedSummary.orderCount} pedido
+                  {billedSummary.orderCount !== 1 ? "s" : ""}
                   {billedSummary.monthValue > 0 && (
                     <span className="text-emerald-500">
                       {" · "}
@@ -1053,7 +1106,7 @@ export function BillingPipeline() {
             <span className="font-semibold text-foreground">
               {BRL_FULL.format(metrics.pipelineTotal)}
             </span>{" "}
-            a faturar em {metrics.openCount} projeto
+            a faturar em {metrics.openCount} pedido
             {metrics.openCount !== 1 ? "s" : ""}
             {metrics.billedTotal > 0 && (
               <>
@@ -1114,6 +1167,7 @@ export function BillingPipeline() {
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="pb-2 pr-3">Cliente · Projeto</th>
+                    <th className="pb-2 pr-3">Modalidade</th>
                     <th className="pb-2 pr-3 text-right">A faturar</th>
                     <th className="pb-2 pr-3">Fases 1–10</th>
                     <th className="pb-2 pr-3">Fase atual</th>
@@ -1131,7 +1185,7 @@ export function BillingPipeline() {
 
                     return (
                       <tr
-                        key={row.project.id}
+                        key={row.order.id}
                         onClick={() => setSelected(row)}
                         className={cn(
                           "border-b border-border/50 cursor-pointer hover:bg-muted/40 transition-colors",
@@ -1150,12 +1204,43 @@ export function BillingPipeline() {
                           </p>
                           <p
                             className={cn(
-                              "font-semibold truncate max-w-[240px]",
+                              "font-semibold truncate max-w-[240px] flex items-center gap-1.5",
                               projector ? "text-base" : "text-sm",
                             )}
                           >
-                            {row.project.name}
+                            <span className="truncate">{row.project.name}</span>
+                            {/* duas linhas com o mesmo projeto parecem bug de
+                                duplicata sem este aviso */}
+                            {row.siblings > 1 && (
+                              <span
+                                title={`Este projeto tem ${row.siblings} pedidos nesta aba`}
+                                className="text-[10px] font-normal text-muted-foreground border border-border rounded px-1 shrink-0"
+                              >
+                                ⧉{row.siblings}
+                              </span>
+                            )}
                           </p>
+                        </td>
+
+                        <td className="py-3 pr-3 whitespace-nowrap">
+                          {row.order.category === UNSPLIT_CATEGORY ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-5 px-1.5 border-dashed border-amber-500/60 text-amber-500"
+                              title="Pedido herdado, ainda não repartido por modalidade"
+                            >
+                              ⚠ não separado
+                            </Badge>
+                          ) : (
+                            <span
+                              className={cn(
+                                "text-muted-foreground",
+                                projector ? "text-sm" : "text-[13px]",
+                              )}
+                            >
+                              {row.categoryLabel}
+                            </span>
+                          )}
                         </td>
 
                         <td
@@ -1278,7 +1363,7 @@ export function BillingPipeline() {
                   <span className="font-medium text-foreground">
                     {filtered.length}
                   </span>{" "}
-                  projeto{filtered.length !== 1 ? "s" : ""}
+                  pedido{filtered.length !== 1 ? "s" : ""}
                 </p>
 
                 <div className="flex items-center gap-2 flex-wrap">
