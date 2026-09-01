@@ -9,6 +9,7 @@ import {
   Lock,
   Maximize2,
   Minimize2,
+  Split,
   Timer,
   Wallet,
   X,
@@ -41,6 +42,7 @@ import { useClientGroups } from "@/hooks/useClientGroups";
 import { useProjectPhases } from "@/hooks/useProjectPhases";
 import { useProjectOrders, UNSPLIT_CATEGORY } from "@/hooks/useProjectOrders";
 import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
+import { SplitOrderDialog } from "./SplitOrderDialog";
 import {
   BRL_COMPACT,
   BRL_FULL,
@@ -317,6 +319,7 @@ export function BillingPipeline() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<TrackRow | null>(null);
+  const [splitTarget, setSplitTarget] = useState<TrackRow | null>(null);
 
   // ── Filtros ──
   const [period, setPeriod] = useState(ALL_PERIODS);
@@ -1332,7 +1335,26 @@ export function BillingPipeline() {
                           )}
                         </td>
 
-                        <td className="py-3 text-right">
+                        <td className="py-3 text-right whitespace-nowrap">
+                          {/* dividir só faz sentido no pedido herdado e ainda
+                              não faturado — depois de faturado moveria receita
+                              de um mês já fechado */}
+                          {row.order.category === UNSPLIT_CATEGORY &&
+                            !row.billed && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSplitTarget(row);
+                                }}
+                                className="h-7 px-2 text-xs text-amber-500"
+                                title="Repartir este pedido por modalidade"
+                              >
+                                <Split className="w-3.5 h-3.5 mr-1" />
+                                Dividir
+                              </Button>
+                            )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1466,6 +1488,12 @@ export function BillingPipeline() {
           </div>
         </CardContent>
       </Card>
+
+      <SplitOrderDialog
+        row={splitTarget}
+        open={!!splitTarget}
+        onOpenChange={(v) => !v && setSplitTarget(null)}
+      />
 
       <PhaseChecklistDialog
         row={selected}

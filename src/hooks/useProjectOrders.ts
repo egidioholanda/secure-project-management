@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Um pedido faturável: (projeto, modalidade, produto|serviço).
@@ -34,6 +35,9 @@ const num = (v: number | string | null | undefined): number => {
 };
 
 export function useProjectOrders() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["project_orders"],
     queryFn: async () => {
@@ -60,5 +64,44 @@ export function useProjectOrders() {
     },
   });
 
-  return { orders, categories, isLoading: ordersLoading || catsLoading };
+  /**
+   * Reparte um pedido em N pedidos por modalidade.
+   *
+   * A validação (soma bate, pedido não faturado) e a atomicidade ficam na
+   * função do banco: uma divisão pela metade deixaria valor duplicado ou
+   * perdido, e isso não pode depender do cliente.
+   */
+  const splitOrder = useMutation({
+    mutationFn: async ({
+      orderId,
+      parts,
+    }: {
+      orderId: string;
+      parts: { category: string; value: number }[];
+    }) => {
+      const { error } = await (supabase as any).rpc("split_project_order", {
+        _order_id: orderId,
+        _parts: parts,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["project_phases"] });
+      toast({ title: "Pedido dividido por modalidade" });
+    },
+    onError: (err: any) =>
+      toast({
+        title: "Não foi possível dividir",
+        description: err?.message,
+        variant: "destructive",
+      }),
+  });
+
+  return {
+    orders,
+    categories,
+    splitOrder,
+    isLoading: ordersLoading || catsLoading,
+  };
 }
