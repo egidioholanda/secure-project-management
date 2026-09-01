@@ -105,7 +105,7 @@ const PRODUCT_PHASES: PhaseDef[] = [
 
 const SERVICE_PHASES: PhaseDef[] = [
   { n: 1, label: "Pedido recebido", short: "Pedido", owner: "COM", macro: "pedido", slaDays: 2,
-    description: "Pedido de serviço recebido do cliente" },
+    description: "Pedido de serviço recebido — licenças de todas as modalidades e instalação" },
   { n: 2, label: "Pedido fechado", short: "Fechado", owner: "COM", macro: "pedido", slaDays: 3,
     description: "Pedido de serviço fechado dentro do nosso sistema" },
   // Na prática a instalação costuma começar antes de o pedido chegar — não é
@@ -121,7 +121,7 @@ const SERVICE_PHASES: PhaseDef[] = [
     description: "Setor de compras do cliente enviou o número de conformidade",
     noteLabel: "Número de conformidade" },
   { n: 7, label: "NF faturada", short: "NF emitida", owner: "ADM", macro: "faturamento", slaDays: 2,
-    description: "Nota fiscal de serviço emitida",
+    description: "Nota fiscal de serviço emitida — licenças e instalação numa nota só",
     noteLabel: "Número da nota fiscal" },
   { n: 8, label: "NF no portal", short: "No portal", owner: "ADM", macro: "faturamento", slaDays: 2,
     description: "Nota fiscal anexada no portal do cliente" },
@@ -130,7 +130,7 @@ const SERVICE_PHASES: PhaseDef[] = [
 export const TRACKS: Record<TrackKey, TrackDef> = {
   produto: {
     key: "produto",
-    label: "Produto",
+    label: "Material",
     what: "equipamentos",
     color: "#8b5cf6",
     phases: PRODUCT_PHASES,
@@ -141,8 +141,10 @@ export const TRACKS: Record<TrackKey, TrackDef> = {
   },
   servico: {
     key: "servico",
+    // Licenças e instalação saem numa nota só: o serviço não se divide por
+    // modalidade, porque não é faturado por modalidade.
     label: "Serviço",
-    what: "instalação",
+    what: "licenças e instalação",
     color: "#3b82f6",
     phases: SERVICE_PHASES,
     // fatura na emissão da nota (7); anexar no portal (8) é o encerramento,

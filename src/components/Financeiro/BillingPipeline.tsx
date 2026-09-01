@@ -947,7 +947,7 @@ export function BillingPipeline() {
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: t.color }}
               />
-              Pedido de {t.label}
+              {t.key === "produto" ? "Material" : "Serviço"}
               <span className="text-[11px] text-muted-foreground">
                 {t.phases.length} fases
               </span>
@@ -1226,7 +1226,17 @@ export function BillingPipeline() {
                         </td>
 
                         <td className="py-3 pr-3 whitespace-nowrap">
-                          {row.order.category === UNSPLIT_CATEGORY ? (
+                          {row.track === "servico" ? (
+                            <span
+                              className={cn(
+                                "text-muted-foreground/70",
+                                projector ? "text-sm" : "text-[13px]",
+                              )}
+                              title="Licenças de todas as modalidades e instalação, faturadas numa nota só"
+                            >
+                              todas
+                            </span>
+                          ) : row.order.category === UNSPLIT_CATEGORY ? (
                             <Badge
                               variant="outline"
                               className="text-[10px] h-5 px-1.5 border-dashed border-amber-500/60 text-amber-500"
@@ -1340,6 +1350,7 @@ export function BillingPipeline() {
                               não faturado — depois de faturado moveria receita
                               de um mês já fechado */}
                           {row.order.category === UNSPLIT_CATEGORY &&
+                            row.track === "produto" &&
                             !row.billed && (
                               <Button
                                 variant="ghost"
