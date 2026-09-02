@@ -263,6 +263,19 @@ export const BRL_FULL = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
+/**
+ * Com centavos. Obrigatório onde o número é conferido, não só lido: sem isso
+ * um pedido de R$ 38.111,59 aparecia como "R$ 38.112" e uma diferença de 19
+ * centavos virava "Faltam R$ 0" — com o botão de salvar bloqueado e nenhuma
+ * pista do motivo.
+ */
+export const BRL_EXACT = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 
 // ── Derivação do estado de uma trilha ────────────────────────────────────────
 

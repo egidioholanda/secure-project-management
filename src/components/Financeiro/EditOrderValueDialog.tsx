@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useProjectOrders } from "@/hooks/useProjectOrders";
-import { BRL_FULL, TRACKS, type TrackRow } from "./billingPhases";
+import { BRL_EXACT, TRACKS, type TrackRow } from "./billingPhases";
 
 const parseInput = (raw: string): number | null => {
   if (!raw.trim()) return null;
@@ -67,7 +67,7 @@ export function EditOrderValueDialog({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Valor atual</span>
             <span className="font-bold tabular-nums">
-              {BRL_FULL.format(row.value)}
+              {BRL_EXACT.format(row.value)}
             </span>
           </div>
 

@@ -15,7 +15,7 @@ import {
   useProjectOrders,
   type BillingCategory,
 } from "@/hooks/useProjectOrders";
-import { BRL_FULL, TRACKS, projectTypes, type TrackRow } from "./billingPhases";
+import { BRL_EXACT, TRACKS, projectTypes, type TrackRow } from "./billingPhases";
 
 const parseInput = (raw: string): number => {
   if (!raw.trim()) return 0;
@@ -72,6 +72,22 @@ export function SplitOrderDialog({
   const filled = suggested.filter((c) => parseInput(values[c.slug] ?? "") > 0);
   const canSplit = matches && filled.length >= 2 && !splitOrder.isPending;
 
+  /** onde jogar a sobra de centavos: na maior parte, onde pesa menos */
+  const biggest = filled.length
+    ? filled.reduce((a, b) =>
+        parseInput(values[a.slug] ?? "") >= parseInput(values[b.slug] ?? "") ? a : b,
+      )
+    : null;
+
+  const absorbDiff = () => {
+    if (!biggest) return;
+    const novo = parseInput(values[biggest.slug] ?? "") + diff;
+    setValues((p) => ({
+      ...p,
+      [biggest.slug]: novo.toFixed(2).replace(".", ","),
+    }));
+  };
+
   const handleSplit = () => {
     splitOrder.mutate(
       {
@@ -108,7 +124,7 @@ export function SplitOrderDialog({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Total do pedido</span>
-              <span className="font-bold tabular-nums">{BRL_FULL.format(total)}</span>
+              <span className="font-bold tabular-nums">{BRL_EXACT.format(total)}</span>
             </div>
 
             <div className="space-y-2">
@@ -145,20 +161,39 @@ export function SplitOrderDialog({
             >
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Soma das partes</span>
-                <span className="font-bold tabular-nums">{BRL_FULL.format(sum)}</span>
+                <span className="font-bold tabular-nums">{BRL_EXACT.format(sum)}</span>
               </div>
-              <p
-                className={cn(
-                  "text-xs mt-1",
-                  matches ? "text-emerald-500" : "text-amber-500",
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <p
+                  className={cn(
+                    "text-xs",
+                    matches ? "text-emerald-500" : "text-amber-500",
+                  )}
+                >
+                  {matches
+                    ? "✓ confere com o total"
+                    : diff > 0
+                      ? `Faltam ${BRL_EXACT.format(diff)}`
+                      : `Excedem ${BRL_EXACT.format(-diff)}`}
+                </p>
+                {/* Os valores vêm de outra planilha e quase nunca fecham ao
+                    centavo. Sem uma saída, o usuário fica preso tentando
+                    adivinhar onde está a diferença — e o botão de salvar
+                    bloqueado sem dizer por quê. */}
+                {!matches && biggest && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs shrink-0"
+                    onClick={absorbDiff}
+                    title={`Joga a diferença de ${BRL_EXACT.format(
+                      Math.abs(diff),
+                    )} em ${biggest.label}`}
+                  >
+                    Ajustar em {biggest.label}
+                  </Button>
                 )}
-              >
-                {matches
-                  ? "✓ confere com o total"
-                  : diff > 0
-                    ? `Faltam ${BRL_FULL.format(diff)}`
-                    : `Excedem ${BRL_FULL.format(-diff)}`}
-              </p>
+              </div>
             </div>
 
             <p className="text-xs text-muted-foreground">
