@@ -44,6 +44,7 @@ import { useProjectOrders, UNSPLIT_CATEGORY } from "@/hooks/useProjectOrders";
 import { useOpportunities } from "@/hooks/useOpportunities";
 import { PhaseChecklistDialog } from "./PhaseChecklistDialog";
 import { SplitOrderDialog } from "./SplitOrderDialog";
+import { EditOrderValueDialog } from "./EditOrderValueDialog";
 import {
   BRL_COMPACT,
   BRL_FULL,
@@ -322,6 +323,7 @@ export function BillingPipeline() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<TrackRow | null>(null);
   const [splitTarget, setSplitTarget] = useState<TrackRow | null>(null);
+  const [editValueTarget, setEditValueTarget] = useState<TrackRow | null>(null);
 
   // ── Filtros ──
   const [period, setPeriod] = useState(ALL_PERIODS);
@@ -1216,7 +1218,9 @@ export function BillingPipeline() {
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="pb-2 pr-3">Cliente · Projeto</th>
                     <th className="pb-2 pr-3">Modalidade</th>
-                    <th className="pb-2 pr-3 text-right">A faturar</th>
+                    <th className="pb-2 pr-3 text-right" title="Clique no valor para corrigir">
+                      A faturar
+                    </th>
                     <th className="pb-2 pr-3">Fases 1–10</th>
                     <th className="pb-2 pr-3">Fase atual</th>
                     <th className="pb-2 pr-3">Dono</th>
@@ -1324,19 +1328,29 @@ export function BillingPipeline() {
                               </span>
                             );
                           })()}
-                          {!row.hasValue ? (
-                            "—"
-                          ) : row.billed ? (
-                            // trilha já virou nota: o dinheiro entrou, não está em risco
-                            <span className="text-emerald-500">
-                              {BRL_COMPACT(row.value)}
-                              <span className="block text-[11px] font-normal">
-                                faturado
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditValueTarget(row);
+                            }}
+                            title="Corrigir o valor deste pedido"
+                            className="hover:underline decoration-dotted underline-offset-2"
+                          >
+                            {!row.hasValue ? (
+                              "—"
+                            ) : row.billed ? (
+                              // já virou nota: o dinheiro entrou, não está em risco
+                              <span className="text-emerald-500">
+                                {BRL_COMPACT(row.value)}
+                                <span className="block text-[11px] font-normal">
+                                  faturado
+                                </span>
                               </span>
-                            </span>
-                          ) : (
-                            BRL_COMPACT(row.pendingValue)
-                          )}
+                            ) : (
+                              BRL_COMPACT(row.pendingValue)
+                            )}
+                          </button>
                         </td>
 
                         <td className="py-3 pr-3">
@@ -1560,6 +1574,12 @@ export function BillingPipeline() {
           </div>
         </CardContent>
       </Card>
+
+      <EditOrderValueDialog
+        row={editValueTarget}
+        open={!!editValueTarget}
+        onOpenChange={(v) => !v && setEditValueTarget(null)}
+      />
 
       <SplitOrderDialog
         row={splitTarget}

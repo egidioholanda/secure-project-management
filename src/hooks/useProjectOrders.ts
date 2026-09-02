@@ -98,10 +98,45 @@ export function useProjectOrders() {
       }),
   });
 
+  /** Corrige o valor de um pedido, opcionalmente alinhando a oportunidade */
+  const updateOrderValue = useMutation({
+    mutationFn: async ({
+      orderId,
+      value,
+      syncOpportunity,
+    }: {
+      orderId: string;
+      value: number;
+      syncOpportunity: boolean;
+    }) => {
+      const { error } = await (supabase as any).rpc("update_order_value", {
+        _order_id: orderId,
+        _value: value,
+        _sync_opportunity: syncOpportunity,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["project_orders"] });
+      toast({
+        title: vars.syncOpportunity
+          ? "Valor corrigido no pedido e na oportunidade"
+          : "Valor do pedido corrigido",
+      });
+    },
+    onError: (err: any) =>
+      toast({
+        title: "Não foi possível corrigir o valor",
+        description: err?.message,
+        variant: "destructive",
+      }),
+  });
+
   return {
     orders,
     categories,
     splitOrder,
+    updateOrderValue,
     isLoading: ordersLoading || catsLoading,
   };
 }
